@@ -100,6 +100,11 @@ print("Installing system dependencies...")
 !pip install --quiet rtree
 print("Geospatial dependencies installed/checked.")
 
+# Install the package in development mode
+print("\nInstalling project package...")
+get_ipython().run_line_magic('cd', str(PROJECT_PATH))
+!pip install -e .
+
 # --- Add project path to sys.path ---
 print("\nPython Path Setup:")
 print(f"Current sys.path: {sys.path}")
