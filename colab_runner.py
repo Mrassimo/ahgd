@@ -69,29 +69,45 @@ PROJECT_PATH = BASE_DIR / PROJECT_DIR_NAME
 print("Accessing Git repository...")
 if not PROJECT_PATH.exists():
     print(f"Cloning repository into {PROJECT_PATH}...")
-    "%cd {BASE_DIR}"
-    "!git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}"
-    "%cd {PROJECT_PATH}"
+    print(f"Running: cd {BASE_DIR}")
+    get_ipython().run_line_magic('cd', '{BASE_DIR}')
+    print(f"Running: git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}")
+    !git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}
+    print(f"Running: cd {PROJECT_PATH}")
+    get_ipython().run_line_magic('cd', '{PROJECT_PATH}')
 else:
     print(f"Pulling latest changes into {PROJECT_PATH}...")
-    "%cd {PROJECT_PATH}"
-    "!git pull origin main"
+    print(f"Running: cd {PROJECT_PATH}")
+    get_ipython().run_line_magic('cd', '{PROJECT_PATH}')
+    print("Running: git pull origin main")
+    !git pull origin main
 
 # --- Install Dependencies ---
 print("\nInstalling dependencies...")
 req_file = PROJECT_PATH / 'requirements.txt'
 if req_file.exists():
-     "!pip install --quiet -r {req_file}"
+     print(f"Installing requirements from: {req_file}")
+     !pip install --quiet -r {req_file}
      print("Installed base requirements.")
 else: print("Warning: requirements.txt not found.")
-"!apt-get update --quiet && apt-get install --quiet -y libspatialindex-dev python3-rtree > /dev/null"
-"!pip install --quiet rtree"
+
+print("Installing system dependencies...")
+!apt-get update --quiet && apt-get install --quiet -y libspatialindex-dev python3-rtree > /dev/null
+!pip install --quiet rtree
 print("Geospatial dependencies installed/checked.")
 
 # --- Add project path to sys.path ---
 if str(PROJECT_PATH) not in sys.path:
     sys.path.insert(0, str(PROJECT_PATH))
     print(f"Added {PROJECT_PATH} to sys.path")
+
+# Debug information
+print("\nDebug Information:")
+print(f"Current working directory: {os.getcwd()}")
+print(f"Contents of {PROJECT_PATH}:")
+!ls -la {PROJECT_PATH}
+print(f"\nContents of {PROJECT_PATH}/etl_logic:")
+!ls -la {PROJECT_PATH}/etl_logic
 
 print("\nSetup complete.")
 
