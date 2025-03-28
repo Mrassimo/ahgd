@@ -6,6 +6,7 @@ used throughout the ETL process.
 
 from pathlib import Path
 from typing import Dict, List
+from direct_urls import ASGS2021_URLS, CENSUS_URLS
 
 # Note: BASE_DIR will be set dynamically in the Colab notebook
 # These paths are relative to BASE_DIR
@@ -21,16 +22,16 @@ RELATIVE_PATHS = {
     'TEMP_EXTRACT_DIR': 'data/raw/temp/extract'
 }
 
-# Data source URLs
+# Data source URLs - Using direct URLs from direct_urls.py
 DATA_URLS = {
     # ASGS Main Structures (Using GDA2020 Shapefiles)
-    'SA1_2021_AUST_GDA2020': 'https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/SA1_2021_AUST_GDA2020_SHP.zip',
-    'SA2_2021_AUST_GDA2020': 'https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/SA2_2021_AUST_GDA2020_SHP.zip',
-    'SA3_2021_AUST_GDA2020': 'https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/SA3_2021_AUST_GDA2020_SHP.zip',
-    'SA4_2021_AUST_GDA2020': 'https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/SA4_2021_AUST_GDA2020_SHP.zip',
-    'STE_2021_AUST_GDA2020': 'https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/STE_2021_AUST_GDA2020_SHP.zip',
-    'POA_2021_AUST_GDA2020': 'https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files/POA_2021_AUST_GDA2020_SHP.zip',
-    'CENSUS_GCP_AUS_2021': 'https://www.abs.gov.au/census/find-census-data/datapacks/download/2021_GCP_ALL_for_AUS.zip'
+    'SA1_2021_AUST_GDA2020': ASGS2021_URLS['SA1'],
+    'SA2_2021_AUST_GDA2020': ASGS2021_URLS['SA2'],
+    'SA3_2021_AUST_GDA2020': ASGS2021_URLS['SA3'],
+    'SA4_2021_AUST_GDA2020': ASGS2021_URLS['SA4'],
+    'STE_2021_AUST_GDA2020': ASGS2021_URLS['STE'],
+    'POA_2021_AUST_GDA2020': ASGS2021_URLS['POA'],
+    'CENSUS_GCP_AUS_2021': CENSUS_URLS['GCP_ALL']
 }
 
 # Geographic levels to process
