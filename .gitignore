@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*build*/
+*dist*/
+*.egg-info/
+*.spec
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE specific
+.vscode/
+.idea/
+*.cursor-workspace
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs / Data
+logs/*.log
+output/*.parquet
+data/
+*.zip
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+*.csv
+
+# Colab specific
+.ipynb_checkpoints/ 
