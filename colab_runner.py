@@ -59,7 +59,7 @@ from pathlib import Path
 
 # --- Git Configuration ---
 GIT_REPO_URL = "https://github.com/Mrassimo/ahgd.git"  # Your GitHub repository URL
-PROJECT_DIR_NAME = "ahgd-etl-pipeline" # Assumes this is the folder name in your BASE_DIR
+PROJECT_DIR_NAME = "ahgd" # Changed from ahgd-etl-pipeline to match actual repo name
 # ---
 
 if 'BASE_DIR' not in globals(): raise NameError("BASE_DIR not defined. Run Cell 2 first.")
