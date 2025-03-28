@@ -39,8 +39,7 @@ def main():
     
     # Files to convert
     files_to_convert = [
-        'colab_connect.py',
-        'ahgd_etl_notebook.py'
+        'colab_runner.py'  # Our new Colab runner script
     ]
     
     # Convert each file
