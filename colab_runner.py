@@ -70,15 +70,15 @@ print("Accessing Git repository...")
 if not PROJECT_PATH.exists():
     print(f"Cloning repository into {PROJECT_PATH}...")
     print(f"Running: cd {BASE_DIR}")
-    get_ipython().run_line_magic('cd', '{BASE_DIR}')
+    get_ipython().run_line_magic('cd', str(BASE_DIR))
     print(f"Running: git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}")
     !git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}
     print(f"Running: cd {PROJECT_PATH}")
-    get_ipython().run_line_magic('cd', '{PROJECT_PATH}')
+    get_ipython().run_line_magic('cd', str(PROJECT_PATH))
 else:
     print(f"Pulling latest changes into {PROJECT_PATH}...")
     print(f"Running: cd {PROJECT_PATH}")
-    get_ipython().run_line_magic('cd', '{PROJECT_PATH}')
+    get_ipython().run_line_magic('cd', str(PROJECT_PATH))
     print("Running: git pull origin main")
     !git pull origin main
 
@@ -87,7 +87,7 @@ print("\nInstalling dependencies...")
 req_file = PROJECT_PATH / 'requirements.txt'
 if req_file.exists():
      print(f"Installing requirements from: {req_file}")
-     !pip install --quiet -r {req_file}
+     !pip install --quiet -r {str(req_file)}
      print("Installed base requirements.")
 else: print("Warning: requirements.txt not found.")
 
@@ -97,6 +97,8 @@ print("Installing system dependencies...")
 print("Geospatial dependencies installed/checked.")
 
 # --- Add project path to sys.path ---
+print("\nPython Path Setup:")
+print(f"Current sys.path: {sys.path}")
 if str(PROJECT_PATH) not in sys.path:
     sys.path.insert(0, str(PROJECT_PATH))
     print(f"Added {PROJECT_PATH} to sys.path")
@@ -104,10 +106,22 @@ if str(PROJECT_PATH) not in sys.path:
 # Debug information
 print("\nDebug Information:")
 print(f"Current working directory: {os.getcwd()}")
+print(f"PROJECT_PATH: {PROJECT_PATH}")
+print(f"PROJECT_PATH exists: {PROJECT_PATH.exists()}")
+print(f"PROJECT_PATH is directory: {PROJECT_PATH.is_dir()}")
+print(f"etl_logic path: {PROJECT_PATH/'etl_logic'}")
+print(f"etl_logic exists: {(PROJECT_PATH/'etl_logic').exists()}")
+print(f"etl_logic is directory: {(PROJECT_PATH/'etl_logic').is_dir()}")
+
+print("\nDirectory Contents:")
 print(f"Contents of {PROJECT_PATH}:")
-!ls -la {PROJECT_PATH}
-print(f"\nContents of {PROJECT_PATH}/etl_logic:")
-!ls -la {PROJECT_PATH}/etl_logic
+!ls -la {str(PROJECT_PATH)}
+print(f"\nContents of {PROJECT_PATH}/etl_logic (if exists):")
+!ls -la {str(PROJECT_PATH)}/etl_logic || echo "etl_logic directory not found"
+
+# Try to find etl_logic
+print("\nSearching for etl_logic:")
+!find {str(BASE_DIR)} -name "etl_logic" -type d
 
 print("\nSetup complete.")
 
@@ -124,10 +138,17 @@ if 'PROJECT_PATH' not in globals() or str(PROJECT_PATH) not in sys.path:
 
 # Import your custom modules
 try:
+    import sys
+    print(f"Python path before import: {sys.path}")
+    print(f"Attempting to import from {PROJECT_PATH}")
+    os.chdir(str(PROJECT_PATH))  # Change to project directory
     from etl_logic import utils, config, geography, census
     print("Successfully imported ETL modules.")
 except ImportError as e:
      print(f"ERROR: Could not import modules from {PROJECT_PATH}/etl_logic.")
+     print(f"Current directory: {os.getcwd()}")
+     print(f"Directory contents:")
+     !ls -la
      raise e
 
 # --- Setup Logging ---
