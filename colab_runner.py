@@ -71,16 +71,20 @@ if not PROJECT_PATH.exists():
     print(f"Cloning repository into {PROJECT_PATH}...")
     print(f"Running: cd {BASE_DIR}")
     get_ipython().run_line_magic('cd', str(BASE_DIR))
-    print(f"Running: git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}")
+    
+    print("\nAttempting to clone repository...")
     !git clone {GIT_REPO_URL} {PROJECT_DIR_NAME}
+    
+    if not PROJECT_PATH.exists():
+        raise SystemExit("Failed to clone repository. Please check the repository URL and try again.")
+    
     print(f"Running: cd {PROJECT_PATH}")
     get_ipython().run_line_magic('cd', str(PROJECT_PATH))
 else:
-    print(f"Pulling latest changes into {PROJECT_PATH}...")
+    print(f"Repository already exists at {PROJECT_PATH}")
+    print("Skipping clone step. If you need to update, manually run: git pull origin main")
     print(f"Running: cd {PROJECT_PATH}")
     get_ipython().run_line_magic('cd', str(PROJECT_PATH))
-    print("Running: git pull origin main")
-    !git pull origin main
 
 # --- Install Dependencies ---
 print("\nInstalling dependencies...")
