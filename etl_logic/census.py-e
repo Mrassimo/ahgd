@@ -1,23 +1,21 @@
 """Census data processing module for the AHGD ETL pipeline.
 
 This module handles the processing of ABS Census data, specifically the G01
-(Selected Person Characteristics) table, transforming it into a standardised
+(Selected Person Characteristics) table, transforming it into a standardized
 Parquet format and linking it with geographic boundaries.
 """
 
 import logging
 import re
-import zipfile
-import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any, Tuple, Callable
-from datetime import datetime
+import datetime
 
 import pandas as pd
-import geopandas as gpd
 import polars as pl
 import pyarrow
 import pyarrow.parquet as pq
+import zipfile
 
 from . import config
 from . import utils
@@ -89,18 +87,80 @@ def extract_census_files(zip_file: Path, pattern: str, extract_dir: Path) -> Lis
         logger.error(f"Error opening {zip_file}: {str(e)}")
     return extracted_files
 
+def _process_single_census_csv_legacy(csv_file: Path, process_function: callable, table_code: str) -> Optional[pl.DataFrame]:
+    """Process a single Census CSV file using the provided processing function.
+    
+    This helper function centralizes common tasks for Census CSV file processing to reduce 
+    code duplication and standardize error handling. It handles:
+    - Calling the appropriate table-specific processing function
+    - Performing validation on the processed DataFrame
+    - Standard error logging and success/failure tracking
+    - Data quality checks for critical columns
+    
+    Args:
+        csv_file (Path): Path to the Census CSV file to be processed. The file should
+                         exist and be readable.
+        process_function (callable): Table-specific function that processes the CSV content
+                                    and returns a standardized DataFrame with at least a 
+                                    'geo_code' column and relevant measure columns.
+        table_code (str): Census table code (e.g., "G17", "G18") used for context in log 
+                         messages and to identify the specific Census table being processed.
+        
+    Returns:
+        Optional[pl.DataFrame]: Processed DataFrame with standardized column names and
+                               appropriate data types if successful, or None if processing
+                               failed due to errors or validation issues.
+    
+    Note:
+        The function performs several validation steps including checking for empty DataFrames,
+        missing geo_code columns, and calling the validate_processed_df function for additional
+        table-specific validations.
+    """
+    logger.info(f"Processing {table_code} file: {csv_file.name}")
+    
+    try:
+        # Call the processing function
+        df = process_function(csv_file)
+        
+        if df is None:
+            logger.warning(f"Processing of {csv_file.name} returned None")
+            return None
+            
+        # Data Quality Check: Validate the processed dataframe
+        if not validate_processed_df(df, table_code, csv_file):
+            logger.warning(f"Data validation issues found in {csv_file.name}, but processing will continue")
+            
+        # Ensure geo_code column exists and is not empty
+        if 'geo_code' not in df.columns:
+            logger.error(f"Expected column 'geo_code' not found in processed data from {csv_file.name}")
+            return None
+            
+        # Check for empty dataframe
+        if len(df) == 0:
+            logger.warning(f"Processed dataframe from {csv_file.name} is empty")
+            return None
+            
+        logger.info(f"Successfully processed {csv_file.name}: {len(df)} rows")
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error in _process_single_census_csv for {csv_file.name}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return None
+
 def _process_single_census_csv(csv_file: Path, geo_column_options: List[str], 
                               measure_column_map: Dict[str, List[str]], 
                               required_target_columns: List[str],
                               table_code: str) -> Optional[pl.DataFrame]:
-    """Process a single Census CSV file using standardised column mapping.
+    """Process a single Census CSV file using standardized column mapping.
     
     This helper function implements a generic approach to process Census CSV files
     using flexible column mapping. It handles:
     - Reading the CSV file with Polars
     - Finding the appropriate geographic column
     - Mapping source columns to target columns based on provided mapping
-    - Cleaning and standardising data types
+    - Cleaning and standardizing data types
     - Data quality validation
     
     Args:
@@ -112,7 +172,7 @@ def _process_single_census_csv(csv_file: Path, geo_column_options: List[str],
         table_code (str): Census table code (e.g., "G17", "G18") for logging context
         
     Returns:
-        Optional[pl.DataFrame]: Processed DataFrame with standardised column names and
+        Optional[pl.DataFrame]: Processed DataFrame with standardized column names and
                                data types if successful, or None if processing failed
     """
     logger.info(f"[{table_code}] Processing file: {csv_file.name}")
@@ -127,7 +187,7 @@ def _process_single_census_csv(csv_file: Path, geo_column_options: List[str],
             logger.error(f"[{table_code}] No geographic code column found in {csv_file}")
             return None
         
-        # Initialise result dictionary to build the output DataFrame
+        # Initialize result dictionary to build the output DataFrame
         result_cols = {'geo_code': utils.clean_polars_geo_code(pl.col(geo_col))}
         
         # Find and map measure columns
@@ -168,6 +228,7 @@ def _process_single_census_csv(csv_file: Path, geo_column_options: List[str],
         
     except Exception as e:
         logger.error(f"[{table_code}] Error processing {csv_file}: {str(e)}")
+        import traceback
         logger.error(traceback.format_exc())
         return None
 
@@ -228,107 +289,170 @@ def process_census_table(
     table_zips = find_census_files(zip_dir, table_pattern)
     
     if not table_zips:
-        logger.error(f"[{table_code}] No ZIP files found containing {table_code} data")
+        logger.error(f"[{table_code}] CRITICAL: No ZIP files containing Census {table_code} data found in {zip_dir}")
         return False
+    
     logger.info(f"[{table_code}] Found {len(table_zips)} ZIP files containing potential {table_code} data")
     
-    # Create temporary extraction directory
-    temp_extract_dir = temp_extract_base / f"census_{table_code}"
-    temp_extract_dir.mkdir(parents=True, exist_ok=True)
+    # Process each ZIP file
+    all_census_data = []
     
-    # Extract all matching files from each ZIP
-    total_extracted = 0
     for zip_file in table_zips:
-        logger.info(f"[{table_code}] Extracting ZIP file: {zip_file.name}")
-        extracted_files = extract_census_files(zip_file, table_pattern, temp_extract_dir)
-        if extracted_files:
+        logger.info(f"[{table_code}] Processing ZIP file: {zip_file.name}")
+        
+        try:
+            # Extract files
+            extract_dir = temp_extract_base / table_code.lower()
+            extract_dir.mkdir(parents=True, exist_ok=True)
+            
+            extracted_files = extract_census_files(zip_file, table_pattern, extract_dir)
+            
+            if not extracted_files:
+                logger.warning(f"[{table_code}] No matching {table_code} CSV files found in {zip_file.name}")
+                continue
+                
             logger.info(f"[{table_code}] Extracted {len(extracted_files)} CSV files from {zip_file.name}")
-            total_extracted += len(extracted_files)
+            
+            # Process each extracted file
+            file_success_count = 0
+            for csv_file in extracted_files:
+                df = process_file_function(csv_file)
+                if df is not None:
+                    all_census_data.append(df)
+                    file_success_count += 1
+            
+            logger.info(f"[{table_code}] Successfully processed {file_success_count}/{len(extracted_files)} files from {zip_file.name}")
+                    
+        except Exception as e:
+            logger.error(f"[{table_code}] Error processing ZIP file {zip_file.name}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
     
-    if total_extracted == 0:
-        logger.error(f"[{table_code}] No CSV files were extracted from any ZIP files")
+    if not all_census_data:
+        logger.error(f"[{table_code}] CRITICAL: No {table_code} data was successfully processed")
         return False
-    
-    # Find all extracted CSV files
-    csv_files = find_census_csv_files(temp_extract_dir, table_code)
-    if not csv_files:
-        logger.error(f"[{table_code}] No CSV files found in extracted files")
-        return False
-    logger.info(f"[{table_code}] Found {len(csv_files)} CSV files")
-    
-    # Process each CSV file
-    processed_dfs = []
-    success_count = 0
-    
-    for csv_file in csv_files:
-        df = process_file_function(csv_file)
-        if df is not None and len(df) > 0:
-            processed_dfs.append(df)
-            success_count += 1
-    
-    if not processed_dfs:
-        logger.error(f"[{table_code}] No CSV files were successfully processed")
-        return False
-    logger.info(f"[{table_code}] Successfully processed {success_count} of {len(csv_files)} CSV files")
-    
-    # Combine all processed DataFrames
+        
     try:
-        combined_df = pl.concat(processed_dfs)
-        logger.info(f"[{table_code}] Combined data has {len(combined_df)} rows")
+        # Combine all data frames
+        logger.info(f"[{table_code}] Combining data from {len(all_census_data)} processed files")
         
-        # Data Quality Check: Ensure we have a reasonable amount of data
-        if len(combined_df) < 100:  # Arbitrary threshold, adjust based on expectations
-            logger.warning(
-                f"[{table_code}] Data quality check: Combined data has only {len(combined_df)} rows, "
-                f"which is fewer than expected (< 100)"
-            )
-        else:
-            logger.info(f"[{table_code}] Successfully combined data into {len(combined_df)} rows")
-        
-        # Filter out special geo codes before joining
-        original_count = len(combined_df)
-        combined_df = utils.filter_special_geo_codes(combined_df, "geo_code")
-        if original_count > len(combined_df):
-            logger.info(f"[{table_code}] Filtered out {original_count - len(combined_df)} rows with special geo codes")
-        
-        # Join with geographic dimension to add surrogate key
-        logger.info(f"[{table_code}] Joining with geographic dimension...")
-        geo_df = pl.read_parquet(geo_output_path)
-        combined_df = combined_df.join(
-            geo_df.select(['geo_code', 'geo_sk']),
-            on='geo_code',
-            how='inner'
-        )
-        
-        # Add time dimension surrogate key if provided
-        if time_sk is not None:
-            combined_df = combined_df.with_columns(pl.lit(time_sk).alias('time_sk'))
-        
-        # Add ETL processing timestamp
-        logger.info(f"[{table_code}] Adding ETL processing timestamp")
-        combined_df = combined_df.with_columns(pl.lit(datetime.now()).alias('etl_processed_at'))
-        
-        # Write to Parquet
-        output_path = output_dir / output_filename
-        combined_df.write_parquet(output_path)
-        logger.info(f"[{table_code}] Successfully wrote {len(combined_df)} rows to {output_path}")
-        return True
-        
+        try:
+            # Get a standard set of columns from all dataframes, always including 'geo_code'
+            all_columns = set(['geo_code'])
+            for df in all_census_data:
+                all_columns.update(df.columns)
+            
+            # Convert set to a sorted list for consistent column order
+            all_columns_sorted = sorted(list(all_columns))
+            logger.info(f"[{table_code}] Using standardized column set: {len(all_columns_sorted)} columns")
+            
+            # Create standardized dataframes with missing columns filled with nulls
+            standardized_data = []
+            for df in all_census_data:
+                # Determine missing columns
+                missing_cols = all_columns - set(df.columns)
+                if missing_cols:
+                    logger.info(f"[{table_code}] Adding {len(missing_cols)} missing columns to standardize DataFrame")
+                    # Add missing columns with null values, ensuring consistent data types
+                    for col in missing_cols:
+                        # For numeric columns (like counts), use Int64 nulls
+                        if col != 'geo_code' and any(col.startswith(prefix) for prefix in ['total_', 'high_', 'neg_']):
+                            df = df.with_columns(pl.lit(None).cast(pl.Int64).alias(col))
+                        else:
+                            df = df.with_columns(pl.lit(None).alias(col))
+                
+                # Ensure columns are in the same order for all dataframes
+                df_standardized = df.select(all_columns_sorted)
+                standardized_data.append(df_standardized)
+            
+            # Now combine the standardized dataframes
+            combined_df = pl.concat(standardized_data)
+            
+            # Data Quality Check: Ensure we have a reasonable amount of data
+            if len(combined_df) < 100:  # Arbitrary threshold, adjust based on expectations
+                logger.warning(f"[{table_code}] Data quality check: Combined data has only {len(combined_df)} rows, which is fewer than expected (< 100)")
+            else:
+                logger.info(f"[{table_code}] Successfully combined data into {len(combined_df)} rows")
+            
+            # Join with geographic dimension to add surrogate key
+            logger.info(f"[{table_code}] Joining with geographic dimension...")
+            try:
+                geo_df = pl.read_parquet(geo_output_path)
+                
+                # Extract just the columns we need from geo_dimension
+                geo_lookup = geo_df.select(['geo_sk', 'geo_code'])
+                
+                # Join census data with geo dimension
+                fact_df = combined_df.join(geo_lookup, on='geo_code', how='left')
+                
+                # Check for unmatched geo codes
+                unmatched_count = fact_df.filter(pl.col('geo_sk').is_null()).height
+                if unmatched_count > 0:
+                    logger.warning(f"[{table_code}] Data quality check: {unmatched_count} rows ({unmatched_count/len(fact_df)*100:.2f}%) have geo codes that don't match the geographic dimension")
+                    unmatched_codes = fact_df.filter(pl.col('geo_sk').is_null()).select('geo_code').unique().to_series().to_list()
+                    logger.warning(f"[{table_code}] Sample of unmatched geo codes: {unmatched_codes[:5]}")
+                else:
+                    logger.info(f"[{table_code}] All geo codes successfully matched with geographic dimension")
+                
+                # Filter out unmatched rows
+                original_count = len(fact_df)
+                fact_df = fact_df.filter(pl.col('geo_sk').is_not_null())
+                if original_count > len(fact_df):
+                    logger.info(f"[{table_code}] Filtered out {original_count - len(fact_df)} rows with unmatched geo codes")
+                
+                # Add time dimension surrogate key if provided
+                if time_sk is not None:
+                    fact_df = fact_df.with_columns(pl.lit(time_sk).alias('time_sk'))
+                    logger.info(f"[{table_code}] Added time dimension surrogate key: {time_sk}")
+                
+                # Add ETL processed timestamp
+                fact_df = fact_df.with_columns(pl.lit(datetime.datetime.now()).alias('etl_processed_at'))
+                
+                # Reorder columns for better readability (putting surrogate keys first)
+                first_cols = ['geo_sk']
+                if time_sk is not None:
+                    first_cols.append('time_sk')
+                first_cols.append('geo_code')  # Keep geo_code for reference
+                other_cols = [col for col in fact_df.columns if col not in first_cols and col != 'etl_processed_at']
+                # Put etl_processed_at at the end
+                final_cols = first_cols + other_cols + ['etl_processed_at']
+                
+                fact_df = fact_df.select(final_cols)
+                
+                # Write final DataFrame to Parquet
+                output_file = output_dir / output_filename
+                fact_df.write_parquet(output_file)
+                logger.info(f"[{table_code}] Successfully wrote fact table with {len(fact_df)} rows to {output_file}")
+                return True
+                
+            except Exception as e:
+                logger.error(f"[{table_code}] CRITICAL: Error joining with geographic dimension: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                return False
+                
+        except Exception as e:
+            logger.error(f"[{table_code}] CRITICAL: Error combining {table_code} data: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return False
+            
     except Exception as e:
-        logger.error(f"[{table_code}] CRITICAL: Error combining {table_code} data: {str(e)}")
+        logger.error(f"[{table_code}] CRITICAL: Error processing {table_code} data: {str(e)}")
+        import traceback
         logger.error(traceback.format_exc())
         return False
 
 def validate_processed_df(df: pl.DataFrame, table_code: str, source_file: Path) -> bool:
-    """Validate a processed DataFrame for data quality issues.
+    """Validate a processed Census dataframe for data quality issues.
     
     Args:
-        df (pl.DataFrame): Processed DataFrame to validate.
-        table_code (str): Census table code for context.
-        source_file (Path): Source file for context in log messages.
+        df (pl.DataFrame): The processed dataframe to validate
+        table_code (str): The Census table code (e.g., "G17")
+        source_file (Path): The source file path for context in messages
         
     Returns:
-        bool: True if validation passed, False if issues found.
+        bool: True if validation passed, False if issues were found
     """
     validation_passed = True
     
@@ -620,156 +744,58 @@ def process_g17_census_data(zip_dir: Path, temp_extract_base: Path, output_dir: 
     )
 
 def process_g18_file(csv_file: Path) -> Optional[pl.DataFrame]:
-    """Process a single G18 (Need for Assistance) Census CSV file.
+    """Process a G18 Census CSV file (unpaid assistance).
     
     Args:
-        csv_file: Path to the CSV file to process.
+        csv_file (Path): Path to CSV file.
         
     Returns:
-        Optional[pl.DataFrame]: Processed DataFrame or None if processing failed.
+        Optional[pl.DataFrame]: Processed data or None if error.
     """
     # Define table code
     table_code = "G18"
     
     # Define geographic column options
-    geo_column_options = ["region_id", "SA1_CODE_2021", "SA2_CODE_2021", "SA3_CODE_2021", "SA4_CODE_2021"]
+    geo_column_options = ['region_id', 'SA1_CODE21', 'SA2_CODE21', 'SA1_CODE_2021', 'SA2_CODE_2021',
+                         'SA3_CODE_2021', 'SA4_CODE_2021', 'LGA_CODE_2021', 'STE_CODE_2021']
     
-    try:
-        # Read the CSV file
-        df = pl.read_csv(csv_file, truncate_ragged_lines=True)
-        logger.info(f"[{table_code}] Read {len(df)} rows from {csv_file.name}")
-        
-        # Identify geo_code column
-        geo_code_column = utils.find_geo_column(df, geo_column_options)
-        if not geo_code_column:
-            logger.error(f"[{table_code}] Could not find geographic code column in {csv_file.name}")
-            return None
-        logger.info(f"[{table_code}] Found geographic code column: {geo_code_column}")
-        
-        # Define patterns for column interpretation
-        sex_prefixes = ["M", "F", "P"]  # Male, Female, Person
-        
-        # Define assistance categories and standardized names
-        assistance_categories = {
-            "Need_for_assistance": "needs_assistance",
-            "No_need_for_assistance": "no_need_for_assistance",
-            "Need_for_assistance_ns": "assistance_not_stated",
-            "Not_stated": "assistance_not_stated"
+    # Get measure column mappings from config
+    if table_code in config.CENSUS_COLUMN_MAPPINGS:
+        # Transform the nested structure to what _process_single_census_csv expects
+        measure_column_map = {
+            'provided_care_count': config.CENSUS_COLUMN_MAPPINGS[table_code]['provided_care_columns'],
+            'no_care_provided_count': config.CENSUS_COLUMN_MAPPINGS[table_code]['no_care_provided_columns'],
+            'care_not_stated_count': config.CENSUS_COLUMN_MAPPINGS[table_code]['care_not_stated_columns']
         }
-        
-        # Define age range patterns
-        age_range_patterns = {
-            "0_4_yrs": "0-4",
-            "0_4": "0-4",
-            "5_14": "5-14",
-            "15_19": "15-19",
-            "20_24": "20-24",
-            "25_34": "25-34",
-            "35_44": "35-44",
-            "45_54": "45-54", 
-            "55_64": "55-64",
-            "65_74": "65-74",
-            "75_84": "75-84",
-            "85_over": "85+",
-            "85ov": "85+",
-            "Tot": "total"
+    else:
+        # Fallback if not in config
+        logger.warning(f"[{table_code}] Column mappings not found in config, using hardcoded values")
+        measure_column_map = {
+            'provided_care_count': [
+                'Provided_Unpaid_Care_P', 'Cared_for_Child_P', 
+                'Provided_unpaid_child_care_P'
+            ],
+            'no_care_provided_count': [
+                'No_Unpaid_Care_Provided_P', 'Did_Not_Care_For_Child_P', 
+                'No_unpaid_child_care_P'
+            ],
+            'care_not_stated_count': [
+                'Care_Not_Stated_P', 'Care_For_Child_Not_Stated_P', 
+                'Unpaid_child_care_not_stated_P'
+            ]
         }
-        
-        value_vars = [] # List of columns to unpivot
-        parsed_cols = {}
-        
-        for col_name in df.columns:
-            if col_name == geo_code_column:
-                continue
-                
-            # Parse column name: Sex_AgeRange_AssistanceCategory
-            parts = col_name.split('_', 1)  # Split only at first underscore to get sex prefix
-            if len(parts) < 2:
-                continue
-                
-            # Check if first part is a valid sex code
-            sex = parts[0]
-            if sex not in sex_prefixes:
-                continue
-                
-            remaining = parts[1]
-            
-            # Find the assistance category
-            assistance_category = None
-            age_range = None
-            
-            # First try to identify the assistance category
-            for assist_cat, std_name in assistance_categories.items():
-                if assist_cat in remaining:
-                    assistance_category = std_name
-                    # Remove the assistance category part to get the age range
-                    age_part = remaining.replace(assist_cat, "").strip("_")
-                    break
-            
-            if not assistance_category:
-                continue
-                
-            # Find the age range
-            for age_pat, std_range in age_range_patterns.items():
-                if age_pat == age_part:
-                    age_range = std_range
-                    break
-                
-            if not age_range and "Tot" in age_part:
-                age_range = "total"
-                
-            if not age_range:
-                continue
-                
-            # Store the parsed information
-            value_vars.append(col_name)
-            parsed_cols[col_name] = {
-                "sex": sex,
-                "assistance_category": assistance_category,
-                "age_range": age_range
-            }
-        
-        if not value_vars:
-            logger.error(f"[{table_code}] No valid columns found to unpivot in {csv_file.name}")
-            return None
-            
-        logger.info(f"[{table_code}] Unpivoting {len(value_vars)} columns.")
-        
-        # Unpivot using melt
-        long_df = df.melt(
-            id_vars=[geo_code_column],
-            value_vars=value_vars,
-            variable_name="column_info",
-            value_name="count"
-        )
-        
-        # Map parsed info back
-        mapping_df = pl.DataFrame([
-            {"column_info": k, **v} for k, v in parsed_cols.items()
-        ])
-        
-        result_df = long_df.join(mapping_df, on="column_info", how="inner")
-        
-        # Clean geo_code and select final columns
-        result_df = result_df.select([
-            utils.clean_polars_geo_code(pl.col(geo_code_column)).alias("geo_code"),
-            pl.col("sex"),
-            pl.col("assistance_category"),
-            pl.col("age_range"),
-            utils.safe_polars_int(pl.col("count")).alias("count") # Ensure count is integer
-        ]).filter(pl.col("count") > 0) # Remove rows with zero count
-        
-        if len(result_df) == 0:
-            logger.warning(f"[{table_code}] No non-zero data after unpivoting {csv_file.name}")
-            return None
-            
-        logger.info(f"[{table_code}] Created unpivoted DataFrame with {len(result_df)} rows")
-        return result_df
-        
-    except Exception as e:
-        logger.error(f"[{table_code}] Error processing {table_code} file {csv_file.name}: {str(e)}")
-        logger.exception(e)
-        return None
+    
+    # Define required columns
+    required_target_columns = ['provided_care_count', 'no_care_provided_count', 'care_not_stated_count']
+    
+    # Call the generic processing function
+    return _process_single_census_csv(
+        csv_file=csv_file,
+        geo_column_options=geo_column_options,
+        measure_column_map=measure_column_map,
+        required_target_columns=required_target_columns,
+        table_code=table_code
+    )
 
 def process_g18_census_data(zip_dir: Path, temp_extract_base: Path, output_dir: Path,
                            geo_output_path: Path, time_sk: Optional[int] = None) -> bool:
@@ -811,145 +837,40 @@ def process_g19_file(csv_file: Path) -> Optional[pl.DataFrame]:
     # Define geographic column options
     geo_column_options = ["region_id", "SA1_CODE_2021", "SA2_CODE_2021", "SA3_CODE_2021", "SA4_CODE_2021"]
     
-    try:
-        # Read the CSV file
-        df = pl.read_csv(csv_file, truncate_ragged_lines=True)
-        logger.info(f"[{table_code}] Read {len(df)} rows from {csv_file.name}")
-        
-        # Identify geo_code column
-        geo_code_column = utils.find_geo_column(df, geo_column_options)
-        if not geo_code_column:
-            logger.error(f"[{table_code}] Could not find geographic code column in {csv_file.name}")
-            return None
-        logger.info(f"[{table_code}] Found geographic code column: {geo_code_column}")
-        
-        # Define patterns for column interpretation
-        sex_prefixes = ["M", "F", "P"]  # Male, Female, Person
-        
-        # Define health conditions
-        health_conditions = {
-            "Arthritis": "arthritis",
-            "Asthma": "asthma",
-            "Cancer": "cancer",
-            "Dementia": "dementia",
-            "Diabetes": "diabetes",
-            "Heart_disease": "heart_disease",
-            "Kidney_disease": "kidney_disease",
-            "Lung_condition": "lung_condition",
-            "Mental_health": "mental_health",
-            "Stroke": "stroke",
-            "Other": "other_condition",
-            "NS": "not_stated",
-            "Tot": "total"
+    # Get measure column mappings from config
+    if table_code in config.CENSUS_COLUMN_MAPPINGS:
+        # Transform the nested structure to what _process_single_census_csv expects
+        measure_column_map = {
+            'has_condition_count': config.CENSUS_COLUMN_MAPPINGS[table_code]['has_condition_columns'],
+            'no_condition_count': config.CENSUS_COLUMN_MAPPINGS[table_code]['no_condition_columns'],
+            'condition_not_stated_count': config.CENSUS_COLUMN_MAPPINGS[table_code]['condition_not_stated_columns']
         }
-        
-        # Define age range patterns
-        age_range_patterns = {
-            "0_14": "0-14",
-            "15_24": "15-24",
-            "25_34": "25-34",
-            "35_44": "35-44",
-            "45_54": "45-54", 
-            "55_64": "55-64",
-            "65_74": "65-74",
-            "75_84": "75-84",
-            "85_over": "85+",
-            "Tot": "total"
+    else:
+        # Fallback if not in config
+        logger.warning(f"[{table_code}] Column mappings not found in config, using hardcoded values")
+        measure_column_map = {
+            'has_condition_count': [
+                "Has_condition_P", "Has_Long_Term_Health_Condition_P", "Has_LT_Health_Condition_P"
+            ],
+            'no_condition_count': [
+                "No_condition_P", "No_Long_Term_Health_Condition_P", "No_LT_Health_Condition_P", "No_Health_Condition_P"
+            ],
+            'condition_not_stated_count': [
+                "Not_stated_P", "Health_Condition_Not_Stated_P", "LT_Health_Not_Stated_P", "Condition_Not_Stated_P"
+            ]
         }
-        
-        value_vars = [] # List of columns to unpivot
-        parsed_cols = {}
-        
-        for col_name in df.columns:
-            if col_name == geo_code_column:
-                continue
-                
-            # Parse column name format: Sex_Condition_AgeRange
-            parts = col_name.split('_', 1)  # Split only at first underscore to get sex prefix
-            if len(parts) < 2:
-                continue
-                
-            # Check if first part is a valid sex code
-            sex = parts[0]
-            if sex not in sex_prefixes:
-                continue
-                
-            remaining = parts[1]
-            
-            # Find the health condition
-            condition = None
-            for cond_key, cond_name in health_conditions.items():
-                if cond_key in remaining:
-                    condition = cond_name
-                    # Remove the condition part to get the age range
-                    age_part = remaining.replace(cond_key, "").strip("_")
-                    break
-                    
-            if not condition:
-                continue
-                
-            # Find the age range
-            age_range = None
-            for age_pat, std_range in age_range_patterns.items():
-                if age_pat == age_part:
-                    age_range = std_range
-                    break
-                    
-            if not age_range and "Tot" in age_part:
-                age_range = "total"
-                
-            if not age_range:
-                continue
-                
-            # Store the parsed information
-            value_vars.append(col_name)
-            parsed_cols[col_name] = {
-                "sex": sex,
-                "condition": condition,
-                "age_range": age_range
-            }
-        
-        if not value_vars:
-            logger.error(f"[{table_code}] No valid columns found to unpivot in {csv_file.name}")
-            return None
-            
-        logger.info(f"[{table_code}] Unpivoting {len(value_vars)} columns.")
-        
-        # Unpivot using melt
-        long_df = df.melt(
-            id_vars=[geo_code_column],
-            value_vars=value_vars,
-            variable_name="column_info",
-            value_name="count"
-        )
-        
-        # Map parsed info back
-        mapping_df = pl.DataFrame([
-            {"column_info": k, **v} for k, v in parsed_cols.items()
-        ])
-        
-        result_df = long_df.join(mapping_df, on="column_info", how="inner")
-        
-        # Clean geo_code and select final columns
-        result_df = result_df.select([
-            utils.clean_polars_geo_code(pl.col(geo_code_column)).alias("geo_code"),
-            pl.col("sex"),
-            pl.col("condition"),
-            pl.col("age_range"),
-            utils.safe_polars_int(pl.col("count")).alias("count") # Ensure count is integer
-        ]).filter(pl.col("count") > 0) # Remove rows with zero count
-        
-        if len(result_df) == 0:
-            logger.warning(f"[{table_code}] No non-zero data after unpivoting {csv_file.name}")
-            return None
-            
-        logger.info(f"[{table_code}] Created unpivoted DataFrame with {len(result_df)} rows")
-        return result_df
-        
-    except Exception as e:
-        logger.error(f"[{table_code}] Error processing {table_code} file {csv_file.name}: {str(e)}")
-        logger.exception(e)
-        return None
+    
+    # Define required columns
+    required_target_columns = ['has_condition_count', 'no_condition_count', 'condition_not_stated_count']
+    
+    # Call the generic processing function
+    return _process_single_census_csv(
+        csv_file=csv_file,
+        geo_column_options=geo_column_options,
+        measure_column_map=measure_column_map,
+        required_target_columns=required_target_columns,
+        table_code=table_code
+    )
 
 def process_g19_detailed_file(csv_file: Path) -> Optional[pl.DataFrame]:
     """Process a G19 detailed file (G19A, G19B, G19C) to extract specific health condition data.
@@ -1270,7 +1191,7 @@ def process_g19_detailed_census_data(zip_dir: Path, temp_extract_base: Path, out
             result_df = result_df.with_columns(pl.lit(time_sk).cast(pl.Int64).alias("time_sk"))
         
         # Add ETL processed timestamp
-        result_df = result_df.with_columns(pl.lit(datetime.now()).alias('etl_processed_at'))
+        result_df = result_df.with_columns(pl.lit(datetime.datetime.now()).alias('etl_processed_at'))
         
         # Save to parquet
         output_path = output_dir / "fact_health_conditions_detailed.parquet"
@@ -1687,7 +1608,7 @@ def process_g20_unpivot_file(csv_file: Path) -> Optional[pl.DataFrame]:
                     parsed_condition_count = condition_mapping[cond_pattern]
                     # Remove condition count to isolate the age range part
                     age_part = remaining.replace(cond_pattern, "").strip("_")
-                    break
+                                    break
             
             # If we couldn't find a standard pattern, try file B's potential special format
             if parsed_condition_count is None and is_file_b:
@@ -1922,66 +1843,3 @@ def process_g21_unpivot_file(csv_file: Path) -> Optional[pl.DataFrame]:
         logger.exception(e)
         return None
 # --- End: New G21 Unpivot Function ---
-
-def find_and_extract_census_files(zip_dir: Path, temp_extract_base: Path, table_code: str) -> Tuple[List[Path], Path]:
-    """Find and extract census files for a specific table code.
-    
-    Args:
-        zip_dir (Path): Directory containing the ZIP files
-        temp_extract_base (Path): Base directory for temporary extraction
-        table_code (str): Census table code (e.g., "G17", "G18")
-        
-    Returns:
-        Tuple[List[Path], Path]: List of found ZIP files and the extraction directory path
-    """
-    logger.info(f"=== Finding and extracting Census {table_code} files ===")
-    
-    # Create a table-specific temp directory path
-    extract_dir = temp_extract_base / table_code.lower()
-    extract_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Find ZIP files containing table data using pattern from config
-    table_pattern = config.CENSUS_TABLE_PATTERNS.get(table_code, fr"2021.*Census.*{table_code}.*?(SA1|SA2)\.csv$")
-    logger.info(f"[{table_code}] Searching for Census files with pattern: {table_pattern}")
-    zip_files = find_census_files(zip_dir, table_pattern)
-    
-    if not zip_files:
-        logger.error(f"[{table_code}] No ZIP files containing Census {table_code} data found in {zip_dir}")
-        return [], extract_dir
-    
-    logger.info(f"[{table_code}] Found {len(zip_files)} ZIP files containing potential {table_code} data")
-    
-    # Extract each ZIP file
-    for zip_file in zip_files:
-        logger.info(f"[{table_code}] Extracting ZIP file: {zip_file.name}")
-        
-        try:
-            extracted_files = extract_census_files(zip_file, table_pattern, extract_dir)
-            
-            if not extracted_files:
-                logger.warning(f"[{table_code}] No matching {table_code} CSV files found in {zip_file.name}")
-                continue
-            
-            logger.info(f"[{table_code}] Extracted {len(extracted_files)} CSV files from {zip_file.name}")
-        
-        except Exception as e:
-            logger.error(f"[{table_code}] Error extracting ZIP file {zip_file.name}: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
-    
-    return zip_files, extract_dir
-
-def find_census_csv_files(extract_dir: Path, table_code: str) -> List[Path]:
-    """Find all census CSV files in the extract directory.
-    
-    Args:
-        extract_dir (Path): Directory where files were extracted
-        table_code (str): Census table code (e.g., "G17", "G18")
-        
-    Returns:
-        List[Path]: List of paths to CSV files
-    """
-    # Recursively find all CSV files
-    csv_files = list(extract_dir.glob("**/*.csv"))
-    logger.info(f"[{table_code}] Found {len(csv_files)} CSV files in extraction directory")
-    return csv_files

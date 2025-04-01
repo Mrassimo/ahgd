@@ -8,6 +8,7 @@ a standardized Parquet format.
 import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Any
+import datetime
 
 import pandas as pd
 import geopandas as gpd
@@ -39,6 +40,7 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
     
     # Track overall success
     success = True
+    
     all_geo_data = []
     
     # Process each geographic level
@@ -75,8 +77,14 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
             # Read shapefile with geopandas
             gdf = gpd.read_file(shp_files[0])
             
-            # Find the geographic code column
-            possible_names = [f"{level_name}_CODE_2021", f"{level_name}_CODE21"]
+            # Find the geographic code column with appropriate names for the level
+            if level_name == 'STATE':
+                # For STATE level, include additional possible column names used by ABS
+                possible_names = [f"{level_name}_CODE_2021", f"{level_name}_CODE21", 
+                                 "STE_CODE_2021", "STE_CODE21", "STATE_CODE21", "STATE_CODE_2021"]
+            else:
+                possible_names = [f"{level_name}_CODE_2021", f"{level_name}_CODE21"]
+                
             geo_col = utils.find_geo_column(gdf, possible_names)
             
             if not geo_col:
@@ -88,6 +96,18 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
             gdf['geometry'] = gdf['geometry'].apply(lambda g: make_valid(g) if g else None)
             gdf = gdf.dropna(subset=['geometry'])
             
+            # Ensure the geometry column is active and project to a suitable CRS for Australia
+            gdf = gdf.set_geometry("geometry")
+            # Project to GDA2020 / MGA zone 55 (EPSG:7855) which is suitable for most of Australia
+            gdf = gdf.to_crs(epsg=7855)
+            # Calculate geometric centroids
+            gdf['centroid_longitude'] = gdf.geometry.centroid.x
+            gdf['centroid_latitude'] = gdf.geometry.centroid.y
+            logger.info(f"[{level_name}] Calculated and added geometric centroids (longitude, latitude)")
+            
+            # Project back to GDA2020 geographic (EPSG:7844) for storage
+            gdf = gdf.to_crs(epsg=7844)
+            
             # Convert to WKT for Polars/Parquet compatibility
             gdf['geometry_wkt'] = gdf['geometry'].apply(utils.geometry_to_wkt)
             
@@ -95,7 +115,9 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
             df = pd.DataFrame({
                 'geo_code': gdf[geo_col].apply(utils.clean_geo_code),
                 'geo_level': level_name,
-                'geometry': gdf['geometry_wkt']
+                'geometry': gdf['geometry_wkt'],
+                'centroid_longitude': gdf['centroid_longitude'],
+                'centroid_latitude': gdf['centroid_latitude']
             })
             
             # Drop any rows with invalid codes or geometries
@@ -123,9 +145,18 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
         logger.info("Combining all geographic levels...")
         combined_df = pl.concat(all_geo_data)
         
+        # Add surrogate key column
+        logger.info("Adding surrogate key to combined geographic data...")
+        final_geo_df = combined_df.with_row_index(name='geo_sk')  # Add unique integer SK
+        
+        # Add ETL processed timestamp
+        final_geo_df = final_geo_df.with_columns(pl.lit(datetime.datetime.now()).alias('etl_processed_at'))
+        
         # Write to Parquet
         output_file = output_dir / "geo_dimension.parquet"
-        combined_df.write_parquet(output_file)
+        # Ensure geo_sk is the first column followed by the other columns
+        final_geo_df = final_geo_df.select(['geo_sk', 'geo_code', 'geo_level', 'geometry', 'centroid_longitude', 'centroid_latitude', 'etl_processed_at'])
+        final_geo_df.write_parquet(output_file)
         logger.info(f"Successfully wrote combined geographic data to {output_file}")
         
     except Exception as e:
@@ -133,3 +164,70 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
         return False
         
     return success 
+
+def update_population_weighted_centroids(geo_output_path: Path, population_fact_path: Path) -> bool:
+    """Update geographic dimension with population-weighted centroids.
+    
+    Args:
+        geo_output_path (Path): Path to the geographic dimension Parquet file
+        population_fact_path (Path): Path to the population fact table Parquet file
+        
+    Returns:
+        bool: True if update successful, False otherwise
+    """
+    try:
+        logger.info("Updating population-weighted centroids...")
+        
+        # Load geographic dimension
+        geo_df = pl.read_parquet(geo_output_path)
+        
+        # Load population fact table
+        pop_df = pl.read_parquet(population_fact_path)
+        
+        # Join with population data
+        joined_df = geo_df.join(
+            pop_df.select(['geo_sk', 'total_persons']),
+            on='geo_sk',
+            how='left'
+        )
+        
+        # Convert to GeoPandas for centroid calculation
+        gdf = gpd.GeoDataFrame(
+            joined_df.to_pandas(),
+            geometry=gpd.GeoSeries.from_wkt(joined_df['geometry'].to_list())
+        )
+        
+        # Calculate population-weighted centroids
+        def calculate_weighted_centroid(group):
+            if group['total_persons'].sum() > 0:
+                # Weight by population
+                weights = group['total_persons'] / group['total_persons'].sum()
+                # Calculate weighted average of centroids
+                weighted_lon = (group['centroid_lon'] * weights).sum()
+                weighted_lat = (group['centroid_lat'] * weights).sum()
+                return pd.Series({'pop_weighted_lon': weighted_lon, 'pop_weighted_lat': weighted_lat})
+            else:
+                # If no population data, use geometric centroid
+                return pd.Series({'pop_weighted_lon': group['centroid_lon'].iloc[0], 
+                                'pop_weighted_lat': group['centroid_lat'].iloc[0]})
+        
+        # Calculate weighted centroids for each geographic level
+        weighted_centroids = gdf.groupby('geo_level').apply(calculate_weighted_centroid).reset_index()
+        
+        # Update the geographic dimension
+        updated_geo_df = geo_df.join(
+            pl.from_pandas(weighted_centroids),
+            on='geo_level',
+            how='left'
+        )
+        
+        # Write updated geographic dimension
+        updated_geo_df.write_parquet(geo_output_path)
+        logger.info("Successfully updated population-weighted centroids")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error updating population-weighted centroids: {str(e)}")
+        logger.exception(e)
+        return False 

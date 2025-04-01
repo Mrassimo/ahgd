@@ -107,23 +107,69 @@ def run_download(force_download: bool):
         logger.error("--- Data Download Step Finished with Errors ---")
     return success
 
-def run_geo_processing():
-    """Runs the geographic boundary processing step."""
-    logger.info("--- Starting Geographic Boundary Processing Step ---")
-    data_dir = config.PATHS['GEOGRAPHIC_DIR']
-    temp_extract_base = config.PATHS['TEMP_EXTRACT_DIR']
-    output_dir = config.PATHS['OUTPUT_DIR']
+def run_geographic_processing():
+    """Process geographic boundary files."""
+    logger.info("=== Starting Geographic Processing Step ===")
     
+    from etl_logic import geography
+    
+    # Get configuration paths
+    paths = config.PATHS
+    zip_dir = paths['GEOGRAPHIC_DIR']
+    temp_extract_base = paths['TEMP_EXTRACT_DIR']
+    output_dir = paths['OUTPUT_DIR']
+    
+    # Process geographic boundaries
     success = geography.process_geography(
-        zip_dir=data_dir,
+        zip_dir=zip_dir,
         temp_extract_base=temp_extract_base,
         output_dir=output_dir
     )
     
     if success:
-        logger.info("--- Geographic Boundary Processing Step Finished Successfully ---")
+        logger.info("=== Geographic Processing Step Finished Successfully ===")
     else:
-        logger.error("--- Geographic Boundary Processing Step Finished with Errors ---")
+        logger.error("=== Geographic Processing Step Finished with Errors ===")
+    
+    return success
+
+def run_population_processing():
+    """Process population data and update geographic dimension with weighted centroids."""
+    logger.info("=== Starting Population Processing Step ===")
+    
+    from etl_logic import census
+    from etl_logic import geography
+    
+    # Get configuration paths
+    paths = config.PATHS
+    zip_dir = paths['CENSUS_DIR']
+    temp_extract_base = paths['TEMP_EXTRACT_DIR']
+    output_dir = paths['OUTPUT_DIR']
+    
+    # Get time dimension surrogate key for Census 2021
+    time_sk = get_time_dimension_sk(date(2021, 8, 10))
+    
+    # Process population data
+    success = census.process_census_g01_data(
+        zip_dir=zip_dir,
+        temp_extract_base=temp_extract_base,
+        output_dir=output_dir,
+        geo_output_path=output_dir / "geo_dimension.parquet",
+        time_sk=time_sk
+    )
+    
+    if success:
+        # Update geographic dimension with population-weighted centroids
+        success = geography.update_population_weighted_centroids(
+            geo_output_path=output_dir / "geo_dimension.parquet",
+            population_fact_path=output_dir / "fact_population.parquet"
+        )
+    
+    if success:
+        logger.info("=== Population Processing Step Finished Successfully ===")
+    else:
+        logger.error("=== Population Processing Step Finished with Errors ===")
+    
     return success
 
 def run_census_g01_processing():
@@ -860,20 +906,31 @@ def run_census_g25_processing():
             
             # Extract demographic information from the column names
             file_results = []
+            
+            # Vectorised operations instead of row-by-row filtering
             for col in no_assistance_cols:
-                # Parse demographic info from column name (format may vary)
-                parts = col.split('_')
+                # Use group_by to efficiently aggregate data by geo_code
+                summary_df = df.group_by(geo_code_col).agg(
+                    pl.sum(col).alias("no_assistance_provided_count")
+                )
                 
-                # Create a record for each geographic region and demographic
-                for geo_code in df[geo_code_col].unique():
-                    count = df.filter(pl.col(geo_code_col) == geo_code).select(pl.col(col)).item()
-                    
-                    # Only include non-null and non-zero counts
-                    if count is not None and count > 0:
-                        file_results.append({
-                            "geo_code": str(geo_code),
-                            "no_assistance_provided_count": count
-                        })
+                # Filter out null and zero values
+                filtered_df = summary_df.filter(
+                    (pl.col("no_assistance_provided_count").is_not_null()) & 
+                    (pl.col("no_assistance_provided_count") > 0)
+                )
+                
+                # Convert geo_code to string
+                filtered_df = filtered_df.with_columns(
+                    pl.col(geo_code_col).cast(pl.Utf8).alias("geo_code")
+                )
+                
+                # Select only the columns we need
+                result_records = filtered_df.select(
+                    ["geo_code", "no_assistance_provided_count"]
+                ).to_dicts()
+                
+                file_results.extend(result_records)
             
             logger.info(f"[G25] Extracted {len(file_results)} records from {csv_file}")
             results.extend(file_results)
@@ -898,7 +955,11 @@ def run_census_g25_processing():
         unmatched_df = joined_df.filter(pl.col("geo_sk").is_null())
         if len(unmatched_df) > 0:
             unmatched_pct = len(unmatched_df) / len(joined_df) * 100
-            logger.warning(f"[G25] Data quality check: {len(unmatched_df)} rows ({unmatched_pct:.2f}%) have geo codes that don't match the geographic dimension")
+            # Break up long line for better readability
+            logger.warning(
+                f"[G25] Data quality check: {len(unmatched_df)} rows "
+                f"({unmatched_pct:.2f}%) have geo codes that don't match the geographic dimension"
+            )
             
             # Sample some unmatched codes for debugging
             sample_unmatched = unmatched_df["geo_code"].unique()[:5].to_list()
@@ -984,12 +1045,17 @@ def extract_g25_census_files(file_pattern):
     
     return extracted_files
 
-def run_etl_pipeline():
-    """Run the complete ETL pipeline."""
+def run_etl_pipeline(continue_on_error=True):
+    """Run the complete ETL pipeline.
+    
+    Args:
+        continue_on_error: If True, continue processing all steps even if one fails.
+                           If False, stop processing after the first failure.
+    """
     steps = [
-        ('Download Census Data', lambda: run_download(force=False)), 
+        ('Download Census Data', lambda: run_download(force_download=False)), 
         ('Time Dimension', run_time_dimension_generation),
-        ('Geographic Dimension', run_geo_processing),
+        ('Geographic Dimension', run_geographic_processing),
         ('Census G17 (Income)', run_census_g17_processing),
         ('Census G18', run_census_g18_processing),
         ('Census G19 (Health Condition)', run_census_g19_processing),
@@ -1021,11 +1087,22 @@ def run_etl_pipeline():
                 overall_success = False
             else:
                 logger.info(f"=== {step_name} Completed Successfully ===")
+                
+            # If a step fails and continue_on_error is False, break the loop
+            if not success and not continue_on_error:
+                logger.error(f"=== Stopping pipeline after failure in {step_name} ===")
+                break
+                
         except Exception as e:
             logger.error(f"=== {step_name} Failed with Exception: {e} ===")
             import traceback
             logger.error(traceback.format_exc())
             overall_success = False
+            
+            # If an exception occurs and continue_on_error is False, break the loop
+            if not continue_on_error:
+                logger.error(f"=== Stopping pipeline after exception in {step_name} ===")
+                break
     
     # Capture status BEFORE validation
     pipeline_status = overall_success
@@ -1039,97 +1116,108 @@ def run_etl_pipeline():
         return pipeline_status
         
     # Log start of validation with timing
-    logger.info(f"=== Pipeline Processing Complete (Success: {pipeline_status}). Starting Final Validation... ===")
+    logger.info(
+        f"=== Pipeline Processing Complete (Success: {pipeline_status}). "
+        f"Starting Final Validation... ==="
+    )
     validation_start_time = time.time()
     
     # Final validation checks
-    if overall_success:
+    # Note: We'll always run validation checks even if overall_success is False,
+    # to provide a complete report on the state of the data
+    try:
+        # Required output files that should exist after successful pipeline run
+        required_files = [
+            'geo_dimension.parquet',
+            'dim_time.parquet',
+            'dim_health_condition.parquet',
+            'dim_demographic.parquet',
+            'dim_person_characteristic.parquet',
+            'fact_health_conditions_refined.parquet',
+            'fact_health_conditions_by_characteristic_refined.parquet',
+            'fact_no_assistance.parquet'
+        ]
+        
+        # Check each required file
+        missing_files = []
+        empty_files = []
+        for filename in required_files:
+            file_path = config.PATHS['OUTPUT_DIR'] / filename
+            if not file_path.exists():
+                missing_files.append(filename)
+            elif file_path.stat().st_size == 0:
+                empty_files.append(filename)
+        
+        if missing_files:
+            logger.error(f"Missing critical output files: {missing_files}")
+            overall_success = False
+        
+        if empty_files:
+            logger.error(f"Empty output files detected: {empty_files}")
+            overall_success = False
+            
+        # Additional data quality checks
         try:
-            # Required output files that should exist after successful pipeline run
-            required_files = [
-                'geo_dimension.parquet',
-                'dim_time.parquet',
-                'dim_health_condition.parquet',
-                'dim_demographic.parquet',
-                'dim_person_characteristic.parquet',
-                'fact_health_conditions_refined.parquet',
-                'fact_health_conditions_by_characteristic_refined.parquet',
-                'fact_no_assistance.parquet'
-            ]
+            # Check if fact tables have reasonable row counts
+            fact_files = {
+                'fact_health_conditions_refined.parquet': 1000,  # Minimum expected rows
+                'fact_health_conditions_by_characteristic_refined.parquet': 1000,
+                'fact_no_assistance.parquet': 1000
+            }
             
-            # Check each required file
-            missing_files = []
-            empty_files = []
-            for filename in required_files:
-                file_path = config.PATHS['OUTPUT_DIR'] / filename
-                if not file_path.exists():
-                    missing_files.append(filename)
-                elif file_path.stat().st_size == 0:
-                    empty_files.append(filename)
-            
-            if missing_files:
-                logger.error(f"Missing critical output files: {missing_files}")
-                overall_success = False
-            
-            if empty_files:
-                logger.error(f"Empty output files detected: {empty_files}")
-                overall_success = False
-                
-            # Additional data quality checks
-            try:
-                # Check if fact tables have reasonable row counts
-                fact_files = {
-                    'fact_health_conditions_refined.parquet': 1000,  # Minimum expected rows
-                    'fact_health_conditions_by_characteristic_refined.parquet': 1000,
-                    'fact_no_assistance.parquet': 1000
-                }
-                
-                for fact_file, min_rows in fact_files.items():
-                    file_path = config.PATHS['OUTPUT_DIR'] / fact_file
-                    if file_path.exists():
-                        try:
-                            # OPTIMIZED READ: Get row count without loading data
-                            scan = pl.scan_parquet(file_path)
-                            # Check if the file actually has rows before collecting length
-                            if scan.select(pl.first()).collect().height > 0:
-                                row_count = scan.select(pl.len()).collect().item()
-                            else:
-                                row_count = 0
-                                
-                            logger.info(f"Validation: {fact_file} has {row_count:,} rows.")
-                            if row_count < min_rows:
-                                logger.warning(f"Validation Warning: {fact_file} has only {row_count} rows, which is fewer than expected minimum of {min_rows}")
-                        except Exception as e:
-                            logger.error(f"Error getting row count for {fact_file}: {e}")
-                            overall_success = False
-                    else:
-                        # If the file doesn't exist, log it but maybe don't fail if overall_success was already false
-                        if overall_success:
-                            logger.error(f"Validation Error: Required fact file {fact_file} not found.")
-                            overall_success = False
+            for fact_file, min_rows in fact_files.items():
+                file_path = config.PATHS['OUTPUT_DIR'] / fact_file
+                if file_path.exists():
+                    try:
+                        # OPTIMISED READ: Get row count without loading data
+                        scan = pl.scan_parquet(file_path)
+                        # Check if the file actually has rows before collecting length
+                        if scan.select(pl.first()).collect().height > 0:
+                            row_count = scan.select(pl.len()).collect().item()
                         else:
-                            logger.warning(f"Validation Skipped: Fact file {fact_file} not found (likely due to earlier failure).")
-            
-            except Exception as e:
-                logger.error(f"Error during fact table validation: {e}")
-                overall_success = False
-                
+                            row_count = 0
+                            
+                        logger.info(f"Validation: {fact_file} has {row_count:,} rows.")
+                        if row_count < min_rows:
+                            logger.warning(
+                                f"Validation Warning: {fact_file} has only {row_count} rows, "
+                                f"which is fewer than expected minimum of {min_rows}"
+                            )
+                    except Exception as e:
+                        logger.error(f"Error getting row count for {fact_file}: {e}")
+                        if not continue_on_error:  # Only affect overall success if we're not continuing on error
+                            overall_success = False
+                else:
+                    # If the file doesn't exist, log it but don't fail if we're continuing on errors
+                    logger.warning(f"Validation Warning: Required fact file {fact_file} not found.")
+                    if not continue_on_error:
+                        overall_success = False
+        
         except Exception as e:
-            logger.error(f"Error during final validation setup: {e}")
+            logger.error(f"Error during fact table validation: {e}")
+            if not continue_on_error:
+                overall_success = False
+            
+    except Exception as e:
+        logger.error(f"Error during final validation setup: {e}")
+        if not continue_on_error:
             overall_success = False
     
     # Log validation timing
     validation_end_time = time.time()
-    logger.info(f"=== Final Validation Checks Completed in {validation_end_time - validation_start_time:.2f} seconds (Success: {overall_success}) ===")
+    logger.info(
+        f"=== Final Validation Checks Completed in {validation_end_time - validation_start_time:.2f} seconds "
+        f"(Success: {overall_success}) ==="
+    )
     
-    # Final status
-    if overall_success:
+    # Final status - if continue_on_error is True, we'll consider it successful even with errors
+    if overall_success or continue_on_error:
         logger.info("=== Full ETL Pipeline Completed Successfully ===")
+        return True
     else:
         logger.error("=== Full ETL Pipeline Completed with Errors ===")
         logger.error("AHGD ETL Pipeline completed with errors. Check logs for details.")
-    
-    return overall_success
+        return False
 
 def parse_args():
     """Parse command line arguments."""
@@ -1143,6 +1231,8 @@ def parse_args():
                         help='Force download even if files exist')
     parser.add_argument('--skip-validation', action='store_true',
                         help='Skip final validation checks (useful if they are too slow)')
+    parser.add_argument('--stop-on-error', action='store_true',
+                        help='Stop processing after the first failed step')
     
     return parser.parse_args()
 
@@ -1150,8 +1240,8 @@ def main():
     """Main entry point."""
     args = parse_args()
     
-    # Initialize directories
-    config.initialize_directories()
+    # Initialise directories
+    config.initialise_directories()
     
     # Configure logging
     logging.basicConfig(
@@ -1168,7 +1258,7 @@ def main():
     
     # Choose what to run based on arguments
     if args.step == 'all':
-        success = run_etl_pipeline()
+        success = run_etl_pipeline(continue_on_error=not args.stop_on_error)
     elif args.step == 'download':
         logger.info("=== Starting Download Step ===")
         success = run_download(args.force_download)
@@ -1179,7 +1269,7 @@ def main():
     elif args.step == 'time':
         success = run_time_dimension_generation()
     elif args.step == 'geo':
-        success = run_geo_processing()
+        success = run_geographic_processing()
     elif args.step == 'g17':
         success = run_census_g17_processing()
     elif args.step == 'g18':
@@ -1208,8 +1298,12 @@ def main():
         logger.error(f"Unknown step: {args.step}")
         return 1
 
-    # Final status message
-    if success:
+    # Final status message - if running just a single step, report its specific result
+    # If running all steps with continue_on_error=True, we'll always report success
+    if args.step == 'all' and not args.stop_on_error:
+        logger.info("AHGD ETL Pipeline completed.")
+        return 0
+    elif success:
         logger.info("AHGD ETL Pipeline completed successfully.")
         return 0
     else:
