@@ -9,11 +9,35 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Union, Set, Tuple
 from datetime import datetime
+import hashlib
 
 import polars as pl
 
 from . import config
 from . import utils
+
+def generate_surrogate_key(*args) -> str:
+    """Generate a surrogate key from the given business keys using MD5 hash.
+    
+    Args:
+        *args: Business key components to hash
+        
+    Returns:
+        MD5 hash of the concatenated string representation of the inputs
+    """
+    if not args:
+        raise ValueError("At least one argument required for surrogate key generation")
+        
+    # Convert all arguments to strings and handle NULL/None values
+    str_args = []
+    for arg in args:
+        if arg is None:
+            raise ValueError("NULL values not allowed in surrogate key components")
+        str_args.append(str(arg))
+    
+    # Create combined key string and generate hash
+    key_str = '_'.join(str_args)
+    return hashlib.md5(key_str.encode('utf-8')).hexdigest()
 
 logger = logging.getLogger('ahgd_etl')
 
@@ -48,12 +72,12 @@ def create_health_condition_dimension(source_data_path: Optional[Path] = None,
             logger.info(f"Extracting unique conditions from {source_data_path}")
             try:
                 fact_df = pl.read_parquet(source_data_path)
-                if 'condition' in fact_df.columns:
+                if 'health_condition' in fact_df.columns:
                     # Extract unique values
-                    conditions = fact_df.select(pl.col('condition')).unique().to_series().to_list()
+                    conditions = fact_df.select(pl.col('health_condition')).unique().to_series().to_list()
                     logger.info(f"Extracted {len(conditions)} unique conditions from fact table")
                 else:
-                    logger.warning("Required condition column not found in fact table")
+                    logger.warning("Required health_condition column not found in fact table")
             except Exception as e:
                 logger.error(f"Error reading fact table: {e}")
         
@@ -67,31 +91,33 @@ def create_health_condition_dimension(source_data_path: Optional[Path] = None,
             ]
         
         # Create DataFrame
-        dim_df = pl.DataFrame({"condition": conditions})
+        dim_df = pl.DataFrame({"condition_code": conditions})
         
-        # Add surrogate key
-        dim_df = dim_df.with_row_index("condition_sk")
+        # Add surrogate key using MD5 hash of condition code
+        dim_df = dim_df.with_columns(
+            pl.col('condition_code').map_elements(lambda x: generate_surrogate_key(x)).alias('condition_sk')
+        )
         
         # Add additional attributes
         dim_df = dim_df.with_columns([
             # Add condition name (proper case)
-            pl.col('condition').str.replace('_', ' ').str.to_titlecase().alias('condition_name'),
+            pl.col('condition_code').str.replace('_', ' ').str.to_titlecase().alias('condition_description'),
             
             # Add condition category (now in Title Case)
-            pl.when(pl.col('condition').is_in(["arthritis", "heart_disease", "kidney_disease"]))
+            pl.when(pl.col('condition_code').is_in(["arthritis", "heart_disease", "kidney_disease", "stroke"]))
               .then(pl.lit("Physical"))
-              .when(pl.col('condition').is_in(["asthma", "lung_condition"]))
+              .when(pl.col('condition_code').is_in(["asthma", "lung_condition"]))
               .then(pl.lit("Respiratory"))
-              .when(pl.col('condition').is_in(["diabetes"]))
+              .when(pl.col('condition_code').is_in(["diabetes"]))
               .then(pl.lit("Endocrine"))
-              .when(pl.col('condition').is_in(["cancer"]))
-              .then(pl.lit("Cancer"))
-              .when(pl.col('condition').is_in(["mental_health", "dementia"]))
+              .when(pl.col('condition_code').is_in(["cancer", "dementia"]))
+              .then(pl.lit("Cancer/Dementia"))
+              .when(pl.col('condition_code').is_in(["mental_health"]))
               .then(pl.lit("Mental"))
-              .when(pl.col('condition').is_in(["no_condition", "not_stated"]))
+              .when(pl.col('condition_code').is_in(["no_condition", "not_stated"]))
               .then(pl.lit("None"))
               .otherwise(pl.lit("Other"))
-              .alias('condition_category'),
+              .alias('health_condition_category'),
             
             # Add timestamp
             pl.lit(datetime.now()).alias('etl_processed_at')
@@ -132,43 +158,42 @@ def generate_health_condition_dimension(output_dir: Path, g21_path: Optional[Pat
     Returns:
         bool: True if the dimension table was successfully created and saved,
              False if any critical error occurred during processing.
-             
+              
     Note:
         The output file will be named 'dim_health_condition.parquet' and will include
         the following columns:
         - condition_sk: Surrogate key (integer)
-        - condition: Natural key/condition code (string)
-        - condition_name: Human-readable condition name (string)
-        - condition_category: Category grouping (Physical, Mental, etc.) (string)
+        - health_condition_code: Natural key/condition code (string)
+        - health_condition_description: Human-readable condition name (string)
+        - health_condition_category: Category grouping (Physical, Mental, etc.) (string)
         - etl_processed_at: Timestamp when the record was created
     """
     logger.info("Creating health condition dimension table")
     
     # Standard health conditions based on ABS classifications
     conditions = [
-        # Physical conditions
-        {"condition": "arthritis", "condition_name": "Arthritis", "condition_category": "Physical"},
-        {"condition": "asthma", "condition_name": "Asthma", "condition_category": "Physical"},
-        {"condition": "cancer", "condition_name": "Cancer", "condition_category": "Physical"},
-        {"condition": "dementia", "condition_name": "Dementia and Alzheimer's", "condition_category": "Physical"},
-        {"condition": "diabetes", "condition_name": "Diabetes", "condition_category": "Physical"},
-        {"condition": "heart_disease", "condition_name": "Heart Disease", "condition_category": "Physical"},
-        {"condition": "kidney_disease", "condition_name": "Kidney Disease", "condition_category": "Physical"},
-        {"condition": "lung_condition", "condition_name": "Lung Condition", "condition_category": "Physical"},
-        {"condition": "stroke", "condition_name": "Stroke", "condition_category": "Physical"},
+        {"condition_code": "arthritis", "condition_description": "Arthritis", "health_condition_category": "Physical"},
+        {"condition_code": "asthma", "condition_description": "Asthma", "health_condition_category": "Physical"},
+        {"condition_code": "cancer", "condition_description": "Cancer", "health_condition_category": "Physical"},
+        {"condition_code": "dementia", "condition_description": "Dementia and Alzheimer's", "health_condition_category": "Physical"},
+        {"condition_code": "diabetes", "condition_description": "Diabetes", "health_condition_category": "Physical"},
+        {"condition_code": "heart_disease", "condition_description": "Heart Disease", "health_condition_category": "Physical"},
+        {"condition_code": "kidney_disease", "condition_description": "Kidney Disease", "health_condition_category": "Physical"},
+        {"condition_code": "lung_condition", "condition_description": "Lung Condition", "health_condition_category": "Physical"},
+        {"condition_code": "stroke", "condition_description": "Stroke", "health_condition_category": "Physical"},
         
         # Mental health conditions
-        {"condition": "mental_health", "condition_name": "Mental Health Condition", "condition_category": "Mental"},
+        {"condition_code": "mental_health", "condition_description": "Mental Health Condition", "health_condition_category": "Mental"},
         
         # Other categories
-        {"condition": "other_condition", "condition_name": "Other Long Term Health Condition", "condition_category": "Other"},
-        {"condition": "no_condition", "condition_name": "No Long Term Health Condition", "condition_category": "None"},
-        {"condition": "not_stated", "condition_name": "Long Term Health Condition Not Stated", "condition_category": "Not Stated"},
+        {"condition_code": "other_condition", "condition_description": "Other Long Term Health Condition", "health_condition_category": "Other"},
+        {"condition_code": "no_condition", "condition_description": "No Long Term Health Condition", "health_condition_category": "None"},
+        {"condition_code": "not_stated", "condition_description": "Long Term Health Condition Not Stated", "health_condition_category": "Not Stated"},
         
         # Default demographic groups (for compatibility with G20 demographic dimension)
-        {"condition": "P", "condition_name": "Persons", "condition_category": "Demographic"},
-        {"condition": "M", "condition_name": "Males", "condition_category": "Demographic"},
-        {"condition": "F", "condition_name": "Females", "condition_category": "Demographic"}
+        {"condition_code": "P", "condition_description": "Person", "health_condition_category": "Demographic"},
+        {"condition_code": "M", "condition_description": "Male", "health_condition_category": "Demographic"},
+        {"condition_code": "F", "condition_description": "Female", "health_condition_category": "Demographic"}
     ]
     
     # Check if G21 data file exists to extract additional conditions
@@ -178,11 +203,11 @@ def generate_health_condition_dimension(output_dir: Path, g21_path: Optional[Pat
             g21_data = pl.read_parquet(g21_path)
             
             # Get unique condition values
-            condition_values = g21_data['condition'].unique().to_list()
+            condition_values = g21_data['health_condition'].unique().to_list()
             logger.info(f"Found {len(condition_values)} unique condition values in G21 data")
             
             # Create a set of existing conditions for easy lookup
-            existing_conditions = {item["condition"] for item in conditions}
+            existing_conditions = {item["condition_code"] for item in conditions}
             
             # Add any new conditions not already in our list
             for condition in condition_values:
@@ -199,36 +224,44 @@ def generate_health_condition_dimension(output_dir: Path, g21_path: Optional[Pat
                     # Create proper title-cased name
                     name = " ".join(w.capitalize() for w in condition.replace("_", " ").split())
                     
+                    # Add to our list
                     conditions.append({
-                        "condition": condition, 
-                        "condition_name": name, 
-                        "condition_category": category
+                        "condition_code": condition,
+                        "health_condition_description": name,
+                        "health_condition_category": category
                     })
-                    existing_conditions.add(condition)
-            
+                    logger.info(f"Added new condition: {condition} ({category})")
         except Exception as e:
-            logger.warning(f"Error extracting G21 conditions: {e}. Proceeding with standard condition list.")
+            logger.warning(f"Could not extract conditions from G21 data: {e}")
+    else:
+        logger.info("No G21 data file provided, using predefined values only")
     
-    # Create DataFrame
-    df = pl.DataFrame(conditions)
-    
-    # Add surrogate key and ETL timestamp
-    df = df.with_row_index(name="condition_sk")
-    df = df.with_columns(pl.lit(datetime.now()).alias("etl_processed_at"))
-    
-    # Save to parquet
-    output_path = output_dir / "dim_health_condition.parquet"
-    df.write_parquet(output_path)
-    
-    logger.info(f"Health condition dimension created at: {output_path}")
-    return True
+    try:
+        # Create DataFrame from our list
+        df = pl.DataFrame(conditions)
+        
+        # Add surrogate key using MD5 hash of condition code
+        df = df.with_columns([
+            pl.col("condition_code").map_elements(lambda x: generate_surrogate_key(x)).alias("condition_sk"),
+            pl.lit(datetime.now()).alias("etl_processed_at")   # Add timestamp
+        ])
+        
+        # Save to parquet
+        output_path = output_dir / "dim_health_condition.parquet"
+        df.write_parquet(output_path)
+        logger.info(f"Health condition dimension created at: {output_path}")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error creating health condition dimension: {e}")
+        return False
 
 def create_demographic_dimension(source_data_path: Optional[Path] = None,
                                output_dir: Path = Path("output")) -> Path:
     """
     Create a demographic dimension table for age groups and sex combinations.
     
-    This dimension supports G20 health condition data by providing a reference
+    This dimension supports G20 and G21 health condition data by providing a reference
     table for all possible age/sex combinations.
     
     Args:
@@ -254,7 +287,7 @@ def create_demographic_dimension(source_data_path: Optional[Path] = None,
             if "age_group" in fact_df.columns and "sex" in fact_df.columns:
                 # Group by age_group and sex to get unique combinations
                 demo_df = fact_df.select(["age_group", "sex"]).unique()
-                logger.info(f"Extracted {len(demo_df)} unique demographic combinations")
+                demo_df = _standardize_demographic_values(demo_df)
             else:
                 logger.warning("Source data doesn't contain required columns, using predefined values")
                 demo_df = _create_predefined_demographic_dimension()
@@ -262,8 +295,12 @@ def create_demographic_dimension(source_data_path: Optional[Path] = None,
             logger.info("No source data provided, using predefined values")
             demo_df = _create_predefined_demographic_dimension()
         
-        # Add surrogate key
-        demo_df = demo_df.with_row_index(name="demographic_sk")
+        # Add surrogate key using MD5 hash of age group + sex
+        demo_df = demo_df.with_columns(
+            pl.struct(['age_group', 'sex'])
+            .map_elements(lambda x: generate_surrogate_key(x['age_group'], x['sex']))
+            .alias('demographic_sk')
+        )
         
         # Add derived attributes
         demo_df = _add_demographic_attributes(demo_df)
@@ -277,8 +314,6 @@ def create_demographic_dimension(source_data_path: Optional[Path] = None,
     except Exception as e:
         logger.error(f"Error creating demographic dimension: {e}")
         raise
-
-# Helper for person characteristic dimension
 
 def _create_predefined_person_characteristic_dimension() -> pl.DataFrame:
     """
@@ -385,19 +420,33 @@ def create_person_characteristic_dimension(source_data_path: Optional[Path] = No
                 # Rename columns for consistency
                 char_df = char_df.rename({"characteristic_value": "characteristic_code"})
                 
-                # Add a descriptive name based on code
-                # This is a simplified version - in practice you'd have a more detailed mapping
+                # Standardize characteristic names based on type and code
                 char_df = char_df.with_columns([
-                    pl.col("characteristic_code").str.replace("_", " ").alias("characteristic_name")
-                ])
-                
-                # Add category field
-                char_df = char_df.with_columns([
-                    pl.when(pl.col("characteristic_type") == "CountryOfBirth").then(pl.lit("geographic"))
-                     .when(pl.col("characteristic_type") == "LabourForceStatus").then(pl.lit("employment"))
-                     .when(pl.col("characteristic_type") == "Income").then(pl.lit("economic"))
-                     .otherwise(pl.lit("other"))
-                     .alias("characteristic_category")
+                    # For age groups, convert 25_34 to 25-34
+                    pl.when(pl.col("characteristic_type") == "age_group")
+                      .then(pl.col("characteristic_code").str.replace("_", "-"))
+                      .otherwise(pl.col("characteristic_code"))
+                      .alias("characteristic_code"),
+                    
+                    # Create descriptive names
+                    pl.when(pl.col("characteristic_type") == "age_group")
+                      .then(pl.col("characteristic_code") + " years")
+                      .when(pl.col("characteristic_type") == "sex")
+                      .then(pl.col("characteristic_code").str.replace("M", "Male").str.replace("F", "Female"))
+                      .when(pl.col("characteristic_type") == "country_of_birth")
+                      .then(pl.col("characteristic_code").str.replace("AUS", "Australia").str.replace("_", " "))
+                      .when(pl.col("characteristic_type") == "labour_force_status")
+                      .then(pl.col("characteristic_code").str.replace("_", " ").str.title())
+                      .otherwise(pl.col("characteristic_code").str.replace("_", " ").str.title())
+                      .alias("characteristic_name"),
+                    
+                    # Add category based on characteristic type
+                    pl.when(pl.col("characteristic_type") == "age_group").then(pl.lit("demographic"))
+                      .when(pl.col("characteristic_type") == "sex").then(pl.lit("demographic"))
+                      .when(pl.col("characteristic_type") == "country_of_birth").then(pl.lit("geographic"))
+                      .when(pl.col("characteristic_type") == "labour_force_status").then(pl.lit("employment"))
+                      .otherwise(pl.lit("other"))
+                      .alias("characteristic_category")
                 ])
             else:
                 logger.warning("Source data doesn't contain required columns, using predefined values")
@@ -406,8 +455,12 @@ def create_person_characteristic_dimension(source_data_path: Optional[Path] = No
             logger.info("No source data provided, using predefined values")
             char_df = _create_predefined_person_characteristic_dimension()
         
-        # Add surrogate key
-        char_df = char_df.with_row_index(name="characteristic_sk")
+        # Add surrogate key using MD5 hash of characteristic type + code
+        char_df = char_df.with_columns(
+            pl.struct(['characteristic_type', 'characteristic_code'])
+            .map_elements(lambda x: generate_surrogate_key(x['characteristic_type'], x['characteristic_code']))
+            .alias('characteristic_sk')
+        )
         
         # Save to parquet
         char_df.write_parquet(output_path)
@@ -447,7 +500,7 @@ def _add_demographic_attributes(df: pl.DataFrame) -> pl.DataFrame:
     
     Args:
         df: DataFrame with age_group and sex columns
-        
+         
     Returns:
         DataFrame with additional attributes
     """
@@ -487,4 +540,117 @@ def _add_demographic_attributes(df: pl.DataFrame) -> pl.DataFrame:
         
         # Add timestamp
         pl.lit(datetime.now()).alias('etl_processed_at')
-    ]) 
+    ])
+
+def _standardize_demographic_values(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Standardize demographic values in a DataFrame.
+    
+    Args:
+        df: DataFrame with age_group and sex columns
+        
+    Returns:
+        DataFrame with standardized values
+    """
+    return df.with_columns([
+        # Standardize age groups (convert 25_34 to 25-34)
+        pl.col('age_group').str.replace('_', '-').alias('age_group'),
+        
+        # Standardize sex codes (uppercase)
+        pl.col('sex').str.to_uppercase().alias('sex')
+    ])
+
+def get_health_condition_key(condition: Union[str, pl.Expr]) -> pl.Expr:
+    """Look up health condition surrogate key for a given condition code.
+    
+    Args:
+        condition: Condition code (string) or Polars expression containing condition codes
+        
+    Returns:
+        Polars expression that can be used to look up health_condition_key values
+    """
+    # Load health condition dimension if not already loaded
+    if not hasattr(get_health_condition_key, '_dim_cache'):
+        dim_path = Path("output") / "dim_health_condition.parquet"
+        if dim_path.exists():
+            get_health_condition_key._dim_cache = pl.read_parquet(dim_path)
+        else:
+            # Create default dimension if it doesn't exist
+            create_health_condition_dimension()
+            get_health_condition_key._dim_cache = pl.read_parquet(dim_path)
+    
+    dim_df = get_health_condition_key._dim_cache
+    
+    # Create lookup expression
+    return (
+        pl.lit(dim_df.select(["condition", "condition_sk"]))
+        .struct.field("lookup")
+        .get(condition)
+    )
+
+def get_health_condition_sk(condition: Union[str, pl.Expr]) -> pl.Expr:
+    """Alias for get_health_condition_key to maintain compatibility.
+    
+    Args:
+        condition (Union[str, pl.Expr]): The health condition code or expression.
+    
+    Returns:
+        pl.Expr: Expression to lookup the health condition key.
+    """
+    return get_health_condition_key(condition)
+
+def get_demographic_sk(age_group: Union[str, pl.Expr], sex: Union[str, pl.Expr]) -> pl.Expr:
+    """Get the surrogate key for a demographic combination (age group and sex).
+    
+    Args:
+        age_group: Age group string or Polars expression (e.g. "25-34")
+        sex: Sex code string or Polars expression (e.g. "M", "F", "P")
+        
+    Returns:
+        Polars expression that will evaluate to the demographic surrogate key
+        
+    Note:
+        This function assumes the demographic dimension table has been loaded
+        and is available in the config module. If no match is found, returns -1.
+    """
+    # Get the demographic dimension table
+    demo_df = config.get_dimension_table('demographic')
+    
+    if demo_df is None:
+        return pl.lit(-1)
+    
+    # Create expression to find matching row and return its surrogate key
+    return pl.when(pl.col('age_group').eq(age_group) & pl.col('sex').eq(sex)) \
+             .then(pl.col('demographic_sk')) \
+             .otherwise(pl.lit(-1))
+
+def get_person_characteristic_sk(
+    characteristic_type: Union[str, pl.Expr], 
+    characteristic_code: Union[str, pl.Expr]
+) -> pl.Expr:
+    """Look up person characteristic surrogate key for given type and code.
+    
+    Args:
+        characteristic_type: Characteristic type (string) or Polars expression
+        characteristic_code: Characteristic code (string) or Polars expression
+        
+    Returns:
+        Polars expression that can be used to look up characteristic_sk values
+    """
+    # Load person characteristic dimension if not already loaded
+    if not hasattr(get_person_characteristic_sk, '_dim_cache'):
+        dim_path = Path("output") / "dim_person_characteristic.parquet"
+        if dim_path.exists():
+            get_person_characteristic_sk._dim_cache = pl.read_parquet(dim_path)
+        else:
+            # Create default dimension if it doesn't exist
+            create_person_characteristic_dimension()
+            get_person_characteristic_sk._dim_cache = pl.read_parquet(dim_path)
+    
+    dim_df = get_person_characteristic_sk._dim_cache
+    
+    # Create lookup expression
+    return dim_df.filter(
+        (pl.col("characteristic_type") == characteristic_type) &
+        (pl.col("characteristic_code") == characteristic_code)
+    ).select("characteristic_sk").first()

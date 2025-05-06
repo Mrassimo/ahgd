@@ -1,6 +1,12 @@
 """
 This module contains direct URLs to specific ABS files.
 It's maintained separately for easier updating when URLs change.
+
+DEPRECATION NOTICE:
+This module is now imported directly by etl_logic/config.py.
+Please make URL changes here, but use URL constants from config.py in your code.
+The validation utilities (validate_file, verify_url) should be moved to etl_logic/utils.py
+in a future update.
 """
 
 import hashlib

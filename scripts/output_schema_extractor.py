@@ -1,158 +1,267 @@
-import os
-import polars as pl
-import pyarrow as pa
-import pyarrow.parquet as pq
+"""Script to extract schemas from Parquet files in the output directory.
+
+This script reads all Parquet files in the configured output directory,
+extracts their schemas using pyarrow, and generates:
+1. A Python dictionary representation suitable for etl_logic.config.SCHEMAS.
+2. A Markdown file detailing the schemas.
+3. A Mermaid ERD diagram file (.mmd).
+"""
+
+import logging
+import sys
+import json
 from pathlib import Path
+from collections import defaultdict
+import pyarrow.parquet as pq
 
-# Define the output directory
-OUTPUT_DIR = "/Users/massimoraso/AHGD3/output"
-MERMAID_OUTPUT_FILE = os.path.join(OUTPUT_DIR, "data_schema.mmd")
+# Add project root to sys.path to allow importing etl_logic
+project_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(project_root))
 
-def get_simplified_type(dtype):
-    """Convert PyArrow or Polars data types to simplified types for Mermaid diagram."""
-    dtype_str = str(dtype).lower()
-    
-    if any(num_type in dtype_str for num_type in ['int', 'uint']):
-        return 'int'
-    elif any(float_type in dtype_str for float_type in ['float', 'double']):
-        return 'float'
-    elif any(date_type in dtype_str for date_type in ['date', 'time', 'timestamp']):
-        return 'date'
-    elif any(geo_type in dtype_str for geo_type in ['geo', 'geometry', 'wkt', 'point']):
-        return 'geometry'
-    elif 'bool' in dtype_str:
-        return 'bool'
-    else:
-        return 'string'  # Default for string, binary, etc.
+# Import config and utils after setting path
+from etl_logic import config
+from etl_logic import utils # Assuming setup_logging is in utils
 
-def is_likely_pk(column_name):
-    """Determine if a column is likely a primary key based on naming conventions."""
-    pk_indicators = ['_id', '_key', '_pk', 'id', 'key', 'pk', '_sk']
-    return any(column_name.lower().endswith(indicator) for indicator in pk_indicators)
+# Setup logging
+logger = utils.setup_logging(config.PATHS.get('LOG_DIR', project_root / 'logs'))
 
-def is_likely_fk(column_name):
-    """Determine if a column is likely a foreign key based on naming conventions."""
-    fk_indicators = ['_fk', '_sk', '_code', '_id']
-    
-    # Check for common foreign key patterns like {table_name}_id or {table_name}_sk
-    fk_patterns = [
-        'time_', 'geo_', 'location_', 'person_', 'household_', 
-        'dim_', 'fact_', 'ref_'
-    ]
-    
-    # Either ends with a FK indicator or starts with a FK pattern
-    return (any(column_name.lower().endswith(indicator) for indicator in fk_indicators) or
-            any(column_name.lower().startswith(pattern) for pattern in fk_patterns))
 
-def extract_schemas():
-    """Extract and print schemas for all Parquet files in the output directory."""
-    parquet_files = list(Path(OUTPUT_DIR).glob('*.parquet'))
-    
-    if not parquet_files:
-        print(f"No Parquet files found in {OUTPUT_DIR}")
-        return {}
-    
-    schemas = {}
-    
-    print("\n===== PARQUET FILE SCHEMAS =====\n")
-    
-    for parquet_file in parquet_files:
-        file_name = parquet_file.name
-        file_path = str(parquet_file)
-        
+def map_pyarrow_to_polars(pa_type):
+    """Maps PyArrow data types to Polars data type strings."""
+    type_str = str(pa_type).lower()
+    if type_str.startswith('int'):
+        bits = type_str.replace('int', '')
+        # Choose appropriate Polars int type
+        if bits == '8': return "pl.Int8"
+        if bits == '16': return "pl.Int16"
+        if bits == '32': return "pl.Int32"
+        return "pl.Int64" # Default to Int64 for safety
+    if type_str.startswith('uint'):
+        bits = type_str.replace('uint', '')
+        if bits == '8': return "pl.UInt8"
+        if bits == '16': return "pl.UInt16"
+        if bits == '32': return "pl.UInt32"
+        return "pl.UInt64"
+    if type_str.startswith('float') or type_str.startswith('double'):
+        return "pl.Float64"
+    if type_str == 'bool':
+        return "pl.Boolean"
+    if type_str == 'string' or type_str == 'large_string':
+        return "pl.Utf8"
+    if type_str == 'date32[day]' or type_str == 'date64':
+        return "pl.Date"
+    if type_str.startswith('timestamp'):
+        # Extract time unit if present
+        unit = 'us' # Default to microseconds
+        if '[' in type_str and ']' in type_str:
+            unit = type_str.split('[')[1].split(']')[0]
+        return f'pl.Datetime(time_unit="{unit}")'
+    if type_str == 'binary' or type_str == 'large_binary':
+        return "pl.Binary"
+    if type_str.startswith('dictionary'): # Handle categorical data
+        # Extract value type from dictionary(indices=*, values=*)
         try:
-            # Read schema using PyArrow
-            schema = pq.read_schema(file_path)
-            
-            print(f"\nSchema for {file_name}:")
-            print("=" * (len(file_name) + 11))
-            
-            # Print each field with its data type
-            field_info = []
-            for field in schema:
-                field_name = field.name
-                field_type = field.type
-                print(f"  {field_name}: {field_type}")
-                
-                # Store for ERD generation
-                field_info.append({
-                    'name': field_name,
-                    'type': field_type,
-                    'simplified_type': get_simplified_type(field_type),
-                    'is_pk': is_likely_pk(field_name),
-                    'is_fk': is_likely_fk(field_name)
-                })
-            
-            # Store schema information 
-            table_name = file_name.replace('.parquet', '')
-            schemas[table_name] = field_info
-            
-        except Exception as e:
-            print(f"Error reading schema for {file_name}: {e}")
-    
+            value_type = pa_type.value_type
+            polars_value_type = map_pyarrow_to_polars(value_type)
+            # Return as Categorical or the underlying type if preferred
+            return "pl.Categorical" # Often desired representation
+            # return polars_value_type # Alternatively, use the underlying type
+        except Exception:
+            return "pl.Categorical" # Fallback
+
+    # Default fallback
+    logger.warning(f"Unmapped PyArrow type: {pa_type}. Defaulting to pl.Utf8.")
+    return "pl.Utf8"
+
+def extract_schemas(output_dir: Path) -> Dict[str, Dict[str, str]]:
+    """Extracts schemas from all Parquet files in the output directory.
+
+    Args:
+        output_dir (Path): The directory containing Parquet files.
+
+    Returns:
+        Dict[str, Dict[str, str]]: A dictionary where keys are table names
+                                   and values are dictionaries mapping column
+                                   names to Polars type strings.
+    """
+    schemas = {}
+    logger.info(f"Scanning for Parquet files in: {output_dir}")
+    try:
+        # Use output_dir directly
+        parquet_files = list(output_dir.glob('*.parquet'))
+
+        if not parquet_files:
+            logger.warning(f"No Parquet files found in {output_dir}.")
+            return schemas
+
+        logger.info(f"Found {len(parquet_files)} Parquet files.")
+
+        for parquet_file in parquet_files:
+            try:
+                # Read schema using PyArrow
+                schema = pq.read_schema(parquet_file)
+                table_name = parquet_file.stem # Use stem to remove .parquet
+                logger.info(f"Extracting schema for: {table_name}")
+
+                column_schemas = {}
+                for field in schema:
+                    polars_type = map_pyarrow_to_polars(field.type)
+                    column_schemas[field.name] = polars_type
+
+                schemas[table_name] = column_schemas
+                logger.debug(f"Schema for {table_name}: {column_schemas}")
+
+            except Exception as e:
+                logger.error(f"Error reading schema from {parquet_file.name}: {e}")
+
+    except Exception as e:
+        logger.critical(f"Error scanning directory {output_dir}: {e}")
+
     return schemas
 
-def generate_mermaid_erd(schemas):
-    """Generate Mermaid ERD syntax based on the extracted schemas."""
+def generate_python_dict_output(schemas: Dict[str, Dict[str, str]], output_file: Path):
+    """Generates a Python file containing the schemas as a dictionary.
+
+    Args:
+        schemas (Dict): The extracted schemas.
+        output_file (Path): Path to save the Python dictionary output.
+    """
+    logger.info(f"Generating Python dictionary output to: {output_file}")
+    try:
+        with open(output_file, 'w') as f:
+            f.write("import polars as pl\n\n")
+            f.write("# Extracted schemas from Parquet files\n")
+            f.write("SCHEMAS = {\n")
+            for i, (table_name, columns) in enumerate(schemas.items()):
+                f.write(f'    "{table_name}": {{\n')
+                for col_name, col_type in columns.items():
+                    f.write(f'        "{col_name}": {col_type},\n')
+                f.write("    }")
+                if i < len(schemas) - 1:
+                    f.write(",")
+                f.write("\n")
+            f.write("}\n")
+        logger.info(f"Successfully wrote Python dictionary to {output_file}")
+    except Exception as e:
+        logger.error(f"Error writing Python dictionary file: {e}")
+
+def generate_markdown_output(schemas: Dict[str, Dict[str, str]], output_file: Path):
+    """Generates a Markdown file documenting the schemas.
+
+    Args:
+        schemas (Dict): The extracted schemas.
+        output_file (Path): Path to save the Markdown output.
+    """
+    logger.info(f"Generating Markdown schema documentation to: {output_file}")
+    try:
+        with open(output_file, 'w') as f:
+            f.write("# Data Warehouse Schema Documentation\n\n")
+            f.write("This document details the schemas of the Parquet tables generated by the ETL process.\n\n")
+            for table_name, columns in schemas.items():
+                f.write(f"## Table: `{table_name}`\n\n")
+                f.write("| Column Name | Polars Data Type |\n")
+                f.write("|-------------|------------------|\n")
+                for col_name, col_type in columns.items():
+                    f.write(f"| `{col_name}` | `{col_type}` |\n")
+                f.write("\n")
+        logger.info(f"Successfully wrote Markdown documentation to {output_file}")
+    except Exception as e:
+        logger.error(f"Error writing Markdown file: {e}")
+
+def generate_mermaid_erd(schemas: Dict[str, Dict[str, str]], output_file: Path):
+    """Generates a Mermaid ERD file based on extracted schemas.
+
+    Args:
+        schemas (Dict): The extracted schemas.
+        output_file (Path): Path to save the Mermaid ERD (.mmd) file.
+    """
+    logger.info(f"Generating Mermaid ERD file to: {output_file}")
+    # Basic relationship inference (can be enhanced)
+    relationships = []
+    dim_tables = {name for name in schemas if name.startswith('dim_')}
+    fact_tables = {name for name in schemas if name.startswith('fact_')}
+
+    for fact_table, fact_cols in schemas.items():
+        if fact_table not in fact_tables:
+            continue
+        for dim_table, dim_cols in schemas.items():
+            if dim_table not in dim_tables:
+                continue
+
+            # Infer relationship if fact table has a column named dim_table_sk or similar
+            # And the dimension table has that SK as its primary key
+            dim_prefix = dim_table.split('dim_')[1]
+            possible_fk_names = [f'{dim_prefix}_sk', f'{dim_table}_sk']
+            # Usually the first column is the primary key
+            dim_pk = next(iter(dim_cols)) if dim_cols else None
+
+            for fk_name in possible_fk_names:
+                if fk_name in fact_cols and fk_name == dim_pk:
+                    # Mermaid relationship: Fact ||--o{ Dim : has
+                    relationships.append(f'    "{fact_table}" ||--o{{ "{dim_table}" : "{fk_name}"')
+                    break # Assume one relationship per dim
+
+    try:
+        with open(output_file, 'w') as f:
+            f.write("erDiagram\n")
+            # Define tables and columns
+            for table_name, columns in schemas.items():
+                f.write(f'    "{table_name}" {{\n')
+                for col_name, col_type in columns.items():
+                    # Clean type for mermaid (remove pl.)
+                    mermaid_type = col_type.replace('pl.', '')
+                    # Indicate PK for dimension tables (assuming first col is PK)
+                    pk_indicator = " PK" if table_name in dim_tables and col_name == next(iter(columns)) else ""
+                    # Indicate FK for fact tables
+                    fk_indicator = " FK" if table_name in fact_tables and col_name.endswith('_sk') else ""
+                    f.write(f'        {mermaid_type} {col_name}{pk_indicator}{fk_indicator}\n')
+                f.write("    }\n")
+
+            # Add relationships
+            f.write("\n    %% Relationships\n")
+            for rel in relationships:
+                f.write(f"{rel}\n")
+
+        logger.info(f"Successfully wrote Mermaid ERD to {output_file}")
+    except Exception as e:
+        logger.error(f"Error writing Mermaid file: {e}")
+
+def main():
+    """Main function to extract schemas and generate outputs."""
+    logger.info("=== Starting Schema Extraction and Documentation Generation ===")
+
+    # Use output directory from config
+    output_dir = config.PATHS['OUTPUT_DIR']
+    documentation_dir = config.PATHS.get('DOCUMENTATION_DIR', project_root / 'documentation')
+
+    # Ensure output and documentation directories exist
+    output_dir.mkdir(parents=True, exist_ok=True)
+    documentation_dir.mkdir(parents=True, exist_ok=True)
+
+    # Define output file paths using config paths
+    schema_dict_file = output_dir / "extracted_schemas.py"
+    markdown_file = documentation_dir / "data_schema_extracted.md"
+    mermaid_file = output_dir / "data_schema_extracted.mmd" # Keep in output or move to docs?
+
+    # Extract schemas
+    schemas = extract_schemas(output_dir)
+
     if not schemas:
-        print("No schemas available to generate ERD")
+        logger.warning("No schemas were extracted. Skipping output generation.")
         return
-    
-    print(f"\nGenerating Mermaid ERD syntax to {MERMAID_OUTPUT_FILE}")
-    
-    # Start building the Mermaid ERD syntax
-    mermaid_syntax = """---
-title: Data Warehouse Schema
----
-erDiagram
-    %% This is an auto-generated ERD diagram based on Parquet file schemas
-    %% NOTE: Relationship lines need to be added manually after reviewing this generated syntax
-    %% Use the PK and FK comments as guides for adding relationship lines
-    
-"""
-    
-    # Add entities
-    for table_name, fields in schemas.items():
-        mermaid_syntax += f"    {table_name} {{\n"
-        
-        for field in fields:
-            field_name = field['name']
-            simplified_type = field['simplified_type']
-            
-            # Add annotations for likely primary and foreign keys
-            annotations = []
-            if field['is_pk']:
-                annotations.append("PK")
-            if field['is_fk']:
-                annotations.append("FK")
-            
-            annotation_str = f" %% {', '.join(annotations)}" if annotations else ""
-            mermaid_syntax += f"        {simplified_type} {field_name}{annotation_str}\n"
-        
-        mermaid_syntax += "    }\n\n"
-    
-    # Add a note about manually adding relationships
-    mermaid_syntax += """    %% Example relationship (add these manually based on FK relationships):
-    %% dim_time ||--o{ fact_table : "time_sk"
-    %%
-    %% Relationship types:
-    %% ||--|| : one-to-one
-    %% ||--o{ : one-to-many
-    %% }o--|| : many-to-one
-    %% }o--o{ : many-to-many
-"""
-    
-    # Write to file
-    with open(MERMAID_OUTPUT_FILE, 'w') as f:
-        f.write(mermaid_syntax)
-    
-    print(f"ERD Mermaid syntax saved to {MERMAID_OUTPUT_FILE}")
+
+    # Generate outputs
+    generate_python_dict_output(schemas, schema_dict_file)
+    generate_markdown_output(schemas, markdown_file)
+    generate_mermaid_erd(schemas, mermaid_file)
+
+    logger.info("=== Schema Extraction and Documentation Generation Complete ===")
+    logger.info(f"Outputs generated:")
+    logger.info(f"  - Python Dictionary: {schema_dict_file}")
+    logger.info(f"  - Markdown Doc: {markdown_file}")
+    logger.info(f"  - Mermaid ERD: {mermaid_file}")
 
 if __name__ == "__main__":
-    # Extract schemas and print them
-    schemas = extract_schemas()
-    
-    # Generate Mermaid ERD
-    generate_mermaid_erd(schemas)
-    
-    print("\nProcess completed successfully!") 
+    # Optional: Ensure directories are initialised if needed
+    # config.initialise_directories()
+    main() 

@@ -1,111 +1,99 @@
-import os
-import polars as pl
-import pandas as pd
-from pathlib import Path
-import gc
+"""
+Script to generate data profiling reports for Parquet files in the output directory.
+
+This script uses the ydata-profiling library to create detailed HTML reports
+for each Parquet file found in the configured output directory.
+"""
+
+import logging
 import sys
+from pathlib import Path
+import polars as pl
+from ydata_profiling import ProfileReport
 
-# Define the output directory
-OUTPUT_DIR = "/Users/massimoraso/AHGD3/output"
-REPORTS_DIR = os.path.join(OUTPUT_DIR, "profiling_reports")
+# Add project root to sys.path to allow importing etl_logic
+project_root = Path(__file__).resolve().parents[1] # Assuming scripts/ is one level down from project root
+sys.path.insert(0, str(project_root))
 
-def generate_basic_html_report(df, table_name, output_file):
-    """Generate a basic HTML report with table statistics."""
-    # Get basic statistics
-    num_rows = len(df)
-    num_cols = len(df.columns)
-    
-    # Start HTML
-    html = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Basic Data Profile - {table_name}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        table {{ border-collapse: collapse; width: 100%; margin-bottom: 20px; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-        th {{ background-color: #f2f2f2; }}
-        tr:nth-child(even) {{ background-color: #f9f9f9; }}
-        h1, h2 {{ color: #333; }}
-    </style>
-</head>
-<body>
-    <h1>Data Profile: {table_name}</h1>
-    
-    <h2>Basic Information</h2>
-    <table>
-        <tr><th>Metric</th><th>Value</th></tr>
-        <tr><td>Number of Rows</td><td>{num_rows}</td></tr>
-        <tr><td>Number of Columns</td><td>{num_cols}</td></tr>
-    </table>
-    
-    <h2>Column Information</h2>
-    <table>
-        <tr><th>Column Name</th><th>Data Type</th><th>Sample Values</th></tr>
-"""
-    
-    # Add each column
-    for col in df.columns:
-        col_type = str(df[col].dtype)
-        sample_values = ", ".join([str(x) for x in df[col].head(3).to_list()])
-        html += f"""        <tr><td>{col}</td><td>{col_type}</td><td>{sample_values}</td></tr>\n"""
-    
-    # Close HTML
-    html += """    </table>
-</body>
-</html>
-"""
-    
-    # Write to file
-    with open(output_file, 'w') as f:
-        f.write(html)
-    
-    return output_file
+# Import config after setting path
+from etl_logic import config
+from etl_logic import utils # Assuming setup_logging is in utils
 
-def generate_data_profiling_reports():
-    """Generate simple data profiling reports for all Parquet files in the output directory."""
-    # Create the reports directory if it doesn't exist
-    os.makedirs(REPORTS_DIR, exist_ok=True)
-    
-    parquet_files = list(Path(OUTPUT_DIR).glob('*.parquet'))
-    
-    if not parquet_files:
-        print(f"No Parquet files found in {OUTPUT_DIR}")
-        return
-    
-    print(f"\n===== GENERATING SIMPLE DATA PROFILES =====\n")
-    
-    for i, parquet_file in enumerate(parquet_files):
-        file_name = parquet_file.name
-        file_path = str(parquet_file)
-        table_name = file_name.replace('.parquet', '')
-        
-        report_file = os.path.join(REPORTS_DIR, f"{table_name}_profile.html")
-        
-        try:
-            print(f"[{i+1}/{len(parquet_files)}] Processing {file_name}...")
-            
-            # Read Parquet file using Polars with memory optimization
-            print(f"  Reading file...")
-            df_pl = pl.scan_parquet(file_path).limit(1000).collect()  # Limit to 1000 rows
-            
-            # Generate simple HTML report
-            print(f"  Generating simple HTML report...")
-            output_file = generate_basic_html_report(df_pl, table_name, report_file)
-            print(f"  Report saved to {output_file}")
-            
-            # Free up memory
-            del df_pl
-            gc.collect()
-            
-        except Exception as e:
-            print(f"  Error generating profile for {file_name}: {e}")
-    
-    print(f"\nAll basic profiling reports have been saved to {REPORTS_DIR}")
-    print(f"Note: Reports are based on samples of 1000 rows each to avoid memory issues.")
+# Setup logging
+logger = utils.setup_logging(config.PATHS.get('LOG_DIR', project_root / 'logs'))
+
+def generate_profile_report(parquet_path: Path, output_html_path: Path):
+    """Generates a ydata-profiling report for a given Parquet file.
+
+    Args:
+        parquet_path (Path): Path to the input Parquet file.
+        output_html_path (Path): Path to save the output HTML report.
+    """
+    logger.info(f"Generating profiling report for: {parquet_path.name}")
+    try:
+        # Read Parquet file using Polars
+        df = pl.read_parquet(parquet_path)
+
+        # Convert Polars DataFrame to Pandas DataFrame for profiling
+        # Note: This can be memory-intensive for large datasets.
+        # Consider sampling if needed: df_pandas = df.sample(n=10000).to_pandas()
+        df_pandas = df.to_pandas()
+
+        # Generate the profile report
+        # Provide a title for the report
+        profile_title = f"Profiling Report: {parquet_path.stem}"
+        profile = ProfileReport(df_pandas, title=profile_title, explorative=True)
+
+        # Save the report to HTML
+        profile.to_file(output_html_path)
+        logger.info(f"Successfully generated report: {output_html_path}")
+
+    except FileNotFoundError:
+        logger.error(f"Error: Parquet file not found at {parquet_path}")
+    except Exception as e:
+        logger.error(f"Error generating report for {parquet_path.name}: {e}")
+        logger.exception("Detailed traceback:")
+
+def main():
+    """Main function to find Parquet files and generate reports for each."""
+    logger.info("=== Starting Data Profiling Report Generation ===")
+
+    # Use output directory from config
+    output_dir = config.PATHS['OUTPUT_DIR']
+    profiling_reports_dir = output_dir / "profiling_reports"
+
+    # Create the profiling reports directory if it doesn't exist
+    profiling_reports_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Saving reports to: {profiling_reports_dir}")
+
+    # Find all Parquet files in the output directory
+    try:
+        # Use output_dir from config
+        parquet_files = list(output_dir.glob('*.parquet'))
+
+        if not parquet_files:
+            logger.warning(f"No Parquet files found in {output_dir}. Cannot generate reports.")
+            return
+
+        logger.info(f"Found {len(parquet_files)} Parquet files to profile.")
+
+        # Generate report for each Parquet file
+        for parquet_file in parquet_files:
+            # Construct output HTML file path
+            # Use .stem to get filename without extension
+            report_filename = f"{parquet_file.stem}_profile_report.html"
+            output_html_path = profiling_reports_dir / report_filename
+
+            # Generate the report
+            generate_profile_report(parquet_file, output_html_path)
+
+        logger.info("=== Data Profiling Report Generation Complete ===")
+
+    except Exception as e:
+        logger.critical(f"An unexpected error occurred during the main process: {e}")
+        logger.exception("Detailed traceback:")
 
 if __name__ == "__main__":
-    # Generate data profiling reports
-    generate_data_profiling_reports()
-    
-    print("\nProcess completed successfully!") 
+    # Ensure directories are initialised (optional, depends on workflow)
+    # config.initialise_directories() 
+    main() 

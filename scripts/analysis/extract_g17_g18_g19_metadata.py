@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import polars as pl
 import pandas as pd
 import os
 import sys
@@ -7,220 +6,239 @@ from pathlib import Path
 import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
+import openpyxl # Needed to read xlsx
+import zipfile
+from collections import defaultdict
 
-# Setup basic logging for the script
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+# Add project root to sys.path to allow importing etl_logic
+project_root = Path(__file__).resolve().parents[2] # Assuming scripts/analysis/ is two levels down
+sys.path.insert(0, str(project_root))
+
+# Import config and utils after setting path
+from etl_logic import config
+from etl_logic import utils # Assuming setup_logging is in utils
+
+# Setup logging (optional, adjust level as needed)
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- Configuration ---
-# Base directories
-BASE_DIR = Path(os.getenv('PROJECT_DIR', '/Users/massimoraso/AHGD3'))
-RAW_DATA_DIR = BASE_DIR / "data/raw"
-EXTRACT_DIR = RAW_DATA_DIR / "temp/extract"
-OUTPUT_DIR = BASE_DIR / "output"
-MEMORY_BANK_DIR = BASE_DIR / "memory-bank"
+# Define paths using config
+METADATA_DIR = config.PATHS.get('METADATA_DIR', config.PATHS['RAW_DATA_DIR'] / "Metadata")
+METADATA_FILE = METADATA_DIR / "Metadata_2021_GCP_DataPack_R1_R2.xlsx"
+TEMPLATE_FILE = METADATA_DIR / "2021_GCP_Sequential_Template_R2.xlsx"
+CENSUS_ZIP_DIR = config.PATHS['CENSUS_DIR']
 
-# Ensure the memory bank directory exists
-MEMORY_BANK_DIR.mkdir(parents=True, exist_ok=True)
+# Define target tables
+TARGET_TABLES = ["G17", "G18", "G19"]
 
-def find_csv_files(base_dir: Path, pattern: str) -> List[Path]:
-    """Find CSV files matching a pattern in a directory tree."""
-    logger.info(f"Searching for {pattern} files in {base_dir}")
-    
-    # Use glob to find all CSV files
-    all_csv_files = list(base_dir.glob("**/*.csv"))
-    
-    # Filter for pattern
-    matching_files = [f for f in all_csv_files if re.search(pattern, f.name, re.IGNORECASE)]
-    logger.info(f"Found {len(matching_files)} files matching pattern '{pattern}'")
-    
-    return matching_files
+def find_census_zip() -> Optional[Path]:
+    """Finds the main Census GCP ZIP file."""
+    # Try common naming patterns or a specific name if known
+    patterns = [
+        "2021_GCP_all_for_AUS_short-header.zip",
+        "2021_GCP_*.zip"
+    ]
+    for pattern in patterns:
+        zip_files = list(CENSUS_ZIP_DIR.glob(pattern))
+        if zip_files:
+            found_zip = zip_files[0]
+            logger.info(f"Using Census ZIP file: {found_zip}")
+            return found_zip
+    logger.error(f"Could not find Census GCP ZIP file in {CENSUS_ZIP_DIR}")
+    return None
 
-def analyze_csv_columns(csv_file: Path) -> Dict[str, Any]:
-    """Analyze the column structure of a CSV file."""
-    logger.info(f"Analyzing columns in {csv_file}")
-    
-    # Initialize result dictionary
-    result = {
-        "file_name": csv_file.name,
-        "file_path": str(csv_file),
-        "total_columns": 0,
-        "geo_columns": [],
-        "data_columns": [],
-        "column_prefixes": set(),
-        "column_patterns": {},
-        "sample_rows": [],
-        "error": None
+def extract_metadata_from_excel(metadata_file_path: Path, template_file_path: Path, table_code: str) -> dict:
+    """Extracts metadata for a table from both the main metadata file and the template file."""
+    logger.info(f"Extracting metadata for {table_code} from Excel files...")
+    metadata = {
+        'table_code': table_code,
+        'description': "Not found",
+        'population': "Unknown",
+        'source_sheet': "Not found",
+        'template_columns': [],
+        'template_sample_row': []
     }
-    
-    try:
-        # Read CSV file with Polars to handle larger files efficiently
-        df = pl.read_csv(csv_file, infer_schema_length=1000)
-        
-        # Basic info
-        result["total_columns"] = len(df.columns)
-        
-        # Identify geographic columns
-        geo_patterns = ["CODE", "SA1", "SA2", "SA3", "SA4", "SUA", "region_id"]
-        result["geo_columns"] = [col for col in df.columns if any(pattern.lower() in col.lower() for pattern in geo_patterns)]
-        
-        # Collect other data columns
-        result["data_columns"] = [col for col in df.columns if col not in result["geo_columns"]]
-        
-        # Extract column prefixes (first part before underscore)
-        for col in result["data_columns"]:
-            parts = col.split("_")
-            if len(parts) > 1:
-                result["column_prefixes"].add(parts[0])
-        
-        # Identify column patterns
-        for prefix in result["column_prefixes"]:
-            pattern_cols = [col for col in result["data_columns"] if col.startswith(f"{prefix}_")]
-            if pattern_cols:
-                result["column_patterns"][prefix] = pattern_cols[:5]  # First 5 examples
-        
-        # Save sample rows
-        if len(df) > 0:
-            try:
-                # Convert first few rows to string representation for display
-                sample_rows = df.head(3).to_pandas().to_dict('records')
-                result["sample_rows"] = sample_rows
-            except Exception as e:
-                result["sample_rows"] = [{"error": f"Could not convert sample rows: {str(e)}"}]
-        
-    except Exception as e:
-        result["error"] = str(e)
-        logger.error(f"Error analyzing {csv_file}: {e}")
-    
-    return result
 
-def analyze_all_files(table_codes: List[str]) -> Dict[str, List[Dict[str, Any]]]:
-    """Analyze all CSV files for the specified table codes."""
-    results = {}
-    
-    for code in table_codes:
-        # Define the directory to look in
-        extract_dir = EXTRACT_DIR / f"g{code.lower()}" 
-        if not extract_dir.exists():
-            # Try alternate path formats
-            alternates = [
-                EXTRACT_DIR / f"g{code.lower()}_extract_2021_GCP_all_for_AUS_short-header",
-                EXTRACT_DIR,  # Try the main extract dir
-                EXTRACT_DIR / f"g{code}"
-            ]
-            
-            for alt_dir in alternates:
-                if alt_dir.exists():
-                    extract_dir = alt_dir
-                    break
+    # 1. Extract from main metadata file ('List of tables')
+    if metadata_file_path.exists():
+        try:
+            tables_df = pd.read_excel(metadata_file_path, sheet_name="List of tables")
+            table_info = tables_df[tables_df.apply(lambda row: row.astype(str).str.contains(table_code, na=False, case=False).any(), axis=1)]
+            if not table_info.empty:
+                metadata['source_sheet'] = 'List of tables'
+                # Extract description and population (flexible column naming)
+                desc_col = next((col for col in ['Table Title', 'Description', 'Table Name', tables_df.columns[1]] if col in table_info.columns), None)
+                pop_col = next((col for col in ['Population', 'Pop', tables_df.columns[2]] if col in table_info.columns), None)
+                metadata['description'] = table_info.iloc[0][desc_col] if desc_col else "Description unavailable"
+                metadata['population'] = table_info.iloc[0][pop_col] if pop_col else "Population unavailable"
+                logger.debug(f"  Found basic info for {table_code} in {metadata_file_path.name}")
             else:
-                logger.warning(f"Could not find extract directory for G{code}")
-                continue
-        
-        # Find CSV files for this table
-        pattern = f"g{code}"
-        csv_files = find_csv_files(extract_dir, pattern)
-        
-        if not csv_files:
-            logger.warning(f"No G{code} files found in {extract_dir}")
-            continue
-        
-        # Analyze a sample of files (first 3)
-        sample_files = csv_files[:3]
-        results[f"G{code}"] = [analyze_csv_columns(f) for f in sample_files]
-    
-    return results
+                logger.debug(f"  {table_code} not found in 'List of tables' sheet.")
+        except Exception as e:
+            logger.warning(f"Could not process 'List of tables' in {metadata_file_path.name}: {e}")
+    else:
+        logger.warning(f"Main metadata file not found: {metadata_file_path}")
 
-def write_results_to_markdown(results: Dict[str, List[Dict[str, Any]]]):
-    """Write the analysis results to a Markdown file."""
-    output_file = MEMORY_BANK_DIR / "census_file_structure_analysis.md"
-    
-    with open(output_file, "w") as f:
-        f.write("# Census File Structure Analysis\n\n")
-        f.write("This document provides an analysis of the structure of G17, G18, and G19 CSV files to help debug processing issues.\n\n")
-        
-        for table_code, file_results in results.items():
-            f.write(f"## {table_code} Files\n\n")
-            
-            if not file_results:
-                f.write(f"No {table_code} files were found for analysis.\n\n")
-                continue
-            
-            for i, result in enumerate(file_results):
-                f.write(f"### File {i+1}: {result['file_name']}\n\n")
-                
-                if result.get('error'):
-                    f.write(f"**Error analyzing file:** {result['error']}\n\n")
-                    continue
-                
-                f.write(f"**Path:** {result['file_path']}\n\n")
-                f.write(f"**Total columns:** {result['total_columns']}\n\n")
-                
-                f.write("**Geographic columns:**\n")
-                for col in result['geo_columns']:
-                    f.write(f"- `{col}`\n")
-                f.write("\n")
-                
-                f.write("**Column prefixes:** ")
-                f.write(", ".join(f"`{p}`" for p in sorted(result['column_prefixes'])))
-                f.write("\n\n")
-                
-                f.write("**Column patterns:**\n")
-                for prefix, cols in result['column_patterns'].items():
-                    f.write(f"- Prefix `{prefix}`: ")
-                    f.write(", ".join(f"`{c}`" for c in cols))
-                    f.write(" ...\n")
-                f.write("\n")
-                
-                if result['sample_rows']:
-                    f.write("**Sample data (first few rows):**\n\n")
-                    f.write("```\n")
-                    for row in result['sample_rows']:
-                        f.write(f"{row}\n")
-                    f.write("```\n\n")
-                
-                f.write("---\n\n")
-        
-        f.write("\n## Recommendations for Processing Functions\n\n")
-        f.write("Based on the analysis above, here are recommendations for fixing the processing functions:\n\n")
-        
-        # Add specific recommendations for each table
-        for table_code in results.keys():
-            f.write(f"### {table_code} Processing\n\n")
-            f.write(f"1. Update the `process_{table_code.lower()}_file` function to handle these column patterns:\n")
-            
-            # Extract patterns seen across all files for this table code
-            all_prefixes = set()
-            all_patterns = {}
-            
-            for result in results.get(table_code, []):
-                all_prefixes.update(result.get('column_prefixes', set()))
-                for prefix, cols in result.get('column_patterns', {}).items():
-                    if prefix not in all_patterns:
-                        all_patterns[prefix] = []
-                    all_patterns[prefix].extend(cols)
-            
-            for prefix in sorted(all_prefixes):
-                f.write(f"   - For prefix `{prefix}`, look for columns like: ")
-                pattern_examples = all_patterns.get(prefix, [])[:5]  # First 5 examples
-                f.write(", ".join(f"`{c}`" for c in pattern_examples))
-                f.write("\n")
-            
-            f.write("2. Use a flexible column detection approach similar to what we implemented for G21.\n")
-            f.write("3. Ensure the geographic column detection can handle all variations seen in these files.\n\n")
-    
-    logger.info(f"Analysis written to {output_file}")
+    # 2. Extract structure from template file (Sheet named like table_code)
+    if template_file_path.exists():
+        try:
+            xlsx = pd.ExcelFile(template_file_path)
+            if table_code in xlsx.sheet_names:
+                logger.debug(f"  Found sheet '{table_code}' in template file. Reading structure...")
+                df_template = pd.read_excel(template_file_path, sheet_name=table_code, nrows=20) # Read more rows for structure
+                metadata['source_sheet'] = f'Template Sheet: {table_code}'
+                # Try to refine description from template title if not found earlier
+                if metadata['description'] == "Not found":
+                    for i in range(min(5, df_template.shape[0])):
+                        cell_value = str(df_template.iloc[i, 0])
+                        if table_code in cell_value or 'table' in cell_value.lower():
+                            metadata['description'] = cell_value
+                            break
+                # Extract column headers (find likely row)
+                header_row_idx = -1
+                for i in range(5, 15): # Search common header rows
+                     if i < df_template.shape[0]:
+                         row_vals = df_template.iloc[i].dropna().astype(str).str.lower().tolist()
+                         # Heuristic: look for common terms like 'tot', 'male', 'female', 'median', specific conditions
+                         if any(term in rv for term in ['tot', 'male', 'female', 'median', 'assist', 'arth', 'asth'] for rv in row_vals):
+                             header_row_idx = i
+                             break
+                if header_row_idx != -1:
+                    metadata['template_columns'] = df_template.iloc[header_row_idx].dropna().tolist()
+                    logger.debug(f"  Extracted template columns from row {header_row_idx + 1}")
+                else:
+                     logger.debug(f"  Could not identify template column row for {table_code}.")
+
+                 # Extract a sample data row
+                first_data_idx = df_template.iloc[:, 0].first_valid_index()
+                if first_data_idx is not None and first_data_idx + 1 < df_template.shape[0]:
+                     metadata['template_sample_row'] = df_template.iloc[first_data_idx + 1].dropna().tolist()
+                     logger.debug(f"  Extracted template sample row from row {first_data_idx + 2}")
+
+            else:
+                logger.debug(f"  Sheet '{table_code}' not found in template file.")
+        except Exception as e:
+            logger.warning(f"Could not process template file {template_file_path.name} for sheet {table_code}: {e}")
+    else:
+        logger.warning(f"Template file not found: {template_file_path}")
+
+    return metadata
+
+def extract_csv_structure_from_zip(zip_filepath: Path, table_code: str) -> dict:
+    """Extracts actual column names and types from the first matching CSV in a ZIP."""
+    logger.info(f"Extracting CSV structure for {table_code} from {zip_filepath.name}...")
+    csv_structure = {
+        'actual_columns': [],
+        'actual_dtypes': {},
+        'found_csv_filename': None
+    }
+    if not zip_filepath.exists():
+        logger.error(f"ZIP file not found: {zip_filepath}")
+        return csv_structure
+
+    # Pattern specific to the table code
+    csv_pattern = re.compile(rf"2021.*?Census.*?{table_code}[A-Z]?_.*?.(SA[1-4]|STE|AUS).csv", re.IGNORECASE)
+
+    try:
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            for file_info in zip_ref.infolist():
+                if csv_pattern.search(file_info.filename):
+                    logger.debug(f"  Found matching CSV: {file_info.filename}")
+                    csv_structure['found_csv_filename'] = file_info.filename
+                    try:
+                        with zip_ref.open(file_info.filename) as csv_file:
+                            # Read header and infer types
+                            df = pd.read_csv(csv_file, nrows=5, low_memory=False)
+                            csv_structure['actual_columns'] = df.columns.tolist()
+                            csv_structure['actual_dtypes'] = {col: str(dtype) for col, dtype in df.dtypes.items()}
+                            logger.debug(f"  Extracted {len(df.columns)} columns from {file_info.filename}")
+                            return csv_structure # Process only the first match
+                    except Exception as e:
+                        logger.error(f"  Error reading CSV '{file_info.filename}' from ZIP: {e}")
+                        return csv_structure # Return partial data on error
+            logger.warning(f"No CSV files matching pattern for {table_code} found in the ZIP.")
+    except Exception as e:
+        logger.error(f"Error opening or reading ZIP file {zip_filepath.name}: {e}")
+
+    return csv_structure
+
+def compare_and_summarize(excel_meta: dict, csv_meta: dict) -> str:
+    """Compares metadata from Excel and CSV and creates a summary."""
+    summary = []
+    summary.append(f"## Metadata Summary for: {excel_meta['table_code']}")
+    summary.append(f"- **Description**: {excel_meta.get('description', 'N/A')}")
+    summary.append(f"- **Population**: {excel_meta.get('population', 'N/A')}")
+    summary.append(f"- **Metadata Source**: {excel_meta.get('source_sheet', 'N/A')}")
+    summary.append(f"- **Actual CSV File Found**: {csv_meta.get('found_csv_filename', 'None')}")
+
+    # Compare column counts
+    template_cols = excel_meta.get('template_columns', [])
+    actual_cols = csv_meta.get('actual_columns', [])
+    summary.append(f"- **Column Count (Template vs Actual)**: {len(template_cols)} vs {len(actual_cols)}")
+
+    # List columns present in actual CSV but not obviously in template header (simple check)
+    if actual_cols and template_cols:
+        actual_set = set(actual_cols)
+        template_set = set(str(col) for col in template_cols) # Convert template cols to string for comparison
+        diff_cols = actual_set - template_set
+        # Further refine diff: ignore geo code variations if present in both
+        geo_codes_actual = {col for col in actual_set if any(gc in col for gc in ['SA1', 'SA2', 'SA3', 'SA4', 'STE', 'POA', 'LGA', 'AUS', 'GCC'])}
+        geo_codes_template = {col for col in template_set if any(gc in col for gc in ['SA1', 'SA2', 'SA3', 'SA4', 'STE', 'POA', 'LGA', 'AUS', 'GCC'])}
+        if geo_codes_actual and geo_codes_template:
+            diff_cols = diff_cols - geo_codes_actual # Remove geo codes if template also had one
+
+        if diff_cols:
+            summary.append(f"- **Columns in Actual CSV potentially missing/different from Template Header ({len(diff_cols)})**: `{', '.join(sorted(list(diff_cols)))}`")
+        else:
+            summary.append("- **Column Alignment**: Actual CSV columns seem to align well with template header (based on simple check).")
+
+    summary.append("\n### Actual CSV Columns and Types")
+    summary.append("| Column Name | Inferred Type |")
+    summary.append("|-------------|---------------|")
+    if actual_cols:
+        for col in actual_cols:
+            dtype = csv_meta.get('actual_dtypes', {}).get(col, 'N/A')
+            summary.append(f"| `{col}` | `{dtype}` |")
+    else:
+        summary.append("| *No CSV columns found* | - |")
+
+    summary.append("\n")
+    return "\n".join(summary)
+
+def main():
+    """Main function to drive the metadata extraction and comparison."""
+    logger.info("=== Starting G17/G18/G19 Metadata Analysis ===")
+
+    # Find the Census ZIP file
+    census_zip = find_census_zip()
+    if not census_zip:
+        return
+
+    all_summaries = ["# Census Table Metadata Analysis (G17, G18, G19)\n"]
+
+    for table in TARGET_TABLES:
+        # 1. Extract metadata from Excel files
+        excel_metadata = extract_metadata_from_excel(METADATA_FILE, TEMPLATE_FILE, table)
+
+        # 2. Extract structure from actual CSV file in ZIP
+        csv_metadata = extract_csv_structure_from_zip(census_zip, table)
+
+        # 3. Compare and summarize
+        summary = compare_and_summarize(excel_metadata, csv_metadata)
+        all_summaries.append(summary)
+
+    # Save the combined summary to a Markdown file
+    output_md_file = config.PATHS['OUTPUT_DIR'] / "g17_g18_g19_metadata_analysis.md"
+    try:
+        output_md_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_md_file, 'w') as f:
+            f.write("\n".join(all_summaries))
+        logger.info(f"Metadata analysis summary saved to: {output_md_file}")
+    except Exception as e:
+        logger.error(f"Error saving summary Markdown file: {e}")
+
+    logger.info("=== Metadata Analysis Complete ===")
 
 if __name__ == "__main__":
-    logger.info("Starting analysis of G17, G18, and G19 files...")
-    
-    # Specify the table codes to analyze
-    table_codes = ["17", "18", "19"]
-    
-    # Analyze the files
-    results = analyze_all_files(table_codes)
-    
-    # Write the results to a Markdown file
-    write_results_to_markdown(results)
-    
-    logger.info("Analysis complete!") 
+    main() 

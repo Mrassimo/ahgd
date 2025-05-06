@@ -1,3 +1,13 @@
+"""
+Script for extracting metadata from all G-tables in the ABS Census data.
+
+This script reads the metadata Excel file, identifies all G-tables, and extracts their structure, including headers, variables, and notes, based on the template file. It outputs the metadata to a Markdown file for documentation purposes.
+
+Usage:
+   Run this script to generate a comprehensive metadata document for all census tables.
+"""
+
+#!/usr/bin/env python3
 #!/usr/bin/env python3
 import pandas as pd
 import os
@@ -7,262 +17,234 @@ import re
 import logging
 from typing import List, Tuple, Dict, Any, Optional
 import openpyxl # Needed to read xlsx
+import zipfile
+import json
 
-# Setup basic logging for the script
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+# Add project root to sys.path to allow importing etl_logic
+project_root = Path(__file__).resolve().parents[2] # Assuming scripts/analysis/ is two levels down
+sys.path.insert(0, str(project_root))
+
+# Import config and utils after setting path
+from etl_logic import config
+from etl_logic import utils # Assuming setup_logging is in utils
+
+# Setup logging (optional, adjust level as needed)
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# --- Configuration ---
-# Adjust these paths if your metadata files are elsewhere
-# Use environment variables or default to relative paths from the script's location
-SCRIPT_DIR = Path(__file__).parent.resolve()
-PROJECT_ROOT_DIR = SCRIPT_DIR.parent.parent # Assumes scripts/analysis is two levels down from project root
-METADATA_BASE_DIR = Path(os.getenv('METADATA_DIR', PROJECT_ROOT_DIR / 'data/raw/Metadata'))
-MEMORY_BANK_DIR = Path(os.getenv('MEMORY_BANK_DIR', PROJECT_ROOT_DIR / 'memory-bank'))
+# Define paths using config
+METADATA_DIR = config.PATHS.get('METADATA_DIR', config.PATHS['RAW_DATA_DIR'] / "Metadata")
+CENSUS_ZIP_DIR = config.PATHS['CENSUS_DIR']
+OUTPUT_DIR = config.PATHS['OUTPUT_DIR']
 
-METADATA_FILE = METADATA_BASE_DIR / "Metadata_2021_GCP_DataPack_R1_R2.xlsx"
-TEMPLATE_FILE = METADATA_BASE_DIR / "2021_GCP_Sequential_Template_R2.xlsx"
-OUTPUT_MD_FILE = MEMORY_BANK_DIR / "all_census_tables_metadata.md"
-# ---
+# Constants
+METADATA_FILENAME = "Metadata_2021_GCP_DataPack_R1_R2.xlsx"
+TEMPLATE_FILENAME = "2021_GCP_Sequential_Template_R2.xlsx"
+LIST_OF_TABLES_SHEET = "List of tables"
+OUTPUT_JSON_FILENAME = "all_tables_metadata_analysis.json"
 
-def get_all_g_tables() -> List[Tuple[str, str]]:
-    """Extracts all G-table numbers and names from the main metadata file."""
-    g_tables = []
-    logger.info(f"Attempting to read metadata from: {METADATA_FILE}")
-    if not METADATA_FILE.exists():
-        logger.error(f"Metadata file not found: {METADATA_FILE}")
+def find_census_zip() -> Optional[Path]:
+    """Finds the main Census GCP ZIP file."""
+    patterns = [
+        "2021_GCP_all_for_AUS_short-header.zip",
+        "2021_GCP_*.zip"
+    ]
+    for pattern in patterns:
+        zip_files = list(CENSUS_ZIP_DIR.glob(pattern))
+        if zip_files:
+            found_zip = zip_files[0]
+            logger.info(f"Using Census ZIP file: {found_zip}")
+            return found_zip
+    logger.error(f"Could not find Census GCP ZIP file in {CENSUS_ZIP_DIR}")
+    return None
+
+def get_all_g_table_codes(metadata_file_path: Path) -> List[str]:
+    """Extracts all table codes starting with 'G' from the metadata file."""
+    if not metadata_file_path.exists():
+        logger.error(f"Metadata file not found: {metadata_file_path}")
         return []
-      
     try:
-        # Find the sheet containing the list of tables
-        xlsx = pd.ExcelFile(METADATA_FILE)
-        list_sheet_name = None
-        # More robust sheet finding
-        possible_sheet_names = [
-            "Table Number, Name, Population", 
-            "List of tables", 
-            "Tables" # Add other potential names if needed
-        ]
-        for sheet in xlsx.sheet_names:
-             if any(possible_name.lower() in sheet.lower() for possible_name in possible_sheet_names):
-                 list_sheet_name = sheet
-                 logger.info(f"Found table list sheet: '{list_sheet_name}'")
-                 break
-      
-        if not list_sheet_name:
-            logger.error(f"Could not find a 'List of tables' sheet in {METADATA_FILE.name}. Sheets found: {xlsx.sheet_names}")
+        tables_df = pd.read_excel(metadata_file_path, sheet_name=LIST_OF_TABLES_SHEET)
+        # Assuming 'Table Number' column exists
+        if 'Table Number' in tables_df.columns:
+            g_tables = tables_df[tables_df['Table Number'].astype(str).str.startswith('G', na=False)]
+            codes = sorted(g_tables['Table Number'].unique().tolist())
+            logger.info(f"Found {len(codes)} G-table codes in metadata: {codes}")
+            return codes
+        else:
+            logger.warning(f"'Table Number' column not found in '{LIST_OF_TABLES_SHEET}' sheet.")
             return []
-
-        # Determine header row by looking for 'Table Number'
-        df_peek = pd.read_excel(METADATA_FILE, sheet_name=list_sheet_name, header=None, nrows=15)
-        header_row = 0
-        for idx, row in df_peek.iterrows():
-            if any('table number' in str(cell).lower() for cell in row):
-                header_row = idx
-                logger.info(f"Detected header row at index {header_row}")
-                break
-        else:
-             logger.warning("Could not reliably detect header row, assuming 7 (0-indexed).")
-             header_row = 7 # Default if not found
-
-        logger.info(f"Reading table list from sheet: '{list_sheet_name}', skipping {header_row} rows.")
-        df = pd.read_excel(METADATA_FILE, sheet_name=list_sheet_name, skiprows=header_row)
-
-        # Find columns likely containing table number and name (case-insensitive)
-        table_num_col = next((col for col in df.columns if 'number' in str(col).lower()), None)
-        table_name_col = next((col for col in df.columns if 'name' in str(col).lower()), None)
-      
-        if not table_num_col or not table_name_col:
-            logger.error(f"Could not identify 'Table Number' or 'Table Name' columns in sheet '{list_sheet_name}'. Found: {df.columns.tolist()}")
-            return []
-          
-        logger.info(f"Using columns: '{table_num_col}' (Number), '{table_name_col}' (Name)")
-
-        # Filter for G-tables (handle potential float conversion if numbers read as float)
-        df[table_num_col] = df[table_num_col].astype(str).str.replace(r'\.0$', '', regex=True) # Remove trailing .0
-        g_table_rows = df[df[table_num_col].str.match(r'^G\d+[A-Z]?$', na=False)]
-      
-        g_tables = list(g_table_rows[[table_num_col, table_name_col]].itertuples(index=False, name=None))
-        logger.info(f"Found {len(g_tables)} G-tables in metadata.")
-      
-    except FileNotFoundError:
-        logger.error(f"Metadata file not found: {METADATA_FILE}")
     except Exception as e:
-        logger.error(f"Error reading metadata file {METADATA_FILE.name}: {e}", exc_info=True)
-      
-    return sorted(g_tables)
+        logger.error(f"Error reading '{LIST_OF_TABLES_SHEET}' sheet from {metadata_file_path}: {e}")
+        return []
 
-def extract_table_structure(table_id: str, xlsx: pd.ExcelFile) -> Dict[str, Any]:
-    """Extracts structure information for a specific table from the template file."""
-    structure = {"id": table_id, "title": f"G{table_id} (Title not found)", "headers": [], "variables": [], "notes": []}
-  
-    if table_id not in xlsx.sheet_names:
-        logger.warning(f"Sheet '{table_id}' not found in template file.")
-        structure["error"] = "Sheet not found in template."
-        return structure
+def extract_metadata_from_excel(metadata_file_path: Path, template_file_path: Path, table_code: str) -> dict:
+    """Extracts metadata for a table from both the main metadata file and the template file."""
+    logger.info(f"Extracting metadata for {table_code} from Excel files...")
+    metadata = {
+        'table_code': table_code,
+        'description': "Not found",
+        'population': "Unknown",
+        'source_sheet': "Not found",
+        'template_columns': [],
+        'template_sample_row': []
+    }
+
+    # 1. Extract from main metadata file ('List of tables')
+    if metadata_file_path.exists():
+        try:
+            # Read only once if possible, maybe pass df as arg?
+            tables_df = pd.read_excel(metadata_file_path, sheet_name=LIST_OF_TABLES_SHEET)
+            table_info = tables_df[tables_df.apply(lambda row: row.astype(str).str.contains(f'^{table_code}(?:[A-Z])?$', na=False, case=False, regex=True).any(), axis=1)] # Match GXX or GXXA etc.
+            if not table_info.empty:
+                metadata['source_sheet'] = LIST_OF_TABLES_SHEET
+                desc_col = next((col for col in ['Table Title', 'Description', 'Table Name', tables_df.columns[1]] if col in table_info.columns), None)
+                pop_col = next((col for col in ['Population', 'Pop', tables_df.columns[2]] if col in table_info.columns), None)
+                metadata['description'] = table_info.iloc[0][desc_col] if desc_col and pd.notna(table_info.iloc[0][desc_col]) else "Description unavailable"
+                metadata['population'] = table_info.iloc[0][pop_col] if pop_col and pd.notna(table_info.iloc[0][pop_col]) else "Population unavailable"
+                logger.debug(f"  Found basic info for {table_code} in {metadata_file_path.name}")
+            else:
+                logger.debug(f"  {table_code} not found in '{LIST_OF_TABLES_SHEET}' sheet.")
+        except Exception as e:
+            logger.warning(f"Could not process '{LIST_OF_TABLES_SHEET}' in {metadata_file_path.name}: {e}")
+    else:
+        logger.warning(f"Main metadata file not found: {metadata_file_path}")
+
+    # 2. Extract structure from template file (Sheet named like table_code)
+    if template_file_path.exists():
+        try:
+            xlsx = pd.ExcelFile(template_file_path)
+            if table_code in xlsx.sheet_names:
+                logger.debug(f"  Found sheet '{table_code}' in template file. Reading structure...")
+                df_template = pd.read_excel(template_file_path, sheet_name=table_code, nrows=20)
+                if metadata['source_sheet'] == 'Not found':
+                    metadata['source_sheet'] = f'Template Sheet: {table_code}'
+                if metadata['description'] == "Not found":
+                    for i in range(min(5, df_template.shape[0])):
+                        cell_value = str(df_template.iloc[i, 0])
+                        if table_code in cell_value or 'table' in cell_value.lower():
+                            metadata['description'] = cell_value
+                            break
+                header_row_idx = -1
+                for i in range(5, 15):
+                     if i < df_template.shape[0]:
+                         row_vals = df_template.iloc[i].dropna().astype(str).str.lower().tolist()
+                         if any(term in rv for term in ['tot', 'male', 'female', 'median', 'assist', 'arth', 'asth', 'code', '_key', 'years'] for rv in row_vals):
+                             header_row_idx = i
+                             break
+                if header_row_idx != -1:
+                    metadata['template_columns'] = [str(col) for col in df_template.iloc[header_row_idx].dropna().tolist()]
+                    logger.debug(f"  Extracted {len(metadata['template_columns'])} template columns from row {header_row_idx + 1}")
+                else:
+                     logger.debug(f"  Could not identify template column row for {table_code}.")
+                first_data_idx = df_template.iloc[:, 0].first_valid_index()
+                if first_data_idx is not None and first_data_idx + 1 < df_template.shape[0]:
+                     metadata['template_sample_row'] = [str(item) for item in df_template.iloc[first_data_idx + 1].dropna().tolist()]
+                     logger.debug(f"  Extracted template sample row from row {first_data_idx + 2}")
+            else:
+                logger.debug(f"  Sheet '{table_code}' not found in template file.")
+        except Exception as e:
+            logger.warning(f"Could not process template file {template_file_path.name} for sheet {table_code}: {e}")
+    else:
+        logger.warning(f"Template file not found: {template_file_path}")
+
+    return metadata
+
+def extract_csv_structure_from_zip(zip_filepath: Path, table_code: str) -> dict:
+    """Extracts actual column names and types from the first matching CSV in a ZIP."""
+    logger.info(f"Extracting CSV structure for {table_code} from {zip_filepath.name}...")
+    csv_structure = {
+        'actual_columns': [],
+        'actual_dtypes': {},
+        'found_csv_filename': None
+    }
+    if not zip_filepath.exists():
+        logger.error(f"ZIP file not found: {zip_filepath}")
+        return csv_structure
+
+    # Pattern specific to the table code, allowing for A/B/C suffixes
+    csv_pattern = re.compile(rf"2021.*?Census.*?{table_code}[A-Z]?_.*?.(SA[1-4]|STE|AUS|POA|LGA|GCC).csv", re.IGNORECASE)
 
     try:
-        logger.debug(f"Reading sheet: {table_id}")
-        # Read more rows to better capture structure, don't assume header row
-        df = pd.read_excel(xlsx, sheet_name=table_id, header=None, nrows=50) 
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            found_files = []
+            for file_info in zip_ref.infolist():
+                if csv_pattern.search(file_info.filename):
+                     found_files.append(file_info.filename)
 
-        # --- Extract Title (Usually around row 3, col A) ---
-        for i in range(min(5, df.shape[0])): # Check first few rows
-             val = df.iloc[i, 0]
-             if pd.notna(val) and isinstance(val, str) and val.startswith(f'G{table_id.replace("G","").split("A")[0]}'): # More robust title check
-                 structure["title"] = " ".join(str(val).split()) # Clean extra whitespace
-                 logger.debug(f"Found title: {structure['title']}")
-                 break
-      
-        # --- Extract Headers (Rows before the main data variables) ---
-        # Look for rows with multiple non-null values, often defining dimensions like Age/Sex/Condition
-        header_end_row = 0
-        potential_header_rows = []
-        for r in range(5, 20): # Search range for headers
-            if r >= df.shape[0]: break
-            # Get non-null string values, stripping whitespace
-            row_vals = [str(v).strip() for v in df.iloc[r].tolist() if pd.notna(v) and str(v).strip()]
-            # Crude check: if a row has several short-ish items, it might be a header
-            if len(row_vals) > 2 and all(len(v) < 50 for v in row_vals):
-                 potential_header_rows.append(f"Row {r+1}: {', '.join(row_vals)}")
-                 header_end_row = r
-            elif len(row_vals) > 0 and any(kw in str(row_vals[0]).lower() for kw in ['total', 'persons', 'males', 'females']):
-                 # Stop if we hit something looking like data totals
-                 logger.debug(f"Stopping header search at row {r+1} due to potential data totals.")
-                 break
-        structure["headers"] = potential_header_rows
-               
-        # --- Extract Variables (Often start after headers, look for definitions in early columns) ---
-        potential_var_start = header_end_row + 1
-        variable_candidates = []
-        for r in range(potential_var_start, min(potential_var_start + 30, df.shape[0])):
-             # Look for non-empty cells in the first few columns
-             row_start = [str(df.iloc[r, c]).strip() for c in range(min(3, df.shape[1])) if pd.notna(df.iloc[r, c]) and str(df.iloc[r, c]).strip()]
-             if row_start:
-                 # Check if it looks like a variable definition (not just 'Total' or numeric)
-                 is_total = all(str(v).lower() == 'total' for v in row_start)
-                 is_numeric = all(re.match(r'^-?\d+(\.\d+)?$', v) for v in row_start)
-                 if not is_total and not is_numeric:
-                      variable_candidates.append(f"Row {r+1}: {' | '.join(row_start)}")
-        structure["variables"] = variable_candidates
+            if not found_files:
+                logger.warning(f"No CSV files matching pattern for {table_code} found in the ZIP.")
+                return csv_structure
 
-        # --- Extract Notes (Often at the bottom) ---
-        notes_candidates = []
-        for r in range(df.shape[0] - 1, max(0, df.shape[0] - 10), -1):
-             val = df.iloc[r, 0]
-             # Check if it looks like a footnote (e.g., starts with (a), (b), *)
-             if pd.notna(val) and isinstance(val, str) and re.match(r'^\s*(\(\w+\)|\*|\d+\.)', val.strip()):
-                 notes_candidates.insert(0, f"- {val.strip()}") # Prepend notes
-             elif pd.notna(val) and isinstance(val, str) and len(val) > 20: # Catch longer text notes
-                 notes_candidates.insert(0, f"- {val.strip()}")
-        structure["notes"] = notes_candidates
-
+            # Process the first matching file found
+            first_match_filename = sorted(found_files)[0]
+            logger.debug(f"  Found {len(found_files)} matching CSV(s). Processing first: {first_match_filename}")
+            csv_structure['found_csv_filename'] = first_match_filename
+            try:
+                with zip_ref.open(first_match_filename) as csv_file:
+                    df = pd.read_csv(csv_file, nrows=5, low_memory=False)
+                    csv_structure['actual_columns'] = df.columns.tolist()
+                    csv_structure['actual_dtypes'] = {col: str(dtype) for col, dtype in df.dtypes.items()}
+                    logger.debug(f"  Extracted {len(df.columns)} columns from {first_match_filename}")
+            except Exception as e:
+                logger.error(f"  Error reading CSV '{first_match_filename}' from ZIP: {e}")
+                # Return partial info even on read error
     except Exception as e:
-        logger.error(f"Error parsing sheet '{table_id}': {e}", exc_info=True)
-        structure["error"] = str(e)
-      
-    return structure
+        logger.error(f"Error opening or reading ZIP file {zip_filepath.name}: {e}")
 
-def write_metadata_to_markdown(all_tables_metadata: List[Dict[str, Any]]):
-    """Writes the extracted metadata for all tables to a markdown file."""
-    OUTPUT_MD_FILE.parent.mkdir(parents=True, exist_ok=True)
-  
-    content = ["# ABS Census 2021 GCP - All G-Table Metadata\n\n"]
-    content.append(f"*Source Metadata File:* `{METADATA_FILE.name}`\n")
-    content.append(f"*Source Template File:* `{TEMPLATE_FILE.name}`\n\n")
-    content.append("This document summarizes the structure of all G-tables found in the metadata template file. Use this as a reference when implementing processing logic for specific tables.\n\n")
+    return csv_structure
 
-    for table_info in all_tables_metadata:
-        content.append(f"## {table_info['id']}: {table_info['title']}\n\n")
-      
-        if table_info.get("error"):
-            content.append(f"**Error processing this table:** {table_info['error']}\n\n")
-            content.append("---\n\n")
-            continue
+def main():
+    """Main function to drive the metadata extraction for all G-tables."""
+    logger.info("=== Starting All Tables Metadata Analysis ===")
 
-        if table_info["headers"]:
-            content.append("**Potential Headers (from Template Rows ~5-20):**\n")
-            content.extend([f"  - {h}\n" for h in table_info["headers"]])
-            content.append("\n")
+    metadata_file = METADATA_DIR / METADATA_FILENAME
+    template_file = METADATA_DIR / TEMPLATE_FILENAME
+
+    # Find the Census ZIP file
+    census_zip = find_census_zip()
+    if not census_zip:
+        logger.warning("Cannot proceed without Census ZIP file to check actual CSVs.")
+        # Continue with Excel metadata only?
+        # return
+
+    # Get all G-table codes
+    all_g_codes = get_all_g_table_codes(metadata_file)
+    if not all_g_codes:
+        logger.error("No G-table codes found. Cannot proceed.")
+        return
+
+    all_tables_metadata = {}
+
+    for table in all_g_codes:
+        # 1. Extract metadata from Excel files
+        excel_metadata = extract_metadata_from_excel(metadata_file, template_file, table)
+
+        # 2. Extract structure from actual CSV file in ZIP (if zip found)
+        csv_metadata = {}
+        if census_zip:
+            csv_metadata = extract_csv_structure_from_zip(census_zip, table)
         else:
-            content.append("**Potential Headers:** (None detected in typical range)\n\n")
-          
-        if table_info["variables"]:
-            content.append("**Potential Variables/Characteristics (from Template Rows ~20-50, first few columns):**\n")
-            content.extend([f"  - {v}\n" for v in table_info["variables"]])
-            content.append("\n")
-        else:
-            content.append("**Potential Variables/Characteristics:** (None detected in typical range)\n\n")
+             logger.warning(f"Skipping actual CSV check for {table} as ZIP file was not found.")
 
+        # Combine metadata
+        # Prioritize actual CSV columns/types if available
+        combined_meta = excel_metadata.copy()
+        combined_meta.update(csv_metadata)
+        all_tables_metadata[table] = combined_meta
 
-        if table_info["notes"]:
-            content.append("**Notes (from bottom of template sheet):**\n")
-            content.extend([f"  {n}\n" for n in table_info["notes"]]) # Indent notes
-            content.append("\n")
-        else:
-            content.append("**Notes:** (None detected)\n\n")
-          
-        content.append("---\n\n")
-
+    # Save the combined metadata to a JSON file
+    output_json_file = OUTPUT_DIR / OUTPUT_JSON_FILENAME
     try:
-        with open(OUTPUT_MD_FILE, "w", encoding="utf-8") as f:
-            f.writelines(content)
-        logger.info(f"Successfully wrote all table metadata to: {OUTPUT_MD_FILE}")
+        output_json_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_json_file, 'w') as f:
+            json.dump(all_tables_metadata, f, indent=4)
+        logger.info(f"Full table metadata analysis saved to: {output_json_file}")
     except Exception as e:
-        logger.error(f"Failed to write markdown file {OUTPUT_MD_FILE}: {e}")
+        logger.error(f"Error saving metadata analysis JSON file: {e}")
 
+    logger.info("=== All Tables Metadata Analysis Complete ===")
 
 if __name__ == "__main__":
-    logger.info("Starting metadata extraction for all G-tables...")
-  
-    if not METADATA_FILE.exists():
-         logger.error(f"Metadata file listing tables not found: {METADATA_FILE}")
-         sys.exit(1)
-    if not TEMPLATE_FILE.exists():
-         logger.error(f"Template file with structures not found: {TEMPLATE_FILE}")
-         sys.exit(1)
-       
-    g_tables = get_all_g_tables()
-  
-    if not g_tables:
-        logger.error("No G-tables found in metadata list. Exiting.")
-        sys.exit(1)
-      
-    all_metadata = []
-    try:
-        logger.info(f"Opening template file: {TEMPLATE_FILE.name}")
-        # Use openpyxl engine explicitly if needed, though default should work
-        xlsx_template = pd.ExcelFile(TEMPLATE_FILE, engine='openpyxl') 
-      
-        found_sheets = xlsx_template.sheet_names
-        logger.info(f"Found {len(found_sheets)} sheets in template file.")
-      
-        processed_ids = set()
-        for table_id, table_name in g_tables:
-             if table_id in processed_ids: continue # Skip duplicates like G19A/B/C if G19 was listed
-           
-             logger.info(f"Extracting structure for: {table_id} - {table_name}")
-             # Handle potential suffixes like G19A, G19B - check if base G19 exists first
-             base_table_id = re.match(r'(G\d+)', table_id).group(1) if re.match(r'(G\d+)', table_id) else table_id
-           
-             # If the specific sheet (e.g., G19A) exists, use it. Otherwise, try the base (e.g., G19).
-             sheet_to_process = table_id if table_id in found_sheets else base_table_id
-           
-             if sheet_to_process in found_sheets:
-                 metadata = extract_table_structure(sheet_to_process, xlsx_template)
-                 # Use the original ID from the list for the output dict
-                 metadata['id'] = table_id 
-                 metadata['title'] = f"{table_id}: {metadata['title']}" # Prepend ID to title
-                 all_metadata.append(metadata)
-                 processed_ids.add(base_table_id) # Mark base ID as processed
-             else:
-                 logger.warning(f"Sheet for {table_id} or base {base_table_id} not found in template.")
-                 all_metadata.append({"id": table_id, "title": table_name, "error": "Sheet not found in template."})
-
-        write_metadata_to_markdown(all_metadata)
-      
-    except Exception as e:
-        logger.error(f"An error occurred during template file processing: {e}", exc_info=True)
-        sys.exit(1)
-      
-    logger.info("Metadata extraction complete.") 
+    main() 

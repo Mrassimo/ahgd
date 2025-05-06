@@ -47,9 +47,12 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
     for level_name, prefix in config.GEO_LEVELS_SHP_PROCESS.items():
         logger.info(f"Processing {level_name} boundaries...")
         
-        # Construct zip filename and path
-        zip_filename = f"{prefix}_SHP.zip"
-        zip_path = zip_dir / zip_filename
+        # Construct zip filename and path (adjusted to match downloaded files without _SHP suffix)
+        expected_filename = f"{prefix}_SHP.zip"  # Expected based on previous logic
+        actual_filename = f"{prefix}"  # Actual downloaded filename
+        logger.info(f"Checking for {actual_filename} instead of {expected_filename}")
+        
+        zip_path = zip_dir / actual_filename  # Use the actual filename
         
         if not zip_path.exists():
             logger.error(f"ZIP file not found: {zip_path}")
@@ -101,9 +104,9 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
             # Project to GDA2020 / MGA zone 55 (EPSG:7855) which is suitable for most of Australia
             gdf = gdf.to_crs(epsg=7855)
             # Calculate geometric centroids
-            gdf['centroid_longitude'] = gdf.geometry.centroid.x
-            gdf['centroid_latitude'] = gdf.geometry.centroid.y
-            logger.info(f"[{level_name}] Calculated and added geometric centroids (longitude, latitude)")
+            gdf['longitude'] = gdf.geometry.centroid.x
+            gdf['latitude'] = gdf.geometry.centroid.y
+            logger.info(f"[{level_name}] Calculated and added centroids (longitude, latitude)")
             
             # Project back to GDA2020 geographic (EPSG:7844) for storage
             gdf = gdf.to_crs(epsg=7844)
@@ -116,8 +119,8 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
                 'geo_code': gdf[geo_col].apply(utils.clean_geo_code),
                 'geo_level': level_name,
                 'geometry': gdf['geometry_wkt'],
-                'centroid_longitude': gdf['centroid_longitude'],
-                'centroid_latitude': gdf['centroid_latitude']
+                'longitude': gdf['longitude'],
+                'latitude': gdf['latitude']
             })
             
             # Drop any rows with invalid codes or geometries
@@ -149,13 +152,28 @@ def process_geography(zip_dir: Path, temp_extract_base: Path, output_dir: Path) 
         logger.info("Adding surrogate key to combined geographic data...")
         final_geo_df = combined_df.with_row_index(name='geo_sk')  # Add unique integer SK
         
-        # Add ETL processed timestamp
+        # Add a record for unknown/unmatched geo codes
+        unknown_geo_record = pl.DataFrame({
+            'geo_sk': [-1],
+            'geo_code': ['UNKNOWN'],
+            'geo_level': ['UNKNOWN'],
+            'geometry': [None],
+            'longitude': [None],
+            'latitude': [None],
+            'etl_processed_at': [datetime.datetime.now()]
+        }).cast(final_geo_df.schema) # Ensure schema alignment
+        
+        # Combine the unknown record with the main data
+        final_geo_df = pl.concat([final_geo_df, unknown_geo_record], how="vertical")
+        logger.info("Added 'UNKNOWN' record with geo_sk = -1")
+        
+        # Add ETL processed timestamp (moved after adding unknown record to ensure it has one too)
         final_geo_df = final_geo_df.with_columns(pl.lit(datetime.datetime.now()).alias('etl_processed_at'))
         
         # Write to Parquet
         output_file = output_dir / "geo_dimension.parquet"
         # Ensure geo_sk is the first column followed by the other columns
-        final_geo_df = final_geo_df.select(['geo_sk', 'geo_code', 'geo_level', 'geometry', 'centroid_longitude', 'centroid_latitude', 'etl_processed_at'])
+        final_geo_df = final_geo_df.select(['geo_sk', 'geo_code', 'geo_level', 'geometry', 'longitude', 'latitude', 'etl_processed_at'])
         final_geo_df.write_parquet(output_file)
         logger.info(f"Successfully wrote combined geographic data to {output_file}")
         
@@ -203,13 +221,13 @@ def update_population_weighted_centroids(geo_output_path: Path, population_fact_
                 # Weight by population
                 weights = group['total_persons'] / group['total_persons'].sum()
                 # Calculate weighted average of centroids
-                weighted_lon = (group['centroid_lon'] * weights).sum()
-                weighted_lat = (group['centroid_lat'] * weights).sum()
+                weighted_lon = (group['longitude'] * weights).sum()
+                weighted_lat = (group['latitude'] * weights).sum()
                 return pd.Series({'pop_weighted_lon': weighted_lon, 'pop_weighted_lat': weighted_lat})
             else:
                 # If no population data, use geometric centroid
-                return pd.Series({'pop_weighted_lon': group['centroid_lon'].iloc[0], 
-                                'pop_weighted_lat': group['centroid_lat'].iloc[0]})
+                return pd.Series({'pop_weighted_lon': group['longitude'].iloc[0], 
+                                'pop_weighted_lat': group['latitude'].iloc[0]})
         
         # Calculate weighted centroids for each geographic level
         weighted_centroids = gdf.groupby('geo_level').apply(calculate_weighted_centroid).reset_index()

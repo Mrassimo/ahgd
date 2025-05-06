@@ -7,253 +7,311 @@ information about long-term health conditions by age and sex.
 import logging
 from pathlib import Path
 from typing import Optional, Dict, List
+import traceback
 
 import polars as pl
 
 from .. import config
 from .. import utils
+from ..census import process_census_table
+from ..config import CensusConfig
 
 logger = logging.getLogger('ahgd_etl')
 
 def process_g19_file(csv_file: Path) -> Optional[pl.DataFrame]:
-    """Process a single G19 Census CSV file.
-    
+    """Process a single G19 (Long-Term Health Conditions) Census CSV file.
+
     Args:
-        csv_file (Path): Path to the CSV file to process
-        
+        csv_file: Path to the CSV file to process.
+
     Returns:
-        Optional[pl.DataFrame]: Processed DataFrame or None if processing failed
+        Optional[pl.DataFrame]: Processed DataFrame or None if processing failed.
     """
     # Define table code
     table_code = "G19"
-    
+    logger.debug(f"[{table_code}] Processing file: {csv_file.name} using specific G19 processor.")
+
     # Define geographic column options
-    geo_column_options = [
-        'SA1_CODE_2021',
-        'SA2_CODE_2021',
-        'SA3_CODE_2021',
-        'SA4_CODE_2021',
-        'GCC_CODE_2021',
-        'STE_CODE_2021',
-        'LGA_CODE_2021'
-    ]
-    
+    geo_column_options = config.GEO_COLUMN_OPTIONS
+
     try:
         # Read the CSV file
         df = pl.read_csv(csv_file, truncate_ragged_lines=True)
         logger.info(f"[{table_code}] Read {len(df)} rows from {csv_file.name}")
-        
+
         # Identify geo_code column
         geo_code_column = utils.find_geo_column(df, geo_column_options)
         if not geo_code_column:
             logger.error(f"[{table_code}] Could not find geographic code column in {csv_file.name}")
             return None
         logger.info(f"[{table_code}] Found geographic code column: {geo_code_column}")
-        
+
         # Define patterns for column interpretation
-        sex_prefixes = ["M", "F", "P"]  # Male, Female, Person
-        
-        # Define health condition patterns and standardized names
-        condition_patterns = {
-            "Arthritis": "arthritis",
-            "Arth": "arthritis",
-            "Asthma": "asthma",
-            "Asth": "asthma",
-            "Cancer": "cancer",
-            "Can_rem": "cancer",
-            "Canc": "cancer",
-            "Dementia": "dementia",
-            "Dem_Alzh": "dementia",
-            "Dem": "dementia",
-            "Diabetes": "diabetes",
-            "Dia_ges_dia": "diabetes",
-            "Dia": "diabetes",
-            "Heart_disease": "heart_disease",
-            "HD_HA_ang": "heart_disease",
-            "HD": "heart_disease",
-            "Kidney_disease": "kidney_disease",
-            "Kid_dis": "kidney_disease",
-            "Kid": "kidney_disease",
-            "Lung_condition": "lung_condition",
-            "LC_COPD_emph": "lung_condition",
-            "LC": "lung_condition",
-            "Mental_health": "mental_health",
-            "MHC_Dep_anx": "mental_health",
-            "MH": "mental_health",
-            "Stroke": "stroke",
-            "Other": "other_condition",
-            "Oth": "other_condition",
-            "No_condition": "no_condition",
-            "No_LTHC": "no_condition",
-            "Not_stated": "not_stated",
-            "LTHC_NS": "not_stated"
-        }
-        
-        # Define age range patterns and standardized format
-        age_range_patterns = {
-            "0_4_yrs": "0-4",
-            "0_4": "0-4",
-            "5_14": "5-14",
-            "15_19": "15-19",
-            "20_24": "20-24",
-            "25_34": "25-34",
-            "35_44": "35-44",
-            "45_54": "45-54", 
-            "55_64": "55-64",
-            "65_74": "65-74",
-            "75_84": "75-84",
-            "85_over": "85+",
-            "85ov": "85+",
-            "Tot": "total"
-        }
-        
+        sex_prefixes = config.G19_UNPIVOT["sex_prefixes"]
+    except Exception as e:
+        logger.error(f"[{table_code}] Error processing CSV file {csv_file.name}: {str(e)}", exc_info=True)
+        return None
+        health_conditions = config.G19_UNPIVOT["health_conditions_map"]
+        age_range_patterns = config.G19_UNPIVOT["age_range_patterns"]
+
         value_vars = [] # List of columns to unpivot
-        parsed_cols = {} # Store parsing results
-        
-        # Process each column
+        parsed_cols = {}
+
         for col_name in df.columns:
-            if col_name == geo_code_column:
-                continue
-                
-            # Try to parse column in format: Sex_Condition_AgeGroup
-            parts = col_name.split('_')
-            if len(parts) < 2:
-                continue
-                
-            # Extract sex (most consistent part)
+            if col_name == geo_code_column: continue
+
+            # Parse column name format: Sex_Condition_AgeRange (order may vary)
+            parts = col_name.split('_', 1)
+            if len(parts) < 2: continue
+
             sex = parts[0]
-            if sex not in sex_prefixes:
-                continue
-                
-            # Join remaining parts to find condition
-            remaining = '_'.join(parts[1:])
-            
-            parsed_condition = None
+            if sex not in sex_prefixes: continue
+
+            remaining = parts[1]
+
+            condition = None
+            age_range = None
             age_part = None
-            
-            # Try to find condition
-            for cond_pattern, cond_name in condition_patterns.items():
-                if cond_pattern in remaining:
-                    parsed_condition = cond_name
-                    # Remove condition pattern to isolate age range
-                    age_part = remaining.replace(cond_pattern, "").strip("_")
-                    break
-                    
-            if not parsed_condition:
-                continue
-                
-            # Try to find age range in remaining part
-            parsed_age = None
-            if age_part:
-                for age_pattern, age_name in age_range_patterns.items():
-                    if age_pattern in age_part:
-                        parsed_age = age_name
-                        break
-                        
-            if not parsed_age:
-                parsed_age = "total"  # Default if no age range found
-                
-            # Create standardized column name
-            std_col = f"{sex}_{parsed_age}_{parsed_condition}"
-            parsed_cols[col_name] = std_col
+            matched_condition_key = None
+
+            # Find the health condition first (most distinct usually)
+            # Iterate known condition codes from longest to shortest
+            for cond_key in sorted(health_conditions.keys(), key=len, reverse=True):
+                 if cond_key in remaining:
+                     matched_condition_key = cond_key
+                     break
+
+            if matched_condition_key:
+                condition = health_conditions[matched_condition_key]
+                # Determine age part
+                try:
+                     idx = remaining.index(matched_condition_key)
+                     if idx == 0: age_part = remaining[len(matched_condition_key):].strip("_")
+                     else: age_part = remaining[:idx].strip("_")
+                except ValueError:
+                     age_part = remaining.replace(matched_condition_key, "").strip("_")
+            else:
+                 continue # Condition not found
+
+            # Find the age range from age_part
+            matched_age_key = None
+            for age_pat in sorted(age_range_patterns.keys(), key=len, reverse=True):
+                 if age_pat == age_part or age_pat.replace("_", "") == age_part:
+                     matched_age_key = age_pat
+                     break
+
+            if matched_age_key:
+                 age_range = age_range_patterns[matched_age_key]
+            elif age_part == 'Tot': # Handle total cases
+                 age_range = 'total'
+            else:
+                 logger.debug(f"[{table_code}] Could not parse age range '{age_part}' in column {col_name}")
+                 continue # Age range not found
+
+            # Store the parsed information
             value_vars.append(col_name)
-            
+            parsed_cols[col_name] = {
+                "sex": sex,
+                "condition": condition,
+                "age_range": age_range
+            }
+
         if not value_vars:
-            logger.error(f"[{table_code}] No valid columns found to process in {csv_file.name}")
+            logger.error(f"[{table_code}] No valid columns found to unpivot in {csv_file.name}")
             return None
-            
-        # Unpivot the data
-        id_vars = [geo_code_column]
-        df_long = df.melt(
-            id_vars=id_vars,
+
+        logger.info(f"[{table_code}] Unpivoting {len(value_vars)} columns.")
+
+        # Unpivot using melt
+        long_df = df.melt(
+            id_vars=[geo_code_column],
             value_vars=value_vars,
-            variable_name="characteristic",
+            variable_name="column_info",
             value_name="count"
         )
-        
-        # Add parsed characteristics
-        df_long = df_long.with_columns([
-            pl.col("characteristic").map_dict(parsed_cols).alias("parsed_characteristic")
-        ])
-        
-        # Split parsed characteristic into components
-        df_long = df_long.with_columns([
-            pl.col("parsed_characteristic").str.split("_").list.get(0).alias("sex"),
-            pl.col("parsed_characteristic").str.split("_").list.get(1).alias("age_group"),
-            pl.col("parsed_characteristic").str.split("_").list.get(2).alias("condition")
-        ])
-        
-        # Group by geographic code and condition
-        df_agg = df_long.group_by([
-            geo_code_column, "sex", "age_group", "condition"
-        ]).agg([
-            pl.col("count").sum().alias("count")
-        ])
-        
-        # Create the final DataFrame with condition counts
-        df_final = df_agg.pivot(
-            values="count",
-            index=[geo_code_column, "sex", "age_group"],
-            columns="condition",
-            aggregate_function="sum"
-        )
-        
-        # Rename columns to match target schema
-        df_final = df_final.rename({
-            "arthritis": "arthritis_count",
-            "asthma": "asthma_count",
-            "cancer": "cancer_count",
-            "dementia": "dementia_count",
-            "diabetes": "diabetes_count",
-            "heart_disease": "heart_disease_count",
-            "kidney_disease": "kidney_disease_count",
-            "lung_condition": "lung_condition_count",
-            "mental_health": "mental_health_count",
-            "stroke": "stroke_count",
-            "other_condition": "other_condition_count",
-            "no_condition": "no_condition_count",
-            "not_stated": "not_stated_count"
-        })
-        
-        # Fill any missing columns with 0
-        required_columns = [
-            "arthritis_count", "asthma_count", "cancer_count",
-            "dementia_count", "diabetes_count", "heart_disease_count",
-            "kidney_disease_count", "lung_condition_count", "mental_health_count",
-            "stroke_count", "other_condition_count", "no_condition_count",
-            "not_stated_count"
-        ]
-        for col in required_columns:
-            if col not in df_final.columns:
-                df_final = df_final.with_columns(pl.lit(0).alias(col))
-        
-        logger.info(f"[{table_code}] Successfully processed {csv_file.name}")
-        return df_final
-        
-    except Exception as e:
-        logger.error(f"[{table_code}] Error processing {csv_file.name}: {str(e)}")
-        return None
 
-def process_census_g19_data(zip_dir: Path, temp_extract_base: Path, output_dir: Path,
-                           geo_output_path: Path, time_sk: Optional[int] = None) -> bool:
-    """Process G19 Census data files and create health conditions fact table.
+        # Map parsed info back
+        long_df = long_df.with_columns([
+             pl.col("column_info").map_dict({k: v["sex"] for k, v in parsed_cols.items()}).alias("sex"),
+             pl.col("column_info").map_dict({k: v["condition"] for k, v in parsed_cols.items()}).alias("condition"),
+             pl.col("column_info").map_dict({k: v["age_range"] for k, v in parsed_cols.items()}).alias("age_range")
+        ])
+
+        # Clean geo_code and select final columns
+        result_df = long_df.select([
+            utils.clean_polars_geo_code(pl.col(geo_code_column)).alias("geo_code"),
+            pl.col("sex"),
+            pl.col("condition").alias("health_condition"),
+            pl.col("age_range"),
+            utils.safe_polars_int(pl.col("count")).alias("count") # Ensure count is integer
+        ]).filter(pl.col("count").is_not_null() & (pl.col("count") > 0)) # Remove rows with null or zero count
+
+        if len(result_df) == 0:
+            logger.warning(f"[{table_code}] No non-zero data after unpivoting {csv_file.name}")
+            return None
     
-    Args:
-        zip_dir (Path): Directory containing Census zip files
-        temp_extract_base (Path): Base directory for temporary file extraction
-        output_dir (Path): Directory to write output files
-        geo_output_path (Path): Path to geographic dimension file
-        time_sk (Optional[int]): Time dimension surrogate key
+        logger.info(f"[{table_code}] Created unpivoted DataFrame with {len(result_df)} rows")
+        return result_df
+
+def process_g19_census_data(config: CensusConfig, census_data_path: Path, output_path: Path) -> bool:
+        """Process all G19 Census data files and create health conditions fact table.
         
+        This function orchestrates the processing of all G19 Census files by:
+        - Finding and extracting relevant CSV files
+        - Processing each file using process_g19_file
+        - Combining results into a standardized fact table
+        - Writing final output as Parquet
+        
+        Args:
+            config: Census configuration object
+            census_data_path: Directory containing Census data files
+            output_path: Directory where output files should be written
+            
+        Returns:
+            bool: True if processing succeeded, False otherwise
+        """
+        return process_census_table(
+            table_code="G19",
+            process_file_function=process_g19_file,
+            output_filename="fact_health_conditions.parquet",
+            zip_dir=census_data_path,
+            temp_extract_base=config.extract_path,
+            output_dir=output_path,
+            geo_output_path=config.geography_output_path,
+            time_sk=config.time_sk
+        )
+def process_g19_detailed_csv(csv_file: Path) -> Optional[pl.DataFrame]:
+    """Process a G19 detailed file (G19A, G19B, G19C) to extract specific health condition data.
+
+    Args:
+        csv_file: Path to the G19 CSV file to process.
+
     Returns:
-        bool: True if processing succeeded, False otherwise
+        Optional[pl.DataFrame]: Processed DataFrame with unpivoted health condition data,
+                               or None if processing failed.
     """
-    return utils.process_census_table(
-        table_id="G19",
-        zip_dir=zip_dir,
-        temp_extract_base=temp_extract_base,
-        output_dir=output_dir,
-        geo_output_path=geo_output_path,
-        time_sk=time_sk,
-        process_file_func=process_g19_file
-    )
+    table_code = "G19_detailed" # Use distinct code for logging
+    logger.info(f"[{table_code}] Processing G19 detailed file: {csv_file.name}")
+
+    try:
+        # Read CSV file
+        df = pl.read_csv(csv_file, truncate_ragged_lines=True) # Added truncate_ragged_lines
+        logger.info(f"[{table_code}] Read {len(df)} rows from {csv_file.name}")
+
+        # Log column names for debugging
+        logger.debug(f"[{table_code}] Available columns: {df.columns}") # Log all for debug
+
+        # Identify the geo_code column - handle various geographic codes
+        geo_cols = config.GEO_COLUMN_OPTIONS
+
+        geo_code_column = utils.find_geo_column(df, geo_cols)
+
+        if not geo_code_column:
+            logger.error(f"[{table_code}] Could not find geographic code column in {csv_file.name}")
+            return None
+        logger.info(f"[{table_code}] Found geographic code column: {geo_code_column}")
+
+        # Identify G19 health condition columns
+        known_conditions = config.G19_UNPIVOT["health_conditions_map"]
+        sex_prefixes = config.G19_UNPIVOT["sex_prefixes"]
+        age_groups = config.G19_UNPIVOT["age_range_patterns"]
+
+        value_vars = []
+        parsed_cols = {}
+
+        # Iterate through columns to parse them
+        for col_name in df.columns:
+             if col_name == geo_code_column: continue
+
+             parts = col_name.split('_', 1)
+             if len(parts) < 2: continue
+
+             sex = parts[0]
+             if sex not in sex_prefixes: continue
+
+             remaining = parts[1]
+
+             condition = None
+             age_range = None
+             age_part = None
+             matched_condition_key = None
+
+             # Find condition
+             for cond_key in sorted(known_conditions.keys(), key=len, reverse=True):
+                  if cond_key in remaining:
+                      matched_condition_key = cond_key
+                      break
+
+             if matched_condition_key:
+                 condition = known_conditions[matched_condition_key]
+                 try:
+                      idx = remaining.index(matched_condition_key)
+                      if idx == 0: age_part = remaining[len(matched_condition_key):].strip("_")
+                      else: age_part = remaining[:idx].strip("_")
+                 except ValueError:
+                      age_part = remaining.replace(matched_condition_key, "").strip("_")
+             else:
+                  continue
+
+             # Find age range
+             matched_age_key = None
+             for age_pat in sorted(age_groups.keys(), key=len, reverse=True):
+                  if age_pat == age_part or age_pat.replace("_", "") == age_part:
+                     matched_age_key = age_pat
+                     break
+
+             if matched_age_key:
+                  age_range = age_groups[matched_age_key]
+             elif age_part == 'Tot':
+                  age_range = 'total'
+             else:
+                  continue
+
+             value_vars.append(col_name)
+             parsed_cols[col_name] = {
+                 "sex": sex,
+                 "condition": condition,
+                 "age_range": age_range
+             }
+
+        if not value_vars:
+            logger.error(f"[{table_code}] No valid condition columns found in {csv_file.name}")
+            return None
+
+        logger.info(f"[{table_code}] Identified {len(value_vars)} condition columns for unpivoting.")
+
+        # Unpivot using melt
+        long_df = df.melt(
+            id_vars=[geo_code_column],
+            value_vars=value_vars,
+            variable_name="column_info",
+            value_name="count"
+        )
+
+        # Map parsed info back
+        long_df = long_df.with_columns([
+             pl.col("column_info").map_dict({k: v["sex"] for k, v in parsed_cols.items()}).alias("sex"),
+             pl.col("column_info").map_dict({k: v["condition"] for k, v in parsed_cols.items()}).alias("condition"),
+             pl.col("column_info").map_dict({k: v["age_range"] for k, v in parsed_cols.items()}).alias("age_range")
+        ])
+
+        # Final selection and cleaning
+        result_df = long_df.select([
+             utils.clean_polars_geo_code(pl.col(geo_code_column)).alias("geo_code"),
+             pl.col("sex"),
+             pl.col("condition").alias("health_condition"),
+             pl.col("age_range"),
+             utils.safe_polars_int(pl.col("count")).alias("count")
+        ]).filter(pl.col("count").is_not_null() & (pl.col("count") > 0))
+
+        if len(result_df) == 0:
+            logger.warning(f"[{table_code}] No non-zero condition data found after processing {csv_file.name}")
+            return None
+
+        logger.info(f"[{table_code}] Created unpivoted DataFrame with {len(result_df)} rows")
+        return result_df
+
+    except Exception as e:
+        logger.error(f"[{table_code}] Error processing {csv_file.name}: {e}")
+        logger.error(traceback.format_exc()) # Log full traceback
+        return None

@@ -24,7 +24,33 @@ from shapely.geometry import mapping
 from shapely.validation import make_valid
 from tqdm.notebook import tqdm
 
+import functools
+
+
 # Custom exceptions
+def log_function_timing(func):
+    """Decorator that logs the execution time of the decorated function.
+    
+    Args:
+        func: The function to be decorated.
+        
+    Returns:
+        The wrapped function.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        result = func(*args, **kwargs)
+        end_time = time.perf_counter()
+        duration = end_time - start_time
+        
+        logger = logging.getLogger('ahgd_etl')
+        logger.info(f"Function '{func.__name__}' executed in {duration:.4f} seconds")
+        return result
+    
+    return wrapper
+
+
 class DownloadError(Exception):
     """Raised when a file download fails."""
     pass
@@ -586,3 +612,28 @@ def extract_census_files(zip_file: Path, extract_dir: Path, file_pattern: str) -
     except Exception as e:
         logger.error(f"Error opening {zip_file}: {str(e)}")
         raise
+
+def process_census_table(table_data: Union[pd.DataFrame, pl.DataFrame], table_name: str) -> Optional[bool]:
+    """Process a Census table data into a standardized format.
+    
+    Args:
+        table_data (Union[pd.DataFrame, pl.DataFrame]): The raw Census table data.
+        table_name (str): The name of the table being processed.
+    
+    Returns:
+        Optional[bool]: True if processing was successful, None or False otherwise.
+    """
+    logger = logging.getLogger('ahgd_etl')
+    try:
+        logger.info(f"Processing Census table: {table_name}")
+        # Convert to Polars if Pandas DataFrame
+        if isinstance(table_data, pd.DataFrame):
+            table_data = pl.from_pandas(table_data)
+        
+        # Basic processing logic placeholder
+        # Add specific cleaning, transformation, or validation steps here as needed
+        logger.info(f"Successfully processed {table_name} with {len(table_data)} rows")
+        return True
+    except Exception as e:
+        logger.error(f"Error processing {table_name}: {str(e)}")
+        return None

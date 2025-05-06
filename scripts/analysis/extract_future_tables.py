@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 # Path to the metadata files
-metadata_dir = Path("/Users/massimoraso/AHGD3/data/raw/Metadata")
+metadata_dir = config.PATHS['RAW_DATA_DIR'] / "Metadata"
 template_file = metadata_dir / "2021_GCP_Sequential_Template_R2.xlsx"
 
 # Define the set of tables we already have implemented

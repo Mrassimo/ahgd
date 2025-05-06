@@ -1,0 +1,26 @@
+{
+  "status": "success",
+  "missing_files": [],
+  "verification": {
+    "geo_sk": {
+      "fact_count": 62778,
+      "dim_count": 64703,
+      "missing": []
+    },
+    "time_sk": {
+      "fact_count": 1,
+      "dim_count": 7670,
+      "missing": []
+    },
+    "condition_sk": {
+      "fact_count": 3,
+      "dim_count": 16,
+      "missing": []
+    },
+    "demographic_sk": {
+      "fact_count": 25,
+      "dim_count": 90,
+      "missing": []
+    }
+  }
+}

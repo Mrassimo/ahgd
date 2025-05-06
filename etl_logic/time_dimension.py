@@ -108,7 +108,7 @@ def create_time_dimension(start_year: int, end_year: int) -> pl.DataFrame:
     
     # Apply the schema by selecting and casting columns
     time_df = time_df.select([
-        pl.col(col).cast(schema_types[col]) if col in time_df.columns else pl.lit(None).cast(schema_types[col]) 
+        pl.col(col).cast(schema_types[col]) if col in time_df.columns else pl.lit(None).cast(schema_types[col]).alias(col)
         for col in schema_columns
     ])
     

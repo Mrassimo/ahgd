@@ -1,58 +1,76 @@
 import zipfile
-import os
-from pathlib import Path
+import re
 import pandas as pd
+from pathlib import Path
+import sys
 
-# Path to the census zip file
-zip_path = Path('data/raw/census/2021_GCP_all_for_AUS_short-header.zip')
+# Add project root to sys.path to allow importing etl_logic
+project_root = Path(__file__).resolve().parents[2] # Assuming scripts/analysis/ is two levels down
+sys.path.insert(0, str(project_root))
 
-# Create temp directory if it doesn't exist
-os.makedirs('temp_extract', exist_ok=True)
+# Import config and utils after setting path
+from etl_logic import config
+from etl_logic import utils # Assuming setup_logging is in utils
 
-with zipfile.ZipFile(zip_path, 'r') as z:
-    # Find files matching G01 and SA1/SA2
-    g01_files = [f for f in z.namelist() if 'G01' in f and ('SA1' in f or 'SA2' in f)]
-    
-    print(f"Found {len(g01_files)} G01 files:")
-    for i, file in enumerate(g01_files):
-        print(f"{i+1}. {file}")
-    
-    # Extract and inspect the first few files
-    for i, file in enumerate(g01_files[:2]):  # Limit to first 2 files
-        print(f"\nExamining file: {file}")
-        z.extract(file, 'temp_extract')
-        
-        # Read first few rows with pandas
-        try:
-            df = pd.read_csv(Path('temp_extract') / file, nrows=2)
-            print(f"Shape: {df.shape}")
-            
-            # Look for the columns we need
-            needed_columns = {
-                "geo_code": ["SA1_CODE_2021", "SA2_CODE_2021", "region_id", "SA1_CODE21", "SA2_CODE21"],
-                "total_persons": ["Tot_P_P"],
-                "total_male": ["Tot_M_P", "Tot_P_M"],  # Check both possibilities
-                "total_female": ["Tot_F_P", "Tot_P_F"],  # Check both possibilities
-                "total_indigenous": ["Indigenous_P", "Indigenous_P_Tot_P"]  # Check both possibilities
-            }
-            
-            found_columns = {}
-            for our_col, possible_names in needed_columns.items():
-                for col_name in possible_names:
-                    if col_name in df.columns:
-                        found_columns[our_col] = col_name
-                        break
-            
-            print(f"Found matching columns:")
-            for our_col, actual_col in found_columns.items():
-                print(f"  {our_col} -> {actual_col}")
-                # Print sample values
-                print(f"    Sample: {df[actual_col].head(2).tolist()}")
-            
-            # Check what columns are missing
-            missing = [our_col for our_col in needed_columns.keys() if our_col not in found_columns]
-            if missing:
-                print(f"Missing columns: {missing}")
-                
-        except Exception as e:
-            print(f"Error reading file: {e}") 
+# Setup logging (optional, adjust level as needed)
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def inspect_zip_contents(zip_filepath: Path):
+    """Lists files within a ZIP archive, focusing on CSVs."""
+    logger.info(f"Inspecting contents of: {zip_filepath.name}")
+    if not zip_filepath.exists():
+        logger.error(f"ZIP file not found: {zip_filepath}")
+        return
+
+    try:
+        with zipfile.ZipFile(zip_filepath, 'r') as z:
+            all_files = z.namelist()
+            logger.info(f"Total files in archive: {len(all_files)}")
+
+            csv_files = [f for f in all_files if f.lower().endswith('.csv')]
+            logger.info(f"Found {len(csv_files)} CSV files.")
+
+            if not csv_files:
+                logger.warning("No CSV files found in the archive.")
+                return
+
+            logger.info("First 10 CSV files found:")
+            for csv_name in csv_files[:10]:
+                print(f"  - {csv_name}")
+
+            # Examine the first CSV found in detail
+            first_csv = csv_files[0]
+            logger.info(f"\n--- Examining first CSV file: {first_csv} ---")
+            try:
+                with z.open(first_csv) as csv_file:
+                    # Read header and first few rows using Pandas
+                    df = pd.read_csv(csv_file, nrows=5, low_memory=False)
+                    logger.info("First 5 rows (including header):")
+                    print(df.to_string())
+                    logger.info(f"Column Names ({len(df.columns)} total): {df.columns.tolist()}")
+                    logger.info("Data Types (Pandas inferred):")
+                    print(df.dtypes)
+            except Exception as e:
+                logger.error(f"Error reading CSV '{first_csv}' from ZIP: {e}")
+
+    except Exception as e:
+        logger.error(f"Error opening or reading ZIP file {zip_filepath.name}: {e}")
+
+def main():
+    """Main function to inspect the Census ZIP file."""
+    logger.info("=== Starting Census ZIP Inspection Script ===")
+
+    # Define path to the main Census ZIP file using config
+    # Assuming the filename is known or defined in config
+    gcp_all_filename = "2021_GCP_all_for_AUS_short-header.zip" # Assuming standard name
+    census_zip_path = config.PATHS['CENSUS_DIR'] / gcp_all_filename
+
+    # Inspect the contents
+    inspect_zip_contents(census_zip_path)
+
+    logger.info("=== Inspection Complete ===")
+
+if __name__ == "__main__":
+    main()
