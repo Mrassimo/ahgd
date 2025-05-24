@@ -5,41 +5,41 @@
 geographic:
   sa1:
     source_columns:
-      code: "SA1_CODE_2021"
-      name: "SA1_NAME_2021"
-      state_code: "STE_CODE_2021"
-      state_name: "STE_NAME_2021"
+      code: ["SA1_CODE_2021", "SA1_CODE_2"]  # Full and truncated versions
+      name: ["SA1_NAME_2021", "SA1_NAME_2"]
+      state_code: ["STE_CODE_2021", "STE_CODE_2"]
+      state_name: ["STE_NAME_2021", "STE_NAME_2"]
     level: "SA1"
   sa2:
     source_columns:
-      code: "SA2_CODE_2021"
-      name: "SA2_NAME_2021"
-      state_code: "STE_CODE_2021"
-      state_name: "STE_NAME_2021"
+      code: ["SA2_CODE_2021", "SA2_CODE_2"]
+      name: ["SA2_NAME_2021", "SA2_NAME_2"]
+      state_code: ["STE_CODE_2021", "STE_CODE_2"]
+      state_name: ["STE_NAME_2021", "STE_NAME_2"]
     level: "SA2"
   sa3:
     source_columns:
-      code: "SA3_CODE_2021"
-      name: "SA3_NAME_2021"
-      state_code: "STE_CODE_2021"
-      state_name: "STE_NAME_2021"
+      code: ["SA3_CODE_2021", "SA3_CODE_2"]
+      name: ["SA3_NAME_2021", "SA3_NAME_2"]
+      state_code: ["STE_CODE_2021", "STE_CODE_2"]
+      state_name: ["STE_NAME_2021", "STE_NAME_2"]
     level: "SA3"
   sa4:
     source_columns:
-      code: "SA4_CODE_2021"
-      name: "SA4_NAME_2021"
-      state_code: "STE_CODE_2021"
-      state_name: "STE_NAME_2021"
+      code: ["SA4_CODE_2021", "SA4_CODE_2"]
+      name: ["SA4_NAME_2021", "SA4_NAME_2"]
+      state_code: ["STE_CODE_2021", "STE_CODE_2"]
+      state_name: ["STE_NAME_2021", "STE_NAME_2"]
     level: "SA4"
   ste:
     source_columns:
-      code: "STE_CODE_2021"
-      name: "STE_NAME_2021"
+      code: ["STE_CODE_2021", "STE_CODE_2"]
+      name: ["STE_NAME_2021", "STE_NAME_2"]
     level: "STE"
   poa:
     source_columns:
-      code: "POA_CODE_2021"
-      name: "POA_NAME_2021"
+      code: ["POA_CODE_2021", "POA_CODE_2"]
+      name: ["POA_NAME_2021", "POA_NAME_2"]
     level: "POA"
 
 # Census table mappings
