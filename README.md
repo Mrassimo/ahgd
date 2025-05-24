@@ -20,43 +20,53 @@ This pipeline enables evidence-based healthcare decision making by integrating g
 
 ```
 AHGD/
-├── config.py               # Global configuration settings
-├── run_etl.py              # Main entry point for running ETL pipeline
+├── run_etl_enhanced.py     # Main entry point for running ETL pipeline
 ├── verify_surrogate_keys.py # Validation for surrogate key relationships
 ├── data/                   # Data input files (raw Census, shapefiles)
 ├── output/                 # Generated Parquet files
 ├── logs/                   # Log files
-├── etl_logic/              # Core ETL processing modules
-│   ├── config.py           # Detailed configuration settings
-│   ├── census.py           # Census data processing functions
-│   ├── geography.py        # Geographic data processing
-│   ├── dimensions.py       # Dimension table creation
-│   ├── time_dimension.py   # Time dimension generation
-│   ├── utils.py            # Utility functions
-│   ├── validation.py       # Data quality validation
-│   └── tables/             # Table-specific processing
-│       ├── g01_population.py
-│       ├── g17_income.py
-│       ├── g18_assistance_needed.py
-│       ├── g19_health_conditions.py
-│       ├── g20_selected_conditions.py
-│       ├── g21_conditions_by_characteristics.py
-│       └── g25_unpaid_assistance.py
+├── ahgd_etl/               # Core ETL package
+│   ├── config/             # Configuration system
+│   │   ├── yaml/           # YAML configuration files
+│   │   │   ├── schemas.yaml          # Schema definitions
+│   │   │   ├── column_mappings.yaml  # Input-to-output mappings
+│   │   │   └── data_sources.yaml     # External data source URLs
+│   │   └── settings.py     # Configuration manager
+│   ├── core/               # Core processing logic
+│   │   └── temp_fix/       # Temporary fix logic (migrating to standard flows)
+│   ├── loaders/            # Data loading with schema enforcement
+│   ├── models/             # Dimension and fact table models
+│   │   ├── dimensions.py   # Dimension table creation
+│   │   └── time_dimension.py # Time dimension generation
+│   ├── transformers/       # Data transformation logic
+│   │   ├── census/         # Census table transformers
+│   │   │   ├── g01_population.py
+│   │   │   ├── g17_income.py
+│   │   │   ├── g18_assistance_needed.py
+│   │   │   ├── g19_health_conditions.py
+│   │   │   ├── g20_selected_conditions.py
+│   │   │   ├── g21_conditions_by_characteristics.py
+│   │   │   └── g25_unpaid_assistance.py
+│   │   └── geo/            # Geographic data transformers
+│   │       └── geography.py # Geo data processing
+│   ├── validators/         # Data validation
+│   │   └── data_quality.py # Data quality validation
+│   └── utils.py            # Utility functions
 ├── scripts/                # Utility scripts
+├── docs/                   # Developer documentation
+│   └── tooling/            # Tool-specific configuration templates
 ├── tests/                  # Test suite
 │   ├── test_utils.py
 │   ├── test_validation.py
-│   ├── test_config.py
-│   ├── test_dimensions.py
-│   ├── test_geography.py
-│   ├── test_census.py
-│   ├── test_time_dimension.py
-│   ├── test_g21_processing.py
 │   └── test_data/          # Test data fixtures
 └── documentation/          # Project documentation
-    ├── planning.md         # Architecture and design decisions
-    └── datadicttext.md     # Data dictionary and schema details
+    ├── etl_data_model_diagram.md  # Data model visualization
+    ├── etl_outputs.md             # Output file documentation
+    ├── configuration_guide.md     # Configuration system guide
+    └── hardcoded_values_audit.md  # Audit of hardcoded values
 ```
+
+The legacy `etl_logic/` module is maintained for backward compatibility as the code is migrated to the new `ahgd_etl/` package structure.
 
 ## Data Model
 
@@ -104,30 +114,40 @@ echo "BASE_DIR=$(pwd)" > .env
 
 ## Running the Pipeline
 
-### Full Pipeline
+### Unified Pipeline (NEW - Use This!)
+The project now provides a single unified entry point that includes automatic data quality fixes:
+
 ```bash
-python run_etl.py --steps all
+python run_unified_etl.py
 ```
 
-### Specific Steps
+This replaces all legacy runners and fix scripts. See [QUICK_START.md](QUICK_START.md) for detailed usage.
+
+### Quick Examples
 ```bash
-# Download data only
-python run_etl.py --steps download
+# Full pipeline with automatic fixes
+python run_unified_etl.py
 
-# Process geographic data only
-python run_etl.py --steps geo
+# Process specific steps
+python run_unified_etl.py --steps geo time dimensions
 
-# Process specific Census tables
-python run_etl.py --steps g01 g17 g18
+# Export to Snowflake
+python run_unified_etl.py --mode export --snowflake-config snowflake/config.json
 
-# Run only validation
-python run_etl.py --steps validate
+# Validation only
+python run_unified_etl.py --mode validate
 ```
+
+### Legacy Entry Points (Being Phased Out)
+- `run_etl.py` - Original pipeline
+- `run_etl_enhanced.py` - Enhanced pipeline
+- `fix_all.py` - Separate fix script (no longer needed)
 
 ### Available Steps
 - `download`: Download required Census and geographic data
 - `geo`: Process geographic boundaries
 - `time`: Create time dimension
+- `dimensions`: Create dimension tables (includes unknown members)
 - `g01`: Process G01 (Population) Census data
 - `g17`: Process G17 (Income) Census data
 - `g18`: Process G18 (Assistance Needed) Census data
@@ -135,11 +155,11 @@ python run_etl.py --steps validate
 - `g20`: Process G20 (Selected Health Conditions) Census data
 - `g21`: Process G21 (Health Conditions by Characteristics) Census data
 - `g25`: Process G25 (Unpaid Assistance) Census data
-- `dimensions`: Create dimension tables
-- `validate`: Run data validation checks
+- `validate`: Run data quality validation checks
 
 ### Additional Options
 - `--force-download`: Force re-download of data files even if they exist
+- `--skip-validation`: Skip validation steps (not recommended for production)
 - `--stop-on-error`: Stop pipeline execution on first error
 
 ## Testing
@@ -168,21 +188,24 @@ pytest tests/test_g21_processing.py
 
 ## Configuration
 
-The main configuration is in `etl_logic/config.py` which includes:
+Configuration has been moved to a structured configuration system in the `ahgd_etl/config/` directory:
 
-- Paths for data, outputs, and logs
-- Data source URLs
-- Geographic levels to process
-- Census table patterns
-- Column mappings for Census tables
-- Data schemas for dimension and fact tables
+- **YAML Configuration Files**: Located in `ahgd_etl/config/yaml/`
+  - `schemas.yaml`: Defines schemas for all dimension and fact tables
+  - `column_mappings.yaml`: Maps source data columns to target dimensions and facts
+  - `data_sources.yaml`: Defines URLs and metadata for external data sources
 
-Environment-specific settings can be configured in the `.env` file:
+- **Settings Manager**: `ahgd_etl/config/settings.py` provides a unified interface for accessing all configuration
+
+Environment-specific settings should be configured in the `.env` file (see `.env.example` for a template):
 ```
-BASE_DIR=/path/to/project
-DATA_DIR=/custom/data/location  # Optional
-OUTPUT_DIR=/custom/output/location  # Optional
+RAW_DATA_DIR=./data/raw
+OUTPUT_DIR=./output
+VALIDATE_DATA=True
+LOG_LEVEL=INFO
 ```
+
+For a comprehensive guide to configuration, see [Configuration Guide](documentation/configuration_guide.md).
 
 ## Adding New Census Tables
 
@@ -229,10 +252,16 @@ To use in Colab:
 
 ## Contributing
 
-1. Ensure all tests pass before submitting pull requests
-2. Follow the established coding patterns and organisation
-3. Add appropriate tests for new features
-4. Update configuration and documentation as needed
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
+
+1. Project structure and organization
+2. Development workflow and standards
+3. Code style and patterns
+4. Testing requirements
+5. Configuration standards
+6. Documentation requirements
+
+All contributors should follow these guidelines to ensure consistency and maintainability.
 
 ## License
 

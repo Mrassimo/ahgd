@@ -1,0 +1,13 @@
+{
+  "account": "your_account.snowflakecomputing.com",
+  "user": "your_username",
+  "password": "your_password",
+  "warehouse": "COMPUTE_WH",
+  "database": "AHGD",
+  "schema": "PUBLIC",
+  "role": "ACCOUNTADMIN",
+  "options": {
+    "client_session_keep_alive": true,
+    "autocommit": true
+  }
+}

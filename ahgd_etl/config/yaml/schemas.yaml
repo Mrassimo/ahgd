@@ -1,0 +1,117 @@
+# AHGD Data Model Schemas
+# This file defines the schema for all dimension and fact tables in the AHGD data warehouse
+# Data types use Polars type system (Int64, Float64, Utf8, Boolean, Date)
+
+# Dimension Tables
+dimensions:
+  geo_dimension:
+    geo_sk: Int64  # Surrogate key for geography
+    geo_id: Utf8   # Natural key (SA1_CODE, SA2_CODE, etc.)
+    geo_level: Utf8  # SA1, SA2, SA3, etc.
+    geo_name: Utf8   # Geographic area name
+    state_code: Utf8  # State code
+    state_name: Utf8  # State name
+    latitude: Float64  # Centroid latitude
+    longitude: Float64  # Centroid longitude
+    geom: Utf8  # Optional: WKT or GeoJSON for visualization
+    parent_geo_sk: Int64  # Reference to parent geography (e.g., SA2 for SA1)
+    etl_processed_at: Datetime  # Processing timestamp
+
+  dim_time:
+    time_sk: Int64  # Surrogate key for time (YYYYMMDD format)
+    full_date: Date  # Full date
+    year: Int32  # Year component
+    quarter: Int32  # Quarter (1-4)
+    month: Int32  # Month number (1-12)
+    month_name: Utf8  # Month name
+    day_of_month: Int32  # Day of month (1-31)
+    day_of_week: Int32  # Day of week (0-6, where 0 is Monday)
+    day_name: Utf8  # Day name (Monday, Tuesday, etc.)
+    is_weekday: Boolean  # Flag for weekday (true) vs weekend (false)
+    financial_year: Utf8  # Financial year in format YYYY/YY
+    is_census_year: Boolean  # Flag for Census years
+    etl_processed_at: Datetime  # Processing timestamp
+
+  dim_health_condition:
+    condition_sk: Utf8  # Surrogate key for health condition
+    condition_code: Utf8  # Condition code
+    condition_name: Utf8  # Condition name
+    condition_category: Utf8  # Optional: Category of condition
+    is_unknown: Boolean  # Flag for unknown condition
+    etl_processed_at: Datetime  # Processing timestamp
+
+  dim_demographic:
+    demographic_sk: Utf8  # Surrogate key for demographic group
+    age_group: Utf8  # Age group
+    sex: Utf8  # Sex (Male, Female)
+    is_unknown: Boolean  # Flag for unknown demographic
+    etl_processed_at: Datetime  # Processing timestamp
+
+  dim_person_characteristic:
+    characteristic_sk: Utf8  # Surrogate key for characteristic
+    characteristic_type: Utf8  # Type of characteristic (income, employment, etc.)
+    characteristic_value: Utf8  # Specific value of the characteristic
+    characteristic_category: Utf8  # Optional: Higher-level grouping
+    is_unknown: Boolean  # Flag for unknown characteristic
+    etl_processed_at: Datetime  # Processing timestamp
+
+# Fact Tables
+facts:
+  fact_population:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    total_population: Int64  # Total population count
+    male_population: Int64  # Male population count
+    female_population: Int64  # Female population count
+    etl_processed_at: Datetime  # Processing timestamp
+
+  fact_income:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    demographic_sk: Utf8  # Reference to dim_demographic
+    characteristic_sk: Utf8  # Reference to dim_person_characteristic
+    median_income: Float64  # Median income
+    mean_income: Float64  # Mean income
+    count_persons: Int64  # Count of persons
+    etl_processed_at: Datetime  # Processing timestamp
+
+  fact_assistance_needed:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    demographic_sk: Utf8  # Reference to dim_demographic
+    has_need_for_assistance: Boolean  # Flag for assistance need
+    count_persons: Int64  # Count of persons
+    etl_processed_at: Datetime  # Processing timestamp
+
+  fact_health_conditions:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    condition_sk: Utf8  # Reference to dim_health_condition
+    demographic_sk: Utf8  # Reference to dim_demographic
+    count_persons: Int64  # Count of persons
+    etl_processed_at: Datetime  # Processing timestamp
+
+  fact_health_conditions_refined:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    condition_sk: Utf8  # Reference to dim_health_condition
+    demographic_sk: Utf8  # Reference to dim_demographic
+    characteristic_sk: Utf8  # Reference to dim_person_characteristic
+    count_persons: Int64  # Count of persons
+    etl_processed_at: Datetime  # Processing timestamp
+
+  fact_health_conditions_by_characteristic_refined:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    condition_sk: Utf8  # Reference to dim_health_condition
+    characteristic_sk: Utf8  # Reference to dim_person_characteristic
+    count_persons: Int64  # Count of persons
+    etl_processed_at: Datetime  # Processing timestamp
+
+  fact_no_assistance:
+    geo_sk: Int64  # Reference to geo_dimension
+    time_sk: Int64  # Reference to dim_time
+    demographic_sk: Utf8  # Reference to dim_demographic
+    unpaid_care_type: Utf8  # Type of unpaid care
+    count_persons: Int64  # Count of persons
+    etl_processed_at: Datetime  # Processing timestamp
