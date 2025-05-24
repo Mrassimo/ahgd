@@ -1,6 +1,5 @@
-"""
-Configuration module for AHGD ETL pipeline.
+"""Configuration package for AHGD ETL Pipeline."""
 
-This package contains configuration loading and management
-for the AHGD ETL pipeline.
-"""
+from .settings import Settings, get_settings
+
+__all__ = ["Settings", "get_settings"]

@@ -1,117 +1,392 @@
-# AHGD Data Model Schemas
-# This file defines the schema for all dimension and fact tables in the AHGD data warehouse
-# Data types use Polars type system (Int64, Float64, Utf8, Boolean, Date)
+# Schema Definitions for all tables
+# Using Polars data types
 
-# Dimension Tables
 dimensions:
   geo_dimension:
-    geo_sk: Int64  # Surrogate key for geography
-    geo_id: Utf8   # Natural key (SA1_CODE, SA2_CODE, etc.)
-    geo_level: Utf8  # SA1, SA2, SA3, etc.
-    geo_name: Utf8   # Geographic area name
-    state_code: Utf8  # State code
-    state_name: Utf8  # State name
-    latitude: Float64  # Centroid latitude
-    longitude: Float64  # Centroid longitude
-    geom: Utf8  # Optional: WKT or GeoJSON for visualization
-    parent_geo_sk: Int64  # Reference to parent geography (e.g., SA2 for SA1)
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Surrogate key for geographic dimension"
+      - name: geo_id
+        dtype: Utf8
+        nullable: false
+        description: "Official ABS geographic code"
+      - name: geo_level
+        dtype: Categorical
+        nullable: false
+        description: "Level of geography (SA1, SA2, SA3, SA4, STE, POA)"
+      - name: geo_name
+        dtype: Utf8
+        nullable: false
+        description: "Official name of the geographic area"
+      - name: state_code
+        dtype: Utf8
+        nullable: true
+        description: "State/Territory code"
+      - name: state_name
+        dtype: Utf8
+        nullable: true
+        description: "State/Territory name"
+      - name: latitude
+        dtype: Float64
+        nullable: true
+        description: "Latitude of centroid"
+      - name: longitude
+        dtype: Float64
+        nullable: true
+        description: "Longitude of centroid"
+      - name: geom
+        dtype: Utf8
+        nullable: true
+        description: "Geometry in WKT format"
+      - name: parent_geo_sk
+        dtype: Int64
+        nullable: true
+        description: "Link to parent geography"
+      - name: is_unknown
+        dtype: Boolean
+        nullable: false
+        default: false
+        description: "Flag for unknown member"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk]
+    indexes: [geo_id, geo_level]
 
   dim_time:
-    time_sk: Int64  # Surrogate key for time (YYYYMMDD format)
-    full_date: Date  # Full date
-    year: Int32  # Year component
-    quarter: Int32  # Quarter (1-4)
-    month: Int32  # Month number (1-12)
-    month_name: Utf8  # Month name
-    day_of_month: Int32  # Day of month (1-31)
-    day_of_week: Int32  # Day of week (0-6, where 0 is Monday)
-    day_name: Utf8  # Day name (Monday, Tuesday, etc.)
-    is_weekday: Boolean  # Flag for weekday (true) vs weekend (false)
-    financial_year: Utf8  # Financial year in format YYYY/YY
-    is_census_year: Boolean  # Flag for Census years
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Surrogate key (YYYYMMDD format)"
+      - name: full_date
+        dtype: Date
+        nullable: false
+        description: "The specific date"
+      - name: year
+        dtype: Int32
+        nullable: false
+        description: "Calendar year"
+      - name: quarter
+        dtype: Int8
+        nullable: false
+        description: "Calendar quarter (1-4)"
+      - name: month
+        dtype: Int8
+        nullable: false
+        description: "Calendar month (1-12)"
+      - name: month_name
+        dtype: Categorical
+        nullable: false
+        description: "Full name of the month"
+      - name: day_of_month
+        dtype: Int8
+        nullable: false
+        description: "Day number within the month"
+      - name: day_of_week
+        dtype: Int8
+        nullable: false
+        description: "Day number within the week (0=Mon, 6=Sun)"
+      - name: day_name
+        dtype: Categorical
+        nullable: false
+        description: "Full name of the day"
+      - name: is_weekday
+        dtype: Boolean
+        nullable: false
+        description: "True if Monday-Friday"
+      - name: financial_year
+        dtype: Utf8
+        nullable: false
+        description: "Australian Financial Year"
+      - name: is_census_year
+        dtype: Boolean
+        nullable: false
+        description: "True if Census year"
+      - name: is_unknown
+        dtype: Boolean
+        nullable: false
+        default: false
+        description: "Flag for unknown member"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [time_sk]
+    indexes: [full_date, year]
 
   dim_health_condition:
-    condition_sk: Utf8  # Surrogate key for health condition
-    condition_code: Utf8  # Condition code
-    condition_name: Utf8  # Condition name
-    condition_category: Utf8  # Optional: Category of condition
-    is_unknown: Boolean  # Flag for unknown condition
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: condition_sk
+        dtype: Utf8
+        nullable: false
+        description: "Surrogate key (MD5 hash)"
+      - name: condition_code
+        dtype: Utf8
+        nullable: false
+        description: "Standardized condition code"
+      - name: condition_name
+        dtype: Utf8
+        nullable: false
+        description: "Descriptive name of condition"
+      - name: condition_category
+        dtype: Categorical
+        nullable: true
+        description: "Broader grouping"
+      - name: is_unknown
+        dtype: Boolean
+        nullable: false
+        default: false
+        description: "Flag for unknown member"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [condition_sk]
+    indexes: [condition_code]
 
   dim_demographic:
-    demographic_sk: Utf8  # Surrogate key for demographic group
-    age_group: Utf8  # Age group
-    sex: Utf8  # Sex (Male, Female)
-    is_unknown: Boolean  # Flag for unknown demographic
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Surrogate key (MD5 hash)"
+      - name: age_group
+        dtype: Categorical
+        nullable: false
+        description: "Standardized age band"
+      - name: sex
+        dtype: Categorical
+        nullable: false
+        description: "Sex category (Male, Female, Persons)"
+      - name: is_unknown
+        dtype: Boolean
+        nullable: false
+        default: false
+        description: "Flag for unknown member"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [demographic_sk]
+    indexes: [age_group, sex]
 
   dim_person_characteristic:
-    characteristic_sk: Utf8  # Surrogate key for characteristic
-    characteristic_type: Utf8  # Type of characteristic (income, employment, etc.)
-    characteristic_value: Utf8  # Specific value of the characteristic
-    characteristic_category: Utf8  # Optional: Higher-level grouping
-    is_unknown: Boolean  # Flag for unknown characteristic
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: characteristic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Surrogate key (MD5 hash)"
+      - name: characteristic_type
+        dtype: Categorical
+        nullable: false
+        description: "Type of characteristic"
+      - name: characteristic_value
+        dtype: Utf8
+        nullable: false
+        description: "Specific value"
+      - name: characteristic_category
+        dtype: Categorical
+        nullable: true
+        description: "Higher-level grouping"
+      - name: is_unknown
+        dtype: Boolean
+        nullable: false
+        default: false
+        description: "Flag for unknown member"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [characteristic_sk]
+    indexes: [characteristic_type, characteristic_value]
 
-# Fact Tables
 facts:
   fact_population:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    total_population: Int64  # Total population count
-    male_population: Int64  # Male population count
-    female_population: Int64  # Female population count
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to geo_dimension"
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to dim_time"
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_demographic"
+      - name: total_persons
+        dtype: Int64
+        nullable: false
+        description: "Total person count"
+      - name: male_persons
+        dtype: Int64
+        nullable: true
+        description: "Male person count"
+      - name: female_persons
+        dtype: Int64
+        nullable: true
+        description: "Female person count"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk, time_sk, demographic_sk]
+    grain: "One row per geography, time, and demographic combination"
 
   fact_income:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    demographic_sk: Utf8  # Reference to dim_demographic
-    characteristic_sk: Utf8  # Reference to dim_person_characteristic
-    median_income: Float64  # Median income
-    mean_income: Float64  # Mean income
-    count_persons: Int64  # Count of persons
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to geo_dimension"
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to dim_time"
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_demographic"
+      - name: characteristic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_person_characteristic (income bracket)"
+      - name: person_count
+        dtype: Int64
+        nullable: false
+        description: "Number of persons"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk, time_sk, demographic_sk, characteristic_sk]
+    grain: "One row per geography, time, demographic, and income bracket"
 
   fact_assistance_needed:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    demographic_sk: Utf8  # Reference to dim_demographic
-    has_need_for_assistance: Boolean  # Flag for assistance need
-    count_persons: Int64  # Count of persons
-    etl_processed_at: Datetime  # Processing timestamp
-
-  fact_health_conditions:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    condition_sk: Utf8  # Reference to dim_health_condition
-    demographic_sk: Utf8  # Reference to dim_demographic
-    count_persons: Int64  # Count of persons
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to geo_dimension"
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to dim_time"
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_demographic"
+      - name: characteristic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_person_characteristic (assistance status)"
+      - name: person_count
+        dtype: Int64
+        nullable: false
+        description: "Number of persons"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk, time_sk, demographic_sk, characteristic_sk]
+    grain: "One row per geography, time, demographic, and assistance need status"
 
   fact_health_conditions_refined:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    condition_sk: Utf8  # Reference to dim_health_condition
-    demographic_sk: Utf8  # Reference to dim_demographic
-    characteristic_sk: Utf8  # Reference to dim_person_characteristic
-    count_persons: Int64  # Count of persons
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to geo_dimension"
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to dim_time"
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_demographic"
+      - name: condition_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_health_condition"
+      - name: characteristic_sk
+        dtype: Utf8
+        nullable: true
+        description: "Foreign key to dim_person_characteristic (optional)"
+      - name: person_count
+        dtype: Int64
+        nullable: false
+        description: "Number of persons"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk, time_sk, demographic_sk, condition_sk]
+    grain: "One row per geography, time, demographic, and health condition"
 
   fact_health_conditions_by_characteristic_refined:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    condition_sk: Utf8  # Reference to dim_health_condition
-    characteristic_sk: Utf8  # Reference to dim_person_characteristic
-    count_persons: Int64  # Count of persons
-    etl_processed_at: Datetime  # Processing timestamp
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to geo_dimension"
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to dim_time"
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_demographic"
+      - name: condition_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_health_condition"
+      - name: characteristic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_person_characteristic"
+      - name: person_count
+        dtype: Int64
+        nullable: false
+        description: "Number of persons"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk, time_sk, demographic_sk, condition_sk, characteristic_sk]
+    grain: "One row per geography, time, demographic, condition, and characteristic"
 
-  fact_no_assistance:
-    geo_sk: Int64  # Reference to geo_dimension
-    time_sk: Int64  # Reference to dim_time
-    demographic_sk: Utf8  # Reference to dim_demographic
-    unpaid_care_type: Utf8  # Type of unpaid care
-    count_persons: Int64  # Count of persons
-    etl_processed_at: Datetime  # Processing timestamp
+  fact_unpaid_assistance:
+    columns:
+      - name: geo_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to geo_dimension"
+      - name: time_sk
+        dtype: Int64
+        nullable: false
+        description: "Foreign key to dim_time"
+      - name: demographic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_demographic"
+      - name: characteristic_sk
+        dtype: Utf8
+        nullable: false
+        description: "Foreign key to dim_person_characteristic (assistance provision)"
+      - name: person_count
+        dtype: Int64
+        nullable: false
+        description: "Number of persons"
+      - name: etl_processed_at
+        dtype: Datetime
+        nullable: false
+        description: "Timestamp of ETL processing"
+    primary_key: [geo_sk, time_sk, demographic_sk, characteristic_sk]
+    grain: "One row per geography, time, demographic, and assistance provision status"

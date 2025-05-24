@@ -1,246 +1,287 @@
-# Column mappings for Census tables to dimensional model
-# This file defines how raw Census columns map to output fact and dimension tables
+# Column Mappings Configuration
+# Maps source data columns to target schema columns
 
-# Geographic column options for different tables
-geo_column_options:
-  - SA1_CODE
-  - SA1_CODE_2021
-  - SA1_CODE21
-  - SA1_2021_CODE
-  - SA2_CODE
-  - SA2_CODE_2021
-  - SA2_CODE21
-  - SA2_2021_CODE
+# Geographic mappings
+geographic:
+  sa1:
+    source_columns:
+      code: "SA1_CODE_2021"
+      name: "SA1_NAME_2021"
+      state_code: "STE_CODE_2021"
+      state_name: "STE_NAME_2021"
+    level: "SA1"
+  sa2:
+    source_columns:
+      code: "SA2_CODE_2021"
+      name: "SA2_NAME_2021"
+      state_code: "STE_CODE_2021"
+      state_name: "STE_NAME_2021"
+    level: "SA2"
+  sa3:
+    source_columns:
+      code: "SA3_CODE_2021"
+      name: "SA3_NAME_2021"
+      state_code: "STE_CODE_2021"
+      state_name: "STE_NAME_2021"
+    level: "SA3"
+  sa4:
+    source_columns:
+      code: "SA4_CODE_2021"
+      name: "SA4_NAME_2021"
+      state_code: "STE_CODE_2021"
+      state_name: "STE_NAME_2021"
+    level: "SA4"
+  ste:
+    source_columns:
+      code: "STE_CODE_2021"
+      name: "STE_NAME_2021"
+    level: "STE"
+  poa:
+    source_columns:
+      code: "POA_CODE_2021"
+      name: "POA_NAME_2021"
+    level: "POA"
 
-# Geographic levels for processing
-geo_levels:
-  SA1: SA1_2021_AUST_GDA2020
-  SA2: SA2_2021_AUST_GDA2020
-  SA3: SA3_2021_AUST_GDA2020
-  SA4: SA4_2021_AUST_GDA2020
-  STATE: STE_2021_AUST_GDA2020
-  POA: POA_2021_AUST_GDA2020
+# Census table mappings
+census:
+  # G01 - Selected Person Characteristics by Sex
+  G01:
+    file_pattern: "2021Census_G01_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    measures:
+      - source: "Tot_P_P"
+        target: "total_persons"
+        description: "Total Persons"
+      - source: "Tot_P_M"
+        target: "male_persons"
+        description: "Total Males"
+      - source: "Tot_P_F"
+        target: "female_persons"
+        description: "Total Females"
 
-# Census table patterns for identifying CSV files
-census_table_patterns:
-  G01: "2021\\s*Census_G01[_\\s].*?(SA1|SA2)\\.csv$"
-  G17: "2021\\s*Census_G17[A-C]_.*?(SA1|SA2)\\.csv$"
-  G18: "2021\\s*Census_G18[_\\s].*?(SA1|SA2)\\.csv$"
-  G19: "2021\\s*Census_G19[A-C]_.*?(SA1|SA2)\\.csv$"
-  G20: "2021\\s*Census_G20[A-B]_.*?(SA1|SA2)\\.csv$"
-  G21: "2021\\s*Census_G21[A-C]_.*?(SA1|SA2)\\.csv$"
-  G25: "2021\\s*Census_G25[_\\s].*?(SA1|SA2)\\.csv$"
+  # G17 - Total Personal Income (Weekly) by Age by Sex
+  G17:
+    file_pattern: "2021Census_G17[A-C]_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    unpivot_patterns:
+      income_brackets:
+        pattern: "P_(.+)_Tot"
+        value_mapping:
+          "Neg_Nil_income": "Negative/Nil income"
+          "1_149": "$1-$149"
+          "150_299": "$150-$299"
+          "300_399": "$300-$399"
+          "400_499": "$400-$499"
+          "500_649": "$500-$649"
+          "650_799": "$650-$799"
+          "800_999": "$800-$999"
+          "1000_1249": "$1000-$1249"
+          "1250_1499": "$1250-$1499"
+          "1500_1749": "$1500-$1749"
+          "1750_1999": "$1750-$1999"
+          "2000_2999": "$2000-$2999"
+          "3000_more": "$3000 or more"
+          "NS": "Not stated"
 
-# G01 Population table mappings
-G01:
-  output_columns:
-    - geo_sk
-    - time_sk
-    - total_population
-    - male_population
-    - female_population
-    - etl_processed_at
-  input_to_output:
-    Total_Persons_Total: total_population
-    Male_Total: male_population
-    Female_Total: female_population
+  # G18 - Core Activity Need for Assistance by Age by Sex
+  G18:
+    file_pattern: "2021Census_G18_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    measures:
+      assistance_status:
+        has_need: "P_Tot_Need_for_assistance"
+        no_need: "P_Tot_No_need_for_assistance"
+        not_stated: "P_Tot_Need_not_stated"
 
-# G17 Income table mappings
-G17:
-  sex_prefixes:
-    - M
-    - F
-    - P
-  income_ranges:
-    1_neg_nil: "Negative or nil income"
-    2_1_149: "$1-$149"
-    3_150_299: "$150-$299"
-    4_300_399: "$300-$399"
-    5_400_499: "$400-$499"
-    6_500_649: "$500-$649"
-    7_650_799: "$650-$799"
-    8_800_999: "$800-$999"
-    9_1000_1249: "$1,000-$1,249"
-    10_1250_1499: "$1,250-$1,499"
-    11_1500_1749: "$1,500-$1,749"
-    12_1750_1999: "$1,750-$1,999"
-    13_2000_2499: "$2,000-$2,499"
-    14_2500_2999: "$2,500-$2,999"
-    15_3000_more: "$3,000 or more"
-    16_not_stated: "Not stated"
-    17_not_applicable: "Not applicable"
-  demographic_mapping:
-    M: "Male"
-    F: "Female"
-    P: "All Persons"
+  # G19 - Type of Long-Term Health Condition by Sex
+  G19:
+    file_pattern: "2021Census_G19_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    conditions:
+      - code: "ARTHRITIS"
+        source_column: "P_Arthritis_Tot"
+        name: "Arthritis"
+        category: "Musculoskeletal"
+      - code: "ASTHMA"
+        source_column: "P_Asthma_Tot"
+        name: "Asthma"
+        category: "Respiratory"
+      - code: "CANCER"
+        source_column: "P_Cancer_Tot"
+        name: "Cancer (including remission)"
+        category: "Cancer"
+      - code: "DEMENTIA"
+        source_column: "P_Dementia_Tot"
+        name: "Dementia (including Alzheimer's)"
+        category: "Neurological"
+      - code: "DIABETES"
+        source_column: "P_Diabetes_Tot"
+        name: "Diabetes (excluding gestational)"
+        category: "Metabolic"
+      - code: "HEART_DISEASE"
+        source_column: "P_Heart_disease_Tot"
+        name: "Heart disease (including heart attack or angina)"
+        category: "Cardiovascular"
+      - code: "KIDNEY_DISEASE"
+        source_column: "P_Kidney_disease_Tot"
+        name: "Kidney disease"
+        category: "Renal"
+      - code: "LUNG_CONDITION"
+        source_column: "P_Lung_condition_Tot"
+        name: "Lung condition (including COPD or emphysema)"
+        category: "Respiratory"
+      - code: "MENTAL_HEALTH"
+        source_column: "P_Mental_health_condition_Tot"
+        name: "Mental health condition (including depression or anxiety)"
+        category: "Mental Health"
+      - code: "STROKE"
+        source_column: "P_Stroke_Tot"
+        name: "Stroke"
+        category: "Cardiovascular"
+      - code: "OTHER"
+        source_column: "P_Other_Tot"
+        name: "Other long-term health condition(s)"
+        category: "Other"
 
-# G18 Assistance needed table mappings
-G18:
-  assistance_variables:
-    - Has_need_for_assistance
-    - Does_not_have_need_for_assistance
-    - Not_stated
-    - Total_Total
-  age_sex_patterns:
-    # Pattern: regex pattern to match age/sex values in column names
-    # Age group and sex mappings
-    M_0_4: {sex: "Male", age_group: "0-4"}
-    M_5_9: {sex: "Male", age_group: "5-9"}
-    M_10_14: {sex: "Male", age_group: "10-14"}
-    M_15_19: {sex: "Male", age_group: "15-19"}
-    M_20_24: {sex: "Male", age_group: "20-24"}
-    M_25_29: {sex: "Male", age_group: "25-29"}
-    M_30_34: {sex: "Male", age_group: "30-34"}
-    M_35_39: {sex: "Male", age_group: "35-39"}
-    M_40_44: {sex: "Male", age_group: "40-44"}
-    M_45_49: {sex: "Male", age_group: "45-49"}
-    M_50_54: {sex: "Male", age_group: "50-54"}
-    M_55_59: {sex: "Male", age_group: "55-59"}
-    M_60_64: {sex: "Male", age_group: "60-64"}
-    M_65_69: {sex: "Male", age_group: "65-69"}
-    M_70_74: {sex: "Male", age_group: "70-74"}
-    M_75_79: {sex: "Male", age_group: "75-79"}
-    M_80_84: {sex: "Male", age_group: "80-84"}
-    M_85_over: {sex: "Male", age_group: "85+"}
-    M_Total: {sex: "Male", age_group: "All ages"}
-    F_0_4: {sex: "Female", age_group: "0-4"}
-    F_5_9: {sex: "Female", age_group: "5-9"}
-    F_10_14: {sex: "Female", age_group: "10-14"}
-    F_15_19: {sex: "Female", age_group: "15-19"}
-    F_20_24: {sex: "Female", age_group: "20-24"}
-    F_25_29: {sex: "Female", age_group: "25-29"}
-    F_30_34: {sex: "Female", age_group: "30-34"}
-    F_35_39: {sex: "Female", age_group: "35-39"}
-    F_40_44: {sex: "Female", age_group: "40-44"}
-    F_45_49: {sex: "Female", age_group: "45-49"}
-    F_50_54: {sex: "Female", age_group: "50-54"}
-    F_55_59: {sex: "Female", age_group: "55-59"}
-    F_60_64: {sex: "Female", age_group: "60-64"}
-    F_65_69: {sex: "Female", age_group: "65-69"}
-    F_70_74: {sex: "Female", age_group: "70-74"}
-    F_75_79: {sex: "Female", age_group: "75-79"}
-    F_80_84: {sex: "Female", age_group: "80-84"}
-    F_85_over: {sex: "Female", age_group: "85+"}
-    F_Total: {sex: "Female", age_group: "All ages"}
-    P_0_4: {sex: "All Persons", age_group: "0-4"}
-    P_5_9: {sex: "All Persons", age_group: "5-9"}
-    P_10_14: {sex: "All Persons", age_group: "10-14"}
-    P_15_19: {sex: "All Persons", age_group: "15-19"}
-    P_20_24: {sex: "All Persons", age_group: "20-24"}
-    P_25_29: {sex: "All Persons", age_group: "25-29"}
-    P_30_34: {sex: "All Persons", age_group: "30-34"}
-    P_35_39: {sex: "All Persons", age_group: "35-39"}
-    P_40_44: {sex: "All Persons", age_group: "40-44"}
-    P_45_49: {sex: "All Persons", age_group: "45-49"}
-    P_50_54: {sex: "All Persons", age_group: "50-54"}
-    P_55_59: {sex: "All Persons", age_group: "55-59"}
-    P_60_64: {sex: "All Persons", age_group: "60-64"}
-    P_65_69: {sex: "All Persons", age_group: "65-69"}
-    P_70_74: {sex: "All Persons", age_group: "70-74"}
-    P_75_79: {sex: "All Persons", age_group: "75-79"}
-    P_80_84: {sex: "All Persons", age_group: "80-84"}
-    P_85_over: {sex: "All Persons", age_group: "85+"}
-    P_Total: {sex: "All Persons", age_group: "All ages"}
+  # G20 - Count of Selected Long-Term Health Conditions by Sex
+  G20:
+    file_pattern: "2021Census_G20_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    condition_counts:
+      - source: "P_0_Cond_Tot"
+        value: "0 conditions"
+      - source: "P_1_Cond_Tot"
+        value: "1 condition"
+      - source: "P_2_Cond_Tot"
+        value: "2 conditions"
+      - source: "P_3_Cond_Tot"
+        value: "3 conditions"
+      - source: "P_4_Cond_Tot"
+        value: "4 conditions"
+      - source: "P_5_Cond_Tot"
+        value: "5 conditions"
+      - source: "P_6_more_Cond_Tot"
+        value: "6 or more conditions"
 
-# G19 Health conditions table mappings
-G19:
-  sex_prefixes:
-    - M
-    - F
-    - P
-  health_conditions_map:
-    Arthritis: "arthritis"
-    Asthma: "asthma"
-    Cancer: "cancer"
-    Dementia: "dementia"
-    Diabetes: "diabetes"
-    Heart_Disease: "heart_disease"
-    Kidney_Disease: "kidney_disease"
-    Lung_Condition: "lung_condition"
-    Mental_Health: "mental_health" 
-    Stroke: "stroke"
-    Other: "other_condition"
-    No_ConditionTotal: "no_condition"
-    Not_Stated: "not_stated"
-  age_range_patterns:
-    0_14: "0-14"
-    15_24: "15-24"
-    25_34: "25-34"
-    35_44: "35-44"
-    45_54: "45-54"
-    55_64: "55-64"
-    65_74: "65-74"
-    75_84: "75-84"
-    85_over: "85+"
-    Total: "All ages"
+  # G21 - Selected Long-Term Health Conditions by Selected Characteristics
+  G21:
+    file_pattern: "2021Census_G21_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    characteristics:
+      country_of_birth:
+        - code: "BORN_AUSTRALIA"
+          value: "Australia"
+          columns_suffix: "_COB_Australia"
+      labour_force:
+        - code: "EMPLOYED"
+          value: "Employed"
+          columns_suffix: "_LF_Employed"
+        - code: "UNEMPLOYED"
+          value: "Unemployed"
+          columns_suffix: "_LF_Unemployed"
+        - code: "NOT_IN_LF"
+          value: "Not in labour force"
+          columns_suffix: "_LF_Not_in_LF"
 
-# G20 Selected health conditions table mappings
-G20:
-  age_sex_patterns:
-    # Pattern to age_group and sex mappings - same as G18
-    # See G18 age_sex_patterns
-  condition_count_map:
-    No_Conditions: 0
-    One_Condition: 1
-    Two_Conditions: 2
-    Three_ormore_Conditions: 3
-    Not_Stated: -1
+  # G25 - Unpaid Assistance to a Person with a Disability by Age by Sex
+  G25:
+    file_pattern: "2021Census_G25_AUS_SA\\d+\\.csv"
+    header_rows: 1
+    index_column: "SA1_CODE_2021"
+    assistance_provision:
+      provided: "P_Tot_prvided_unpaid_assist"
+      not_provided: "P_Tot_no_unpaid_assist"
+      not_stated: "P_Tot_unpaid_assist_ns"
 
-# G21 Conditions by characteristics table mappings
-G21:
-  sex_prefixes:
-    - M
-    - F
-    - P
-  health_conditions_map:
-    # Same as G19 health_conditions_map
-    Arthritis: "arthritis"
-    Asthma: "asthma"
-    Cancer: "cancer"
-    Dementia: "dementia"
-    Diabetes: "diabetes"
-    Heart_Disease: "heart_disease"
-    Kidney_Disease: "kidney_disease"
-    Lung_Condition: "lung_condition"
-    Mental_Health: "mental_health" 
-    Stroke: "stroke"
-    Other: "other_condition"
-    No_ConditionTotal: "no_condition"
-    Not_Stated: "not_stated"
-  characteristic_types:
-    labour_force:
-      Employed_worked_full_time: {type: "labour_force", value: "Employed full-time"}
-      Employed_worked_part_time: {type: "labour_force", value: "Employed part-time"}
-      Employed_away_from_work: {type: "labour_force", value: "Employed away from work"}
-      Unemployed: {type: "labour_force", value: "Unemployed"}
-      Not_in_the_labour_force: {type: "labour_force", value: "Not in labour force"}
-      Labour_force_status_not_stated: {type: "labour_force", value: "Not stated"}
-    weekly_income:
-      Negative_Nil_income: {type: "weekly_income", value: "Negative/Nil"}
-      1_499: {type: "weekly_income", value: "$1-$499"}
-      500_999: {type: "weekly_income", value: "$500-$999"}
-      1000_1499: {type: "weekly_income", value: "$1,000-$1,499"}
-      1500_1999: {type: "weekly_income", value: "$1,500-$1,999"}
-      2000_or_more: {type: "weekly_income", value: "$2,000+"}
-      Personal_income_not_stated: {type: "weekly_income", value: "Not stated"}
-    education:
-      Below_Year_10: {type: "education", value: "Below Year 10"}
-      Year_10: {type: "education", value: "Year 10"}
-      Year_11: {type: "education", value: "Year 11"}
-      Year_12: {type: "education", value: "Year 12"}
-      Certificate_Level: {type: "education", value: "Certificate"}
-      Advanced_Diploma_and_Diploma_Level: {type: "education", value: "Diploma"}
-      Bachelor_Degree_Level: {type: "education", value: "Bachelor Degree"}
-      Graduate_Diploma_and_Graduate_Certificate_Level: {type: "education", value: "Graduate Certificate/Diploma"}
-      Postgraduate_Degree_Level: {type: "education", value: "Postgraduate Degree"}
-      Level_of_Education_not_stated: {type: "education", value: "Not stated"}
+# Standard demographic mappings
+demographics:
+  age_groups:
+    - "0-4"
+    - "5-9"
+    - "10-14"
+    - "15-19"
+    - "20-24"
+    - "25-29"
+    - "30-34"
+    - "35-39"
+    - "40-44"
+    - "45-49"
+    - "50-54"
+    - "55-59"
+    - "60-64"
+    - "65-69"
+    - "70-74"
+    - "75-79"
+    - "80-84"
+    - "85+"
+  sex_categories:
+    - "Male"
+    - "Female"
+    - "Persons"
 
-# G25 Unpaid assistance table mappings
-G25:
-  care_types:
-    Provided_unpaid_assistance: "Provided unpaid assistance"
-    No_unpaid_assistance_provided: "No unpaid assistance provided"
-    Not_stated_unpaid_assistance: "Not stated"
-  age_sex_patterns:
-    # Same as G18 age_sex_patterns
-    # See G18 age_sex_patterns
+# Person characteristics types
+characteristic_types:
+  income_bracket:
+    category: "Economic"
+    values:
+      - "Negative/Nil income"
+      - "$1-$149"
+      - "$150-$299"
+      - "$300-$399"
+      - "$400-$499"
+      - "$500-$649"
+      - "$650-$799"
+      - "$800-$999"
+      - "$1000-$1249"
+      - "$1250-$1499"
+      - "$1500-$1749"
+      - "$1750-$1999"
+      - "$2000-$2999"
+      - "$3000 or more"
+      - "Not stated"
+  
+  assistance_need_status:
+    category: "Health"
+    values:
+      - "Needs Assistance"
+      - "No Need"
+      - "Not Stated"
+  
+  assistance_provision_status:
+    category: "Social"
+    values:
+      - "Provided"
+      - "Not Provided"
+      - "Not Stated"
+  
+  condition_count:
+    category: "Health"
+    values:
+      - "0 conditions"
+      - "1 condition"
+      - "2 conditions"
+      - "3 conditions"
+      - "4 conditions"
+      - "5 conditions"
+      - "6 or more conditions"
+  
+  country_of_birth:
+    category: "Social"
+    values:
+      - "Australia"
+      - "Other"
+      - "Not Stated"
+  
+  labour_force_status:
+    category: "Economic"
+    values:
+      - "Employed"
+      - "Unemployed"
+      - "Not in labour force"
+      - "Not Stated"
