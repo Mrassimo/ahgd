@@ -19,17 +19,37 @@ The container will automatically:
 - Set up the development environment
 - Display a welcome message when ready
 
-### 3. Create Mock Data (for testing)
+### 3. Run the Full ETL Pipeline
+
+#### Option A: With Mock Data (Quick Test)
 
 ```bash
-# Create comprehensive mock data
+# Generate mock data
 python create_mock_data.py
+
+# Run full pipeline
+python run_unified_etl.py --steps all
 ```
 
-### 4. Run the ETL Pipeline
+#### Option B: With Real ABS Data
 
 ```bash
-# Run all dimensions with mock data
+# First, download ABS data (see instructions below)
+# Then run:
+python run_unified_etl.py --steps all
+
+# Or run specific steps:
+python run_unified_etl.py --steps geo,time,dimensions
+python run_unified_etl.py --steps facts,validate
+```
+
+### 4. Check Results
+
+```bash
+# List output files
+ls -lh output/
+
+# Quick validation
 python -c "
 from ahgd_etl.transformers.geo import GeographyTransformer
 from ahgd_etl.models import *

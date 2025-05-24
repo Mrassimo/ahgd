@@ -59,16 +59,31 @@ pip install -r requirements.txt
 ### Running the Pipeline
 
 ```bash
-# Run full pipeline (when implemented)
-python run_unified_etl.py
+# Run full pipeline
+python run_unified_etl.py --steps all
 
 # Run specific steps
-python run_unified_etl.py --steps geo time dimensions
+python run_unified_etl.py --steps geo,time,dimensions
+python run_unified_etl.py --steps facts,validate
 
 # Run with mock data for testing
 python create_mock_data.py
-python run_unified_etl.py --use-mock-data
+python run_unified_etl.py --steps all
+
+# Download helper
+python download_abs_data.py  # Interactive guide for ABS downloads
 ```
+
+### Using GitHub Codespaces (Recommended)
+
+For users with limited local storage:
+
+1. Open repository in GitHub Codespaces
+2. Run `python create_mock_data.py` or upload real ABS data
+3. Run `python run_unified_etl.py --steps all`
+4. Download results or commit to repository
+
+See [CODESPACES_GUIDE.md](CODESPACES_GUIDE.md) for detailed instructions.
 
 ## Configuration
 
