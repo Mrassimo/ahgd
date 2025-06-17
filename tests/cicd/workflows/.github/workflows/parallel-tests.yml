@@ -1,0 +1,28 @@
+jobs:
+  test-matrix:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+    - name: Run test suite
+      run: pytest tests/${{ matrix.test-suite }}/ -v
+    strategy:
+      matrix:
+        python-version:
+        - '3.8'
+        - '3.9'
+        - '3.10'
+        - '3.11'
+        test-suite:
+        - unit
+        - integration
+        - performance
+        - security
+name: Parallel Test Execution
+'on':
+- push
+- pull_request

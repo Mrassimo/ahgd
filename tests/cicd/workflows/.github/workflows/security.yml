@@ -1,0 +1,24 @@
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Run Bandit security scan
+      run: bandit -r src/ -f json -o security-report.json
+    - name: Run dependency scan
+      run: safety check --json --output dependency-scan.json
+    - name: Docker security scan
+      run: docker run --rm -v $(pwd):/app clair-scanner:latest
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+name: Security Scanning
+'on':
+  pull_request:
+    branches:
+    - main
+  push:
+    branches:
+    - main
+  schedule:
+  - cron: 0 6 * * *

@@ -166,14 +166,28 @@ $RECYCLE.BIN/
 
 # Project-specific
 
-# Data files (too large for Git)
-data/raw/
-!data/raw/.gitkeep
-data/processed/*.csv
+# Data files - Project-specific data storage
+data/raw/*.csv
+data/raw/*.xlsx
+data/raw/*.zip
+data/raw/*.shp
+data/raw/*.dbf
+data/raw/*.shx
+data/raw/*.prj
+data/raw/*.cpg
 data/processed/*.parquet
-data/processed/*.db
-data/processed/*.duckdb
-!data/processed/.gitkeep
+data/processed/*.csv
+data/cache/
+data/outputs/
+data/web_exports/
+data/performance_benchmarks/
+data/parquet/
+data/bronze/
+data/silver/
+data/gold/
+data/staging/
+data/metadata/versions/
+data/metadata/change_log/
 
 # Database files
 *.db
@@ -181,7 +195,7 @@ data/processed/*.duckdb
 *.sqlite3
 *.duckdb
 
-# Large output files
+# Large output files and generated content
 data/outputs/*.json
 data/outputs/*.geojson
 data/outputs/*.html

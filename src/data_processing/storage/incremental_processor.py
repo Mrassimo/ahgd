@@ -615,8 +615,14 @@ class IncrementalProcessor:
         try:
             metadata_file = self.base_path / "metadata" / "versions" / f"{version.version_id}.json"
             
+            # Convert DataVersion to serializable dict
+            version_dict = asdict(version)
+            # Convert enum values to strings
+            version_dict['layer'] = version_dict['layer'].value if hasattr(version_dict['layer'], 'value') else str(version_dict['layer'])
+            version_dict['merge_strategy'] = version_dict['merge_strategy'].value if hasattr(version_dict['merge_strategy'], 'value') else str(version_dict['merge_strategy'])
+            
             with open(metadata_file, 'w') as f:
-                json.dump(asdict(version), f, indent=2)
+                json.dump(version_dict, f, indent=2)
             
             # Also update in-memory metadata
             self.versions_metadata[version.version_id] = version
