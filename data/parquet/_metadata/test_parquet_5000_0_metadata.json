@@ -1,0 +1,11 @@
+{
+  "file_path": "/var/folders/yg/vkm9j4yd2r5bfy14pfqbczrh0000gn/T/tmp5o7j3wg5/test_parquet_5000_0.parquet",
+  "write_time_seconds": 0.011036872863769531,
+  "file_size_mb": 0.27422428131103516,
+  "estimated_csv_size_mb": 0.6883249282836914,
+  "compression_ratio": 0.6016063489160539,
+  "row_count": 5000,
+  "column_count": 21,
+  "timestamp": "2025-06-17T14:48:51.742322",
+  "metadata": {}
+}

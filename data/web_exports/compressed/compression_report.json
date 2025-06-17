@@ -1,0 +1,17 @@
+{
+  "compression_info": {
+    "generated_at": "2025-06-17T15:48:28.742351",
+    "compression_level": 6,
+    "files_compressed": 0,
+    "total_original_size_mb": 0,
+    "total_compressed_size_mb": 0,
+    "overall_compression_ratio": 0
+  },
+  "file_details": {},
+  "web_optimization_notes": [
+    "Use .gz files for production deployment",
+    "Configure web server to serve compressed files with correct headers",
+    "Original files available for development/debugging",
+    "No files compressed"
+  ]
+}

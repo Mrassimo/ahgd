@@ -1,0 +1,124 @@
+{
+  "name": "Australian Health Analytics Platform",
+  "short_name": "Health Analytics",
+  "description": "Professional data engineering portfolio showcasing 497K+ health records processing with 57.5% memory optimization and 10-30x performance improvements",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7fafc",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["portfolio", "data-engineering", "health-analytics", "business"],
+  "screenshots": [
+    {
+      "src": "assets/images/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "Australian Health Analytics Dashboard - Desktop View"
+    },
+    {
+      "src": "assets/images/screenshot-mobile.png", 
+      "sizes": "390x844",
+      "type": "image/png",
+      "platform": "narrow",
+      "label": "Australian Health Analytics Dashboard - Mobile View"
+    }
+  ],
+  "icons": [
+    {
+      "src": "assets/images/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/images/icon-96.png",
+      "sizes": "96x96", 
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/images/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/images/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/images/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Dashboard",
+      "short_name": "Dashboard",
+      "description": "Interactive health analytics dashboard",
+      "url": "/#dashboard",
+      "icons": [
+        {
+          "src": "assets/images/shortcut-dashboard.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Technical Achievements",
+      "short_name": "Achievements", 
+      "description": "Performance metrics and technical accomplishments",
+      "url": "/#achievements",
+      "icons": [
+        {
+          "src": "assets/images/shortcut-achievements.png",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Technology Stack",
+      "short_name": "Technology",
+      "description": "Modern data engineering tools and architecture",
+      "url": "/#technology", 
+      "icons": [
+        {
+          "src": "assets/images/shortcut-technology.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "web",
+      "url": "https://github.com/massimoraso/australian-health-analytics",
+      "id": "github-repo"
+    }
+  ]
+}

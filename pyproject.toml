@@ -25,35 +25,36 @@ dependencies = [
     "httpx>=0.25.0",
     "rich>=13.0.0",
     "typer>=0.9.0",
-    
     # Geographic processing
     "geopandas>=0.14.0",
     "folium>=0.15.0",
     "contextily>=1.4.0",
     "geojson>=3.0.0",
-    
-    # Analysis and documentation  
+    # Analysis and documentation
     "altair>=4.2.1,<5.0.0",
     "great-expectations>=0.18.0",
-    
     # Web interface options
     "streamlit>=1.28.0",
     "fastapi>=0.104.0",
-    
     # Data validation and quality
     "pydantic>=2.0.0",
     "pandera>=0.17.0",
-    
     # Utilities
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
     "tqdm>=4.66.0",
     "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
-    "pandas>=2.1.0",  # For compatibility with some libraries
+    "pandas>=2.1.0", # For compatibility with some libraries
     "numpy>=1.24.0",
     "scipy>=1.11.0",
     "scikit-learn>=1.3.0",
+    "dbfread>=2.0.7",
+    "psutil>=7.0.0",
+    "matplotlib>=3.10.3",
+    "seaborn>=0.13.2",
+    "plotly>=6.1.2",
+    "streamlit-folium>=0.25.0",
 ]
 
 [project.optional-dependencies]

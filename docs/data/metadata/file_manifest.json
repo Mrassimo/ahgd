@@ -1,0 +1,70 @@
+{
+  "manifest_info": {
+    "generated_at": "2025-06-17T15:48:28.741567",
+    "total_files": 8,
+    "total_size_mb": 0.05
+  },
+  "files": [
+    {
+      "path": "export_manifest.json",
+      "size_bytes": 1026,
+      "size_mb": 0.001,
+      "modified": "2025-06-17T15:13:08.383479",
+      "type": ".json"
+    },
+    {
+      "path": "geojson/sa2_boundaries/sa2_detail.geojson",
+      "size_bytes": 19597,
+      "size_mb": 0.019,
+      "modified": "2025-06-17T15:48:28.738354",
+      "type": ".geojson"
+    },
+    {
+      "path": "geojson/sa2_boundaries/sa2_overview.geojson",
+      "size_bytes": 19599,
+      "size_mb": 0.019,
+      "modified": "2025-06-17T15:48:28.734778",
+      "type": ".geojson"
+    },
+    {
+      "path": "json/performance/technical_specifications.json",
+      "size_bytes": 927,
+      "size_mb": 0.001,
+      "modified": "2025-06-17T15:48:28.740577",
+      "type": ".json"
+    },
+    {
+      "path": "json/performance/platform_performance.json",
+      "size_bytes": 4359,
+      "size_mb": 0.004,
+      "modified": "2025-06-17T15:48:28.740343",
+      "type": ".json"
+    },
+    {
+      "path": "compressed/compression_report.json",
+      "size_bytes": 502,
+      "size_mb": 0.0,
+      "modified": "2025-06-17T15:13:08.379787",
+      "type": ".json"
+    },
+    {
+      "path": "metadata/data_catalog.json",
+      "size_bytes": 2466,
+      "size_mb": 0.002,
+      "modified": "2025-06-17T15:48:28.740956",
+      "type": ".json"
+    },
+    {
+      "path": "metadata/file_manifest.json",
+      "size_bytes": 1174,
+      "size_mb": 0.001,
+      "modified": "2025-06-17T15:13:08.378789",
+      "type": ".json"
+    }
+  ],
+  "file_types": {
+    ".geojson": 2,
+    ".json": 6,
+    ".gz": 0
+  }
+}
