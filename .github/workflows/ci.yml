@@ -1,0 +1,299 @@
+name: Australian Health Analytics CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly to update data
+    - cron: '0 2 * * 1'  # Monday at 2 AM UTC
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install UV
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+    
+    - name: Add UV to PATH
+      run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --extra dev
+    
+    - name: Run linting
+      run: |
+        uv run black --check src/
+        uv run isort --check-only src/
+        uv run flake8 src/
+    
+    - name: Run type checking
+      run: |
+        uv run mypy src/
+    
+    - name: Run tests
+      run: |
+        uv run pytest tests/ --cov=src --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: true
+
+  data-pipeline:
+    name: Data Pipeline Test
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[update-data]')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install UV
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+    
+    - name: Add UV to PATH
+      run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: uv sync
+    
+    - name: Download sample data
+      run: |
+        mkdir -p data/raw/abs
+        # Download a small sample dataset for testing
+        uv run python -c "
+        import asyncio
+        from src.data_processing.downloaders.abs_downloader import ABSDownloader
+        
+        async def test_download():
+            downloader = ABSDownloader('data')
+            # Download just one small dataset for testing
+            result = await downloader.download_specific_dataset('postcode_sa2')
+            print(f'Downloaded: {result}')
+        
+        asyncio.run(test_download())
+        "
+    
+    - name: Test data processing
+      run: |
+        uv run python -c "
+        from src.data_processing.core import AustralianHealthData
+        
+        # Test basic functionality
+        health_data = AustralianHealthData('data')
+        print('✓ Health data processor initialized')
+        
+        # Test DuckDB connection
+        conn = health_data.get_duckdb_connection()
+        result = conn.execute('SELECT 1 as test').fetchone()
+        print(f'✓ DuckDB connection working: {result}')
+        "
+    
+    - name: Upload processed data
+      uses: actions/upload-artifact@v3
+      with:
+        name: processed-health-data
+        path: data/processed/
+        retention-days: 30
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        tags: australian-health-analytics:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Test Docker container
+      run: |
+        docker run --rm -d --name health-analytics-test \
+          -p 8501:8501 \
+          australian-health-analytics:test
+        
+        # Wait for container to start
+        sleep 10
+        
+        # Test health check endpoint
+        curl -f http://localhost:8501/_stcore/health || exit 1
+        
+        # Cleanup
+        docker stop health-analytics-test
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    needs: [test, docker-build]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install UV
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+    
+    - name: Add UV to PATH
+      run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: uv sync --extra docs
+    
+    - name: Build documentation
+      run: |
+        uv run mkdocs build
+    
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./site
+
+  performance-benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install UV
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+    
+    - name: Add UV to PATH
+      run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: uv sync
+    
+    - name: Run performance benchmarks
+      run: |
+        uv run python -c "
+        import time
+        import polars as pl
+        import pandas as pd
+        import numpy as np
+        
+        # Generate test data
+        n_rows = 100000
+        data = {
+            'sa2_code': [f'SA2_{i:06d}' for i in range(n_rows)],
+            'population': np.random.randint(100, 20000, n_rows),
+            'median_age': np.random.uniform(20, 80, n_rows),
+            'median_income': np.random.randint(30000, 150000, n_rows),
+        }
+        
+        # Benchmark Polars vs Pandas
+        print('🚀 Performance Benchmark Results:')
+        print()
+        
+        # Polars benchmark
+        start_time = time.time()
+        df_polars = pl.DataFrame(data)
+        result_polars = (
+            df_polars
+            .filter(pl.col('population') > 1000)
+            .with_columns((pl.col('median_income') / 1000).alias('income_k'))
+            .group_by('income_k')
+            .agg(pl.col('population').mean())
+        )
+        polars_time = time.time() - start_time
+        
+        # Pandas benchmark
+        start_time = time.time()
+        df_pandas = pd.DataFrame(data)
+        result_pandas = (
+            df_pandas[df_pandas['population'] > 1000]
+            .assign(income_k=lambda x: x['median_income'] / 1000)
+            .groupby('income_k')['population']
+            .mean()
+        )
+        pandas_time = time.time() - start_time
+        
+        speedup = pandas_time / polars_time
+        print(f'Polars processing time: {polars_time:.3f}s')
+        print(f'Pandas processing time: {pandas_time:.3f}s')
+        print(f'Speedup: {speedup:.1f}x faster with Polars')
+        print()
+        print(f'Processed {n_rows:,} records')
+        print(f'Memory efficiency: {len(result_polars)} vs {len(result_pandas)} results')
+        "
+    
+    - name: Comment performance results
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: '⚡ Performance benchmark completed! Check the workflow logs for Polars vs Pandas speed comparison.'
+          })
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
