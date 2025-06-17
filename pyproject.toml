@@ -1,0 +1,146 @@
+[project]
+name = "australian-health-analytics"
+version = "0.1.0"
+description = "Personal Australian Health Data Analytics Platform"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+keywords = ["health", "data", "analytics", "australia", "gis"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Modern data processing stack
+    "polars[all]>=0.20.0",
+    "duckdb>=0.9.0",
+    "httpx>=0.25.0",
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+    
+    # Geographic processing
+    "geopandas>=0.14.0",
+    "folium>=0.15.0",
+    "contextily>=1.4.0",
+    "geojson>=3.0.0",
+    
+    # Analysis and documentation  
+    "altair>=4.2.1,<5.0.0",
+    "great-expectations>=0.18.0",
+    
+    # Web interface options
+    "streamlit>=1.28.0",
+    "fastapi>=0.104.0",
+    
+    # Data validation and quality
+    "pydantic>=2.0.0",
+    "pandera>=0.17.0",
+    
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "tqdm>=4.66.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "pandas>=2.1.0",  # For compatibility with some libraries
+    "numpy>=1.24.0",
+    "scipy>=1.11.0",
+    "scikit-learn>=1.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.4.0",
+    "openpyxl>=3.1.0",
+]
+
+jupyter = [
+    "jupyter>=1.0.0",
+    "jupyterlab>=4.0.0",
+    "notebook>=7.0.0",
+    "ipywidgets>=8.1.0",
+]
+
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+    "mkdocstrings[python]>=0.23.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/australian-health-analytics"
+Repository = "https://github.com/yourusername/australian-health-analytics"
+Documentation = "https://yourusername.github.io/australian-health-analytics/"
+
+[project.scripts]
+health-analytics = "src.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["src"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src --cov-report=term-missing --cov-report=html"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
