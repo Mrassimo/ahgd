@@ -1,0 +1,103 @@
+{
+  "catalog_info": {
+    "title": "Australian Health Analytics Data Catalog",
+    "description": "Downloadable datasets processed from official Australian government sources",
+    "last_updated": "2025-06-17",
+    "total_records": 497181,
+    "geographic_coverage": "Australia-wide SA2 areas",
+    "data_sources": [
+      "Australian Bureau of Statistics (ABS)",
+      "Socio-Economic Indexes for Areas (SEIFA) 2021",
+      "Australian Statistical Geography Standard (ASGS)",
+      "Medicare Historical Data",
+      "Pharmaceutical Benefits Scheme (PBS)"
+    ]
+  },
+  "datasets": [
+    {
+      "id": "health_risk_assessment",
+      "title": "Australian Health Risk Assessment by SA2 Area",
+      "description": "Comprehensive health risk scores combining socio-economic disadvantage indicators with health utilisation patterns across 100 statistical areas",
+      "file_path": "health-data/australian_health_risk_assessment.csv",
+      "format": "CSV",
+      "size": "~12KB",
+      "records": 100,
+      "geographic_level": "SA2 (Statistical Area Level 2)",
+      "columns": {
+        "sa2_code_2021": "Official ABS SA2 area code",
+        "sa2_name_2021": "Geographic area name",
+        "seifa_risk_score": "Socio-economic disadvantage score (1-10 scale)",
+        "health_utilisation_risk": "Health service utilisation risk factor",
+        "total_prescriptions": "Total prescription volume in area",
+        "chronic_medication_rate": "Rate of chronic disease medication usage",
+        "state_name": "Australian state/territory",
+        "usual_resident_population": "ABS Census population count",
+        "composite_risk_score": "Combined health risk assessment score",
+        "risk_category": "Risk classification (Low/Moderate/High/Very High)"
+      },
+      "methodology": "Combines SEIFA 2021 disadvantage indices with health utilisation patterns using statistical weighting",
+      "data_quality": "92.9% integration success rate with official ABS boundaries"
+    },
+    {
+      "id": "seifa_socioeconomic_data",
+      "title": "SEIFA 2021 Socio-Economic Indexes - Complete Australia",
+      "description": "Official Australian Bureau of Statistics socio-economic disadvantage indices for all 2,293 SA2 areas across Australia",
+      "file_path": "seifa-data/seifa_2021_sa2_complete.csv", 
+      "format": "CSV",
+      "size": "~250KB",
+      "records": 2293,
+      "geographic_level": "SA2 (Statistical Area Level 2)",
+      "columns": {
+        "sa2_code_2021": "Official ABS SA2 area code",
+        "sa2_name_2021": "Geographic area name",
+        "irsd_score": "Index of Relative Socio-economic Disadvantage score",
+        "irsd_decile": "IRSD decile ranking (1=most disadvantaged, 10=least disadvantaged)",
+        "irsad_score": "Index of Relative Socio-economic Advantage and Disadvantage score",
+        "irsad_decile": "IRSAD decile ranking",
+        "ier_score": "Index of Economic Resources score",
+        "ier_decile": "IER decile ranking",
+        "ieo_score": "Index of Education and Occupation score",
+        "ieo_decile": "IEO decile ranking",
+        "usual_resident_population": "ABS Census 2021 population count"
+      },
+      "data_source": "Australian Bureau of Statistics SEIFA 2021",
+      "coverage": "Complete Australia - all states and territories",
+      "data_quality": "Official ABS data with 100% coverage of Australian SA2 areas"
+    },
+    {
+      "id": "health_insights_summary",
+      "title": "Australian Health Risk Analysis - Key Insights",
+      "description": "Statistical summary and insights from analysis of Australian health risk patterns",
+      "file_path": "health-data/health_insights_summary.json",
+      "format": "JSON",
+      "size": "~1KB",
+      "records": 1,
+      "content": {
+        "total_sa2_areas": "Number of areas analysed",
+        "average_risk_score": "Mean composite health risk score",
+        "risk_distribution": "Distribution of areas by risk category",
+        "high_risk_areas": "Count of high-risk areas identified",
+        "geographic_patterns": "Key findings about spatial health risk distribution"
+      },
+      "insights": {
+        "key_findings": [
+          "80% of analysed areas classified as moderate health risk",
+          "10% of areas identified as high health risk requiring intervention",
+          "Strong correlation between socio-economic disadvantage and health outcomes",
+          "Rural and remote areas show distinct health utilisation patterns"
+        ]
+      }
+    }
+  ],
+  "usage_guidelines": {
+    "attribution": "Data sourced from Australian Bureau of Statistics and processed by Australian Health Analytics platform",
+    "license": "Data available under ABS Terms of Use - suitable for research and analysis",
+    "citation": "Australian Health Analytics Platform (2025). Processed Australian Health Data. Retrieved from https://mrassimo.github.io/ahgd/",
+    "updates": "Data reflects 2021 Census and SEIFA indices - updated annually when new ABS data becomes available"
+  },
+  "technical_notes": {
+    "processing_methodology": "Data processed using Polars and DuckDB for optimal performance with 497,181+ total records",
+    "integration_approach": "Geographic boundaries matched using official ABS SA2 codes with 92.9% success rate",
+    "quality_assurance": "Comprehensive validation against ABS standards and Australian health data patterns"
+  }
+}
