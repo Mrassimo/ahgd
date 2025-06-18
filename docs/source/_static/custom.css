@@ -1,0 +1,187 @@
+/* Custom CSS for Australian Health Analytics Dashboard Documentation */
+
+/* Brand colors */
+:root {
+    --ahgd-primary: #1f77b4;
+    --ahgd-secondary: #ff7f0e;
+    --ahgd-success: #2ca02c;
+    --ahgd-warning: #d62728;
+    --ahgd-info: #17a2b8;
+    --ahgd-light: #f8f9fa;
+    --ahgd-dark: #343a40;
+}
+
+/* Header customization */
+.sidebar-brand {
+    font-weight: 700;
+    color: var(--ahgd-primary);
+}
+
+/* Code blocks */
+.highlight pre {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+/* Admonitions */
+.admonition {
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    border-left: 4px solid;
+}
+
+.admonition.note {
+    border-left-color: var(--ahgd-info);
+    background-color: rgba(23, 162, 184, 0.1);
+}
+
+.admonition.warning {
+    border-left-color: var(--ahgd-warning);
+    background-color: rgba(214, 39, 40, 0.1);
+}
+
+.admonition.tip {
+    border-left-color: var(--ahgd-success);
+    background-color: rgba(44, 160, 44, 0.1);
+}
+
+/* Tables */
+table.docutils {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+}
+
+table.docutils th,
+table.docutils td {
+    border: 1px solid #dee2e6;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+table.docutils th {
+    background-color: var(--ahgd-light);
+    font-weight: 600;
+}
+
+/* API documentation */
+.py.class .sig-name,
+.py.function .sig-name {
+    font-weight: 600;
+    color: var(--ahgd-primary);
+}
+
+.py.method .sig-name {
+    color: var(--ahgd-secondary);
+}
+
+/* Navigation improvements */
+.toctree-wrapper ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.toctree-wrapper li {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+}
+
+.toctree-wrapper li::before {
+    content: "📄";
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+/* Code examples */
+.literal-block-wrapper {
+    margin: 1.5rem 0;
+}
+
+.code-block-caption {
+    background-color: var(--ahgd-light);
+    padding: 0.5rem 1rem;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    border-radius: 0.375rem 0.375rem 0 0;
+    font-weight: 600;
+    color: var(--ahgd-dark);
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .highlight pre {
+        font-size: 0.875rem;
+        padding: 0.75rem;
+    }
+    
+    table.docutils {
+        font-size: 0.875rem;
+    }
+    
+    table.docutils th,
+    table.docutils td {
+        padding: 0.5rem;
+    }
+}
+
+/* Search highlighting */
+.highlighted {
+    background-color: yellow;
+    font-weight: bold;
+}
+
+/* Footer customization */
+.footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+/* Version badge */
+.version-badge {
+    display: inline-block;
+    background-color: var(--ahgd-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Performance tips */
+.performance-tip {
+    background-color: rgba(44, 160, 44, 0.1);
+    border-left: 4px solid var(--ahgd-success);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0.375rem;
+}
+
+.performance-tip::before {
+    content: "💡 Performance Tip: ";
+    font-weight: 600;
+    color: var(--ahgd-success);
+}
+
+/* Security notes */
+.security-note {
+    background-color: rgba(214, 39, 40, 0.1);
+    border-left: 4px solid var(--ahgd-warning);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0.375rem;
+}
+
+.security-note::before {
+    content: "🔒 Security Note: ";
+    font-weight: 600;
+    color: var(--ahgd-warning);
+}
