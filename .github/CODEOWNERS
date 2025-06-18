@@ -1,0 +1,29 @@
+# Global owners for the repository
+* @team-leads @maintainers
+
+# Specific file ownership
+/.github/ @devops-team @team-leads
+/src/ @developers @team-leads
+/tests/ @qa-team @developers
+/scripts/ @data-engineers @developers
+/docs/ @tech-writers @team-leads
+
+# CI/CD and deployment
+/.github/workflows/ @devops-team @team-leads
+/Dockerfile @devops-team
+/docker-compose*.yml @devops-team
+/pyproject.toml @team-leads @developers
+
+# Security and quality
+/bandit.yml @security-team @team-leads
+/.pre-commit-config.yaml @team-leads @developers
+/ruff.toml @team-leads @developers
+
+# Documentation
+/README.md @tech-writers @team-leads
+/docs/ @tech-writers @team-leads
+*.md @tech-writers
+
+# Data and configuration
+/data/ @data-engineers @team-leads
+/config/ @team-leads @developers

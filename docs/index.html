@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Australian Health Data Analytics - Documentation</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .nav-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .nav-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+        .nav-card h3 {
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+        }
+        .nav-card p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+        .nav-card ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .nav-card li {
+            margin-bottom: 0.8rem;
+        }
+        .nav-card a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-card a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        .stats {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        .stats h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            display: block;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #666;
+            border-top: 1px solid #eee;
+            margin-top: 3rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Australian Health Data Analytics</h1>
+            <p>Comprehensive health data analytics platform using Australian government datasets <span class="badge">Production Ready</span></p>
+        </div>
+
+        <div class="stats">
+            <h3>📊 Project Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-value">1.2GB</span>
+                    <div class="stat-label">Government Data</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">95%+</span>
+                    <div class="stat-label">Test Coverage</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">2,310</span>
+                    <div class="stat-label">SA2 Areas</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">&lt;2s</span>
+                    <div class="stat-label">Dashboard Load</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-grid">
+            <div class="nav-card">
+                <h3>🚀 Quick Start</h3>
+                <p>Get up and running with the Australian Health Data Analytics platform</p>
+                <ul>
+                    <li><a href="https://github.com/massimoraso/AHGD">GitHub Repository</a></li>
+                    <li><a href="guides/dashboard_user_guide.md">Dashboard User Guide</a></li>
+                    <li><a href="../README.md">Project README</a></li>
+                    <li><a href="guides/DEPLOYMENT_GUIDE.md">Deployment Guide</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-card">
+                <h3>📊 Interactive Reports</h3>
+                <p>Explore the health data analysis results and visualisations</p>
+                <ul>
+                    <li><a href="health_inequality_analysis.html">Health Inequality Analysis</a></li>
+                    <li><a href="interactive_health_dashboard.html">Interactive Dashboard</a></li>
+                    <li><a href="assets/health_correlation_analysis.png">Correlation Analysis</a></li>
+                    <li><a href="../reports/INDEX.md">All Analysis Reports</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-card">
+                <h3>📚 Documentation</h3>
+                <p>Comprehensive guides and technical documentation</p>
+                <ul>
+                    <li><a href="INDEX.md">Documentation Index</a></li>
+                    <li><a href="guides/OPERATIONAL_RUNBOOKS.md">Operational Runbooks</a></li>
+                    <li><a href="guides/CI_CD_GUIDE.md">CI/CD Guide</a></li>
+                    <li><a href="api/">API Documentation</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-card">
+                <h3>🔧 Development</h3>
+                <p>Developer resources and technical references</p>
+                <ul>
+                    <li><a href="../scripts/INDEX.md">Scripts Documentation</a></li>
+                    <li><a href="../tests/README.md">Testing Framework</a></li>
+                    <li><a href="reference/REAL_DATA_SOURCES.md">Data Sources</a></li>
+                    <li><a href="reference/health_risk_methodology.md">Health Risk Methodology</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-card">
+                <h3>📈 Performance & Monitoring</h3>
+                <p>System health, performance metrics, and monitoring</p>
+                <ul>
+                    <li><a href="guides/PERFORMANCE_MONITORING_GUIDE.md">Performance Monitoring</a></li>
+                    <li><a href="../reports/health/CODEBASE_HEALTH_REPORT.md">Codebase Health</a></li>
+                    <li><a href="../reports/testing/COMPREHENSIVE_TESTING_FRAMEWORK_REPORT.md">Testing Report</a></li>
+                    <li><a href="../reports/deployment/FINAL_PRODUCTION_ASSESSMENT.md">Production Assessment</a></li>
+                </ul>
+            </div>
+
+            <div class="nav-card">
+                <h3>📋 Project Management</h3>
+                <p>Project status, deployment readiness, and operational information</p>
+                <ul>
+                    <li><a href="../COMPREHENSIVE_PROJECT_WALKTHROUGH.md">Project Walkthrough</a></li>
+                    <li><a href="guides/PRODUCTION_READINESS_CHECKLIST.md">Production Checklist</a></li>
+                    <li><a href="../reports/deployment/FINAL_PRODUCTION_READINESS_ASSESSMENT.md">Readiness Assessment</a></li>
+                    <li><a href="ORGANIZATION_SUMMARY.md">Project Organisation</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>Australian Health Data Analytics</strong> | Production Ready Platform | Last Updated: June 2025</p>
+            <p>A comprehensive analytics platform integrating Australian government health data sources</p>
+        </div>
+    </div>
+</body>
+</html>

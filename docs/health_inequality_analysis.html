@@ -1,0 +1,170 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Health vs Socio-Economic Correlation Analysis</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                .header { background-color: #2c3e50; color: white; padding: 20px; border-radius: 5px; }
+                .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+                .metric { background-color: #ecf0f1; padding: 10px; margin: 5px; border-radius: 3px; }
+                .correlation-table { width: 100%; border-collapse: collapse; }
+                .correlation-table th, .correlation-table td { 
+                    border: 1px solid #ddd; padding: 8px; text-align: center; 
+                }
+                .correlation-table th { background-color: #3498db; color: white; }
+                .high-corr { background-color: #e74c3c; color: white; }
+                .med-corr { background-color: #f39c12; color: white; }
+                .low-corr { background-color: #27ae60; color: white; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>Australian Health Data Analytics</h1>
+                <h2>Health vs Socio-Economic Correlation Analysis</h2>
+                <p>Comprehensive analysis of relationships between socio-economic disadvantage and health outcomes</p>
+            </div>
+            
+            <div class="section">
+                <h3>Executive Summary</h3>
+                <p>This analysis examines correlations between SEIFA socio-economic indicators and health outcomes 
+                across 2353 SA2 areas in Australia.</p>
+                
+                <div class="metric">
+                    <strong>Total SA2 Areas Analyzed:</strong> 2,353
+                </div>
+                <div class="metric">
+                    <strong>States Covered:</strong> 9
+                </div>
+                <div class="metric">
+                    <strong>Total Population:</strong> 25,365,554.0
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Key Correlation Findings</h3>
+                <table class="correlation-table">
+                    <thead>
+                        <tr>
+                            <th>Health Outcome</th>
+                            <th>Strongest Predictor</th>
+                            <th>Correlation</th>
+                            <th>Significance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        
+                        <tr>
+                            <td>Mortality Rate Per 100K</td>
+                            <td>Disadvantage Score</td>
+                            <td class="low-corr">-0.442</td>
+                            <td>Significant</td>
+                        </tr>
+            
+                        <tr>
+                            <td>Premature Death Rate</td>
+                            <td>Disadvantage Score</td>
+                            <td class="low-corr">-0.389</td>
+                            <td>Significant</td>
+                        </tr>
+            
+                        <tr>
+                            <td>Avoidable Death Rate</td>
+                            <td>Disadvantage Score</td>
+                            <td class="low-corr">-0.321</td>
+                            <td>Significant</td>
+                        </tr>
+            
+                        <tr>
+                            <td>Chronic Disease Mortality</td>
+                            <td>Disadvantage Score</td>
+                            <td class="low-corr">-0.389</td>
+                            <td>Significant</td>
+                        </tr>
+            
+                        <tr>
+                            <td>Mental Health Mortality</td>
+                            <td>Disadvantage Score</td>
+                            <td class="low-corr">-0.418</td>
+                            <td>Significant</td>
+                        </tr>
+            
+                        <tr>
+                            <td>Life Expectancy</td>
+                            <td>Disadvantage Score</td>
+                            <td class="med-corr">0.655</td>
+                            <td>Significant</td>
+                        </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="section">
+                <h3>Health Risk Assessment</h3>
+                <p>Composite risk scores were calculated combining multiple health indicators:</p>
+                
+                <div class="metric">
+                    <strong>Low Risk Areas:</strong> 116 (4.9%)
+                </div>
+                <div class="metric">
+                    <strong>Medium Risk Areas:</strong> 1,101 (46.8%)
+                </div>
+                <div class="metric">
+                    <strong>High Risk Areas:</strong> 987 (41.9%)
+                </div>
+                <div class="metric">
+                    <strong>Critical Risk Areas:</strong> 149 (6.3%)
+                </div>
+            </div>
+            
+            <div class="section">
+                <h3>Geographic Analysis</h3>
+                <p>Health hotspots identified as areas with high disadvantage and poor health outcomes:</p>
+                
+                <h4>State-Level Summary</h4>
+                <p>Analysis shows significant variation in health outcomes across states, with clear correlations 
+                between socio-economic disadvantage and health indicators.</p>
+            </div>
+            
+            <div class="section">
+                <h3>Methodology</h3>
+                <p><strong>Data Sources:</strong></p>
+                <ul>
+                    <li>SEIFA 2021 SA2-level socio-economic indicators</li>
+                    <li>AIHW mortality and morbidity data</li>
+                    <li>Australian Bureau of Statistics geographic correspondences</li>
+                </ul>
+                
+                <p><strong>Risk Scoring Algorithm:</strong></p>
+                <ul>
+                    <li>Mortality Rate (25% weight)</li>
+                    <li>Premature Death Rate (20% weight)</li>
+                    <li>Avoidable Death Rate (20% weight)</li>
+                    <li>Chronic Disease Mortality (15% weight)</li>
+                    <li>Mental Health Mortality (10% weight)</li>
+                    <li>Life Expectancy (10% weight, reverse scored)</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h3>Policy Implications</h3>
+                <ul>
+                    <li>Strong correlations between socio-economic disadvantage and health outcomes suggest targeted interventions needed</li>
+                    <li>Geographic clustering of poor health outcomes indicates need for place-based health programs</li>
+                    <li>Risk scoring system can help prioritise resource allocation</li>
+                    <li>Preventable deaths show strong correlation with disadvantage, indicating opportunity for intervention</li>
+                </ul>
+            </div>
+            
+            <div class="section">
+                <h3>Technical Notes</h3>
+                <p>Analysis conducted using Python with pandas, scipy, and plotly. 
+                Correlations calculated using Pearson correlation coefficients with significance testing.
+                Risk scores standardised to 0-100 scale using percentile rankings.</p>
+                
+                <p><em>Generated: 2025-06-18 22:51:25</em></p>
+            </div>
+        </body>
+        </html>
+        

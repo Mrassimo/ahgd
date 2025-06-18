@@ -51,6 +51,20 @@ data/processed/*.xlsx
 data/processed/*.json
 data/processed/*.parquet
 
+# Large data files (>100MB) - GitHub limit
+data/raw/demographics/2021_GCP_AUS_SA2.zip
+data/raw/demographics/2021_GCP_NSW_SA2.zip
+data/raw/health/mbs_demographics_historical_1993_2015.zip
+docs/assets/initial_map.html
+
+# Large zip files and downloads
+data/raw/**/*.zip
+data/raw/**/*.7z
+data/raw/**/*.gz
+
+# Large HTML visualisations (>50MB)
+docs/assets/initial_map.html
+
 # Logs
 *.log
 logs/*.log
