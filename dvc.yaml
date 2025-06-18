@@ -1,0 +1,81 @@
+stages:
+  download_data:
+    cmd: python scripts/data_processing/download_data.py
+    deps:
+      - scripts/data_processing/download_data.py
+    outs:
+      - data/raw/download_report_*.md
+    desc: Download raw health data from Australian government sources
+    
+  process_aihw_data:
+    cmd: python scripts/data_processing/aihw_data_extraction.py
+    deps:
+      - scripts/data_processing/aihw_data_extraction.py
+      - data/raw/health/aihw_grim_data_2025.csv
+      - data/raw/health/aihw_mort_table1_2025.csv
+    outs:
+      - data/processed/aihw_grim_data.parquet
+      - data/processed/aihw_mort_table1.parquet
+    desc: Process AIHW mortality and health data
+    
+  process_demographics:
+    cmd: python scripts/data_processing/process_data.py --data-type demographics
+    deps:
+      - scripts/data_processing/process_data.py
+      - data/raw/demographics/
+    outs:
+      - data/processed/demographics_processed.parquet
+    desc: Process demographic data from ABS Census
+    
+  process_geographic:
+    cmd: python scripts/data_processing/process_data.py --data-type geographic
+    deps:
+      - scripts/data_processing/process_data.py
+      - data/raw/geographic/
+      - data/raw/sa2_2021_boundaries_gda2020.zip
+    outs:
+      - data/processed/sa2_boundaries_2021.parquet
+    desc: Process geographic boundary data
+    
+  process_socioeconomic:
+    cmd: python scripts/data_processing/process_data.py --data-type socioeconomic
+    deps:
+      - scripts/data_processing/process_data.py
+      - data/raw/socioeconomic/SEIFA_2021_SA2.xlsx
+    outs:
+      - data/processed/seifa_2021_sa2.parquet
+    desc: Process SEIFA socioeconomic data
+    
+  create_analysis_database:
+    cmd: python scripts/data_processing/populate_analysis_database.py
+    deps:
+      - scripts/data_processing/populate_analysis_database.py
+      - data/processed/aihw_grim_data.parquet
+      - data/processed/aihw_mort_table1.parquet
+      - data/processed/sa2_boundaries_2021.parquet
+      - data/processed/seifa_2021_sa2.parquet
+    outs:
+      - data/health_analytics.db
+    desc: Create consolidated analysis database
+    
+  health_correlation_analysis:
+    cmd: python scripts/analysis/health_correlation_analysis.py
+    deps:
+      - scripts/analysis/health_correlation_analysis.py
+      - data/health_analytics.db
+    outs:
+      - reports/analysis/health_correlation_results.json
+      - docs/assets/health_correlation_analysis.png
+    desc: Perform health inequality correlation analysis
+    
+plots:
+  - health_correlation_analysis.json:
+      x: socioeconomic_index
+      y: health_outcome_score
+      title: Health Inequality Analysis
+      
+params:
+  - params.yaml
+  
+metrics:
+  - metrics.json

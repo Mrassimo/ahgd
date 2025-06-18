@@ -1,12 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python-generated files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -27,14 +23,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -52,19 +40,6 @@ coverage.xml
 # Translations
 *.mo
 *.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
 
 # Sphinx documentation
 docs/_build/
@@ -122,15 +97,17 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# PyCharm
+# IDE
 .idea/
-
-# VS Code
 .vscode/
 *.code-workspace
+*.swp
+*.swo
+*~
 
-# macOS
+# OS files
 .DS_Store
+.DS_Store?
 .AppleDouble
 .LSOverride
 Icon?
@@ -147,14 +124,10 @@ Icon?
 Network Trash Folder
 Temporary Items
 .apdisk
-
-# Windows
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
 ehthumbs_vista.db
-*.tmp
-*.temp
 Desktop.ini
 $RECYCLE.BIN/
 *.cab
@@ -164,19 +137,21 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
-# Project-specific
-
 # Data files - Project-specific data storage
 data/raw/*.csv
 data/raw/*.xlsx
+data/raw/*.json
 data/raw/*.zip
 data/raw/*.shp
 data/raw/*.dbf
 data/raw/*.shx
 data/raw/*.prj
 data/raw/*.cpg
-data/processed/*.parquet
+data/raw/*.parquet
 data/processed/*.csv
+data/processed/*.xlsx
+data/processed/*.json
+data/processed/*.parquet
 data/cache/
 data/outputs/
 data/web_exports/
@@ -188,6 +163,17 @@ data/gold/
 data/staging/
 data/metadata/versions/
 data/metadata/change_log/
+
+# Large data files (>100MB) - GitHub limit
+data/raw/demographics/2021_GCP_AUS_SA2.zip
+data/raw/demographics/2021_GCP_NSW_SA2.zip
+data/raw/health/mbs_demographics_historical_1993_2015.zip
+docs/assets/initial_map.html
+
+# Large zip files and downloads
+data/raw/**/*.zip
+data/raw/**/*.7z
+data/raw/**/*.gz
 
 # Database files
 *.db
@@ -209,12 +195,16 @@ logs/
 temp/
 tmp/
 .tmp/
+*.tmp
+*.temp
 
 # Configuration files with secrets
 config/secrets.env
 config/api_keys.env
 .secrets
 .api_keys
+.env.local
+.env.*.local
 
 # Model artifacts
 models/
@@ -224,6 +214,7 @@ models/
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/
 
 # Jupyter notebook outputs (keep source, ignore outputs)
 **/outputs/

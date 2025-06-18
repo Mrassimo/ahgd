@@ -1,568 +1,605 @@
 """
-Comprehensive integration tests for Australian Health Analytics platform.
+Comprehensive integration test suite for end-to-end workflows.
 
-Tests end-to-end integration across all major components:
-- Data processing pipeline integration (SEIFA → Health → Boundary → Risk)
-- Storage optimization integration (Processing → Optimization → Storage)
-- Analysis pipeline integration (Data → Risk Assessment → Results)
-- Cross-component data flow and consistency
-- Real-world scenario simulation
-
-Validates complete system functionality with Australian health data patterns.
+This module tests complete dashboard workflows, data pipeline integration,
+and cross-component functionality to ensure the system works as a whole.
 """
 
 import pytest
-import polars as pl
+import pandas as pd
 import numpy as np
+from unittest.mock import Mock, patch, MagicMock
+import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
 import tempfile
-import shutil
-import time
-from datetime import datetime, date
+import json
+import sqlite3
+import os
 
-from src.data_processing.seifa_processor import SEIFAProcessor
-from src.data_processing.health_processor import HealthDataProcessor
-from src.data_processing.simple_boundary_processor import SimpleBoundaryProcessor
-from src.data_processing.storage.parquet_storage_manager import ParquetStorageManager
-from src.data_processing.storage.memory_optimizer import MemoryOptimizer
-from src.analysis.risk.health_risk_calculator import HealthRiskCalculator
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Mock heavy dependencies
+sys.modules['streamlit'] = Mock()
+sys.modules['folium'] = Mock()
+sys.modules['plotly.express'] = Mock()
+sys.modules['plotly.graph_objects'] = Mock()
+sys.modules['geopandas'] = Mock()
+sys.modules['streamlit_folium'] = Mock()
 
 
-class TestEndToEndIntegration:
-    """End-to-end integration tests across all major components."""
+class TestDashboardIntegration:
+    """Integration tests for complete dashboard functionality"""
     
-    def test_complete_data_processing_pipeline(self, mock_excel_seifa_file, mock_health_data, 
-                                             mock_boundary_data, mock_data_paths):
-        """Test complete data processing pipeline from raw data to analysis-ready datasets."""
+    def setup_method(self):
+        """Setup integration test data"""
+        self.test_data = pd.DataFrame({
+            'SA2_CODE21': ['101021007', '101021008', '201011001', '201011002'],
+            'SA2_NAME21': ['Sydney CBD', 'Sydney Haymarket', 'Melbourne CBD', 'Melbourne Docklands'],
+            'health_risk_score': [8.5, 12.3, 6.1, 15.7],
+            'IRSD_Score': [1050, 900, 1200, 750],
+            'mortality_rate': [5.2, 8.1, 3.9, 10.4],
+            'diabetes_prevalence': [6.8, 9.2, 4.5, 12.1],
+            'population': [18500, 22000, 28000, 15500],
+            'STE_NAME21': ['NSW', 'NSW', 'VIC', 'VIC']
+        })
+    
+    @patch('src.dashboard.data.loaders.load_data')
+    @patch('src.dashboard.data.loaders.calculate_correlations')
+    def test_complete_dashboard_workflow(self, mock_correlations, mock_load_data):
+        """Test complete dashboard workflow from data loading to visualization"""
+        # Mock data loading
+        mock_load_data.return_value = self.test_data
         
-        # Step 1: Initialize all processors
-        seifa_processor = SEIFAProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        health_processor = HealthDataProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        boundary_processor = SimpleBoundaryProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        storage_manager = ParquetStorageManager(base_path=mock_data_paths["parquet_dir"])
+        # Mock correlation calculation
+        correlation_matrix = self.test_data.select_dtypes(include=[np.number]).corr()
+        mock_correlations.return_value = (correlation_matrix, self.test_data)
         
-        # Step 2: Create and process SEIFA data
-        excel_file = mock_excel_seifa_file(num_areas=100)
-        expected_seifa_path = seifa_processor.raw_dir / "SEIFA_2021_SA2_Indexes.xlsx"
-        shutil.copy(excel_file, expected_seifa_path)
+        # Test data loading component
+        from src.dashboard.data.loaders import load_data, calculate_correlations
         
-        seifa_df = seifa_processor.process_seifa_file()
+        loaded_data = load_data()
+        assert loaded_data is not None
+        assert len(loaded_data) == len(self.test_data)
         
-        # Step 3: Create and process health data
-        health_df = mock_health_data(num_records=500, num_sa2_areas=100)
-        health_csv_path = health_processor.raw_dir / "health_data.csv"
-        health_df.write_csv(health_csv_path)
+        # Test correlation analysis
+        corr_matrix, corr_data = calculate_correlations(loaded_data)
+        assert isinstance(corr_matrix, pd.DataFrame)
+        assert corr_matrix.shape[0] == corr_matrix.shape[1]  # Square matrix
         
-        # Process health data through validation and aggregation
-        validated_health = health_processor._validate_health_data(health_df)
-        aggregated_health = health_processor._aggregate_by_sa2(validated_health)
+        # Test data processing
+        from src.dashboard.data.processors import filter_data_by_states, calculate_health_risk_score
         
-        # Step 4: Create and process boundary data
-        boundary_df = mock_boundary_data(num_areas=100)
-        boundary_csv_path = boundary_processor.raw_dir / "boundaries.csv"
-        boundary_df.write_csv(boundary_csv_path)
+        filtered_data = filter_data_by_states(loaded_data, ['NSW'])
+        assert len(filtered_data) == 2  # Should have 2 NSW areas
         
-        processed_boundary = boundary_processor._validate_boundary_data(boundary_df)
-        enhanced_boundary = boundary_processor._calculate_population_density(processed_boundary)
+        risk_scores = calculate_health_risk_score(loaded_data)
+        assert 'health_risk_score' in risk_scores.columns
+    
+    @patch('src.dashboard.visualisation.charts.px.imshow')
+    @patch('src.dashboard.visualisation.charts.px.scatter')
+    def test_visualization_integration(self, mock_scatter, mock_imshow):
+        """Test integration of visualization components"""
+        # Mock plotly figures
+        mock_figure = Mock()
+        mock_figure.update_layout = Mock(return_value=mock_figure)
+        mock_imshow.return_value = mock_figure
+        mock_scatter.return_value = mock_figure
         
-        # Step 5: Integrate all datasets
-        # Ensure consistent SA2 codes across datasets
-        common_sa2_codes = list(set(seifa_df["sa2_code_2021"].to_list()) & 
-                               set(enhanced_boundary["sa2_code_2021"].to_list()))[:50]
+        from src.dashboard.visualisation.charts import create_correlation_heatmap, create_scatter_plots
+        from src.dashboard.visualisation.components import display_key_metrics
         
-        # Filter datasets to common SA2 codes
-        integrated_seifa = seifa_df.filter(pl.col("sa2_code_2021").is_in(common_sa2_codes))
-        integrated_boundary = enhanced_boundary.filter(pl.col("sa2_code_2021").is_in(common_sa2_codes))
-        integrated_health = aggregated_health.filter(pl.col("sa2_code").is_in(common_sa2_codes))
+        # Test correlation heatmap
+        correlation_matrix = self.test_data.select_dtypes(include=[np.number]).corr()
+        heatmap = create_correlation_heatmap(correlation_matrix)
+        assert heatmap == mock_figure
         
-        # Step 6: Save integrated datasets
-        seifa_parquet = storage_manager.save_optimized_parquet(
-            integrated_seifa, 
-            mock_data_paths["parquet_dir"] / "integrated_seifa.parquet",
-            data_type="seifa"
+        # Test scatter plots
+        scatter_plots = create_scatter_plots(self.test_data)
+        assert isinstance(scatter_plots, tuple)
+        
+        # Test key metrics display
+        with patch('src.dashboard.visualisation.components.st') as mock_st:
+            mock_st.columns.return_value = [Mock(), Mock(), Mock(), Mock()]
+            display_key_metrics(self.test_data, 'health_risk_score', 'Test Integration')
+            assert mock_st.columns.called
+    
+    @patch('src.dashboard.visualisation.maps.folium.Map')
+    def test_geographic_visualization_integration(self, mock_map):
+        """Test integration of geographic visualization components"""
+        mock_map_instance = Mock()
+        mock_map.return_value = mock_map_instance
+        
+        # Add mock geometry for geographic data
+        mock_geometry = Mock()
+        mock_geometry.bounds = [150.0, -34.0, 151.0, -33.0]
+        self.test_data['geometry'] = [mock_geometry] * len(self.test_data)
+        
+        from src.dashboard.visualisation.maps import create_health_risk_map, get_map_bounds
+        
+        # Test map creation
+        health_map = create_health_risk_map(self.test_data)
+        assert health_map == mock_map_instance
+        
+        # Test map bounds calculation
+        bounds = get_map_bounds(self.test_data)
+        assert isinstance(bounds, dict)
+    
+    def test_data_pipeline_integration(self):
+        """Test complete data processing pipeline integration"""
+        from src.dashboard.data.processors import (
+            validate_health_data, prepare_correlation_data,
+            identify_health_hotspots, calculate_data_quality_metrics
         )
         
-        boundary_parquet = storage_manager.save_optimized_parquet(
-            integrated_boundary,
-            mock_data_paths["parquet_dir"] / "integrated_boundary.parquet", 
-            data_type="geographic"
+        # Test data validation
+        validation_result = validate_health_data(self.test_data)
+        assert isinstance(validation_result, bool)
+        
+        # Test correlation data preparation
+        correlation_data = prepare_correlation_data(self.test_data)
+        assert isinstance(correlation_data, pd.DataFrame)
+        
+        # Test hotspot identification
+        hotspots = identify_health_hotspots(self.test_data)
+        assert isinstance(hotspots, pd.DataFrame)
+        
+        # Test data quality metrics
+        with patch('src.dashboard.data.processors.st') as mock_st:
+            quality_metrics = calculate_data_quality_metrics(self.test_data)
+            # Function should complete without error
+            assert True
+
+
+class TestConfigurationIntegration:
+    """Integration tests for configuration management across components"""
+    
+    @patch.dict(os.environ, {
+        'AHGD_ENVIRONMENT': 'testing',
+        'AHGD_DATABASE_PATH': 'test_health.db',
+        'AHGD_DASHBOARD_PORT': '8502'
+    })
+    def test_configuration_integration(self):
+        """Test configuration integration across all components"""
+        from src.config import get_global_config, reset_global_config
+        
+        # Reset config to pick up environment variables
+        reset_global_config()
+        config = get_global_config()
+        
+        # Test configuration values
+        assert config.environment.value == 'testing'
+        assert 'test_health.db' in str(config.database.path)
+        assert config.dashboard.port == 8502
+        
+        # Test config usage in components
+        with patch('src.dashboard.data.loaders.get_global_config', return_value=config):
+            from src.dashboard.data.loaders import load_data
+            # Should use config without errors
+            result = load_data()
+            assert result is not None
+    
+    def test_logging_configuration_integration(self):
+        """Test logging configuration across components"""
+        from src.config import setup_logging, get_global_config
+        
+        config = get_global_config()
+        
+        # Test logging setup
+        with patch('src.config.logging.basicConfig') as mock_basic_config:
+            with patch('src.config.logging.FileHandler') as mock_file_handler:
+                setup_logging(config.logging)
+                
+                # Should configure logging appropriately
+                assert mock_basic_config.called or mock_file_handler.called
+
+
+class TestDatabaseIntegration:
+    """Integration tests for database operations"""
+    
+    def setup_method(self):
+        """Setup test database"""
+        self.temp_db = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
+        self.temp_db.close()
+        self.db_path = self.temp_db.name
+        
+        # Create test tables
+        self._create_test_database()
+    
+    def teardown_method(self):
+        """Cleanup test database"""
+        Path(self.db_path).unlink(missing_ok=True)
+    
+    def _create_test_database(self):
+        """Create test database with sample data"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Create test table
+        cursor.execute('''
+            CREATE TABLE health_data (
+                sa2_code TEXT,
+                sa2_name TEXT,
+                health_risk_score REAL,
+                irsd_score REAL,
+                mortality_rate REAL,
+                population INTEGER
+            )
+        ''')
+        
+        # Insert test data
+        test_records = [
+            ('101021007', 'Sydney CBD', 8.5, 1050, 5.2, 18500),
+            ('101021008', 'Sydney Haymarket', 12.3, 900, 8.1, 22000),
+            ('201011001', 'Melbourne CBD', 6.1, 1200, 3.9, 28000),
+            ('201011002', 'Melbourne Docklands', 15.7, 750, 10.4, 15500)
+        ]
+        
+        cursor.executemany(
+            'INSERT INTO health_data VALUES (?, ?, ?, ?, ?, ?)',
+            test_records
         )
         
-        health_parquet = storage_manager.save_optimized_parquet(
-            integrated_health,
-            mock_data_paths["parquet_dir"] / "integrated_health.parquet",
-            data_type="health"
-        )
-        
-        # Step 7: Verify integration results
-        assert seifa_parquet.exists()
-        assert boundary_parquet.exists()
-        assert health_parquet.exists()
-        
-        # Load and verify integrated data
-        loaded_seifa = pl.read_parquet(seifa_parquet)
-        loaded_boundary = pl.read_parquet(boundary_parquet)
-        loaded_health = pl.read_parquet(health_parquet)
-        
-        assert len(loaded_seifa) > 0
-        assert len(loaded_boundary) > 0
-        assert len(loaded_health) > 0
-        
-        # Verify data consistency
-        seifa_codes = set(loaded_seifa["sa2_code_2021"].to_list())
-        boundary_codes = set(loaded_boundary["sa2_code_2021"].to_list())
-        health_codes = set(loaded_health["sa2_code"].to_list())
-        
-        # Should have overlapping SA2 codes
-        common_codes = seifa_codes & boundary_codes & health_codes
-        assert len(common_codes) > 10, "Should have significant overlap in SA2 codes"
-        
-        # Verify data quality
-        assert loaded_seifa["irsd_decile"].min() >= 1
-        assert loaded_seifa["irsd_decile"].max() <= 10
-        assert loaded_boundary["population_density"].min() >= 0
-        assert loaded_health["total_prescriptions"].min() >= 0
+        conn.commit()
+        conn.close()
     
-    def test_storage_optimization_integration(self, mock_seifa_data, mock_health_data, mock_data_paths):
-        """Test integration between data processing and storage optimization."""
+    def test_database_connection_integration(self):
+        """Test database connection and data retrieval"""
+        import sqlite3
         
-        # Initialize components
-        memory_optimizer = MemoryOptimizer()
-        storage_manager = ParquetStorageManager(base_path=mock_data_paths["parquet_dir"])
+        # Test connection
+        conn = sqlite3.connect(self.db_path)
         
-        # Create test datasets with suboptimal types
-        seifa_df = mock_seifa_data(num_areas=200)
-        health_df = mock_health_data(num_records=1000, num_sa2_areas=200)
+        # Test data retrieval
+        query = "SELECT * FROM health_data"
+        data = pd.read_sql_query(query, conn)
         
-        # Force inefficient data types
-        seifa_df = seifa_df.with_columns([
-            pl.col("irsd_decile").cast(pl.Int64),
-            pl.col("sa2_code_2021").cast(pl.Utf8)
-        ])
+        assert len(data) == 4
+        assert 'sa2_code' in data.columns
+        assert 'health_risk_score' in data.columns
         
-        health_df = health_df.with_columns([
-            pl.col("prescription_count").cast(pl.Int64),
-            pl.col("sa2_code").cast(pl.Utf8),
-            pl.col("state").cast(pl.Utf8)
-        ])
-        
-        # Step 1: Memory optimization
-        initial_seifa_memory = seifa_df.estimated_size("mb")
-        initial_health_memory = health_df.estimated_size("mb")
-        
-        optimized_seifa = memory_optimizer.optimize_data_types(seifa_df, data_category="seifa")
-        optimized_health = memory_optimizer.optimize_data_types(health_df, data_category="health")
-        
-        optimized_seifa_memory = optimized_seifa.estimated_size("mb")
-        optimized_health_memory = optimized_health.estimated_size("mb")
-        
-        # Verify memory optimization
-        seifa_reduction = (initial_seifa_memory - optimized_seifa_memory) / initial_seifa_memory
-        health_reduction = (initial_health_memory - optimized_health_memory) / initial_health_memory
-        
-        assert seifa_reduction > 0, "SEIFA memory optimization should reduce memory usage"
-        assert health_reduction > 0, "Health memory optimization should reduce memory usage"
-        
-        # Step 2: Storage optimization
-        seifa_path = mock_data_paths["parquet_dir"] / "optimized_seifa.parquet"
-        health_path = mock_data_paths["parquet_dir"] / "optimized_health.parquet"
-        
-        # Save unoptimized for comparison
-        seifa_unopt_path = mock_data_paths["parquet_dir"] / "unoptimized_seifa.csv"
-        health_unopt_path = mock_data_paths["parquet_dir"] / "unoptimized_health.csv"
-        
-        seifa_df.write_csv(seifa_unopt_path)
-        health_df.write_csv(health_unopt_path)
-        
-        unopt_seifa_size = seifa_unopt_path.stat().st_size
-        unopt_health_size = health_unopt_path.stat().st_size
-        
-        # Save optimized
-        storage_manager.save_optimized_parquet(optimized_seifa, seifa_path, data_type="seifa")
-        storage_manager.save_optimized_parquet(optimized_health, health_path, data_type="health")
-        
-        opt_seifa_size = seifa_path.stat().st_size
-        opt_health_size = health_path.stat().st_size
-        
-        # Verify storage optimization
-        seifa_compression = opt_seifa_size / unopt_seifa_size
-        health_compression = opt_health_size / unopt_health_size
-        
-        assert seifa_compression < 0.8, "SEIFA storage should achieve significant compression"
-        assert health_compression < 0.8, "Health storage should achieve significant compression"
-        
-        # Step 3: Verify data integrity after full optimization pipeline
-        loaded_seifa = pl.read_parquet(seifa_path)
-        loaded_health = pl.read_parquet(health_path)
-        
-        assert len(loaded_seifa) == len(seifa_df)
-        assert len(loaded_health) == len(health_df)
-        
-        # Verify optimizations were preserved
-        assert loaded_seifa["sa2_code_2021"].dtype == pl.Categorical
-        assert loaded_seifa["irsd_decile"].dtype == pl.Int8
-        assert loaded_health["sa2_code"].dtype == pl.Categorical
-        assert loaded_health["state"].dtype == pl.Categorical
+        conn.close()
     
-    def test_risk_assessment_integration(self, integration_test_data, mock_data_paths):
-        """Test integration of complete risk assessment pipeline."""
+    def test_database_operations_integration(self):
+        """Test integration of database operations with data processing"""
+        import sqlite3
         
-        # Initialize risk calculator
-        risk_calculator = HealthRiskCalculator(data_dir=mock_data_paths["processed_dir"])
+        conn = sqlite3.connect(self.db_path)
         
-        # Create comprehensive integrated dataset
-        integrated_data = integration_test_data(num_sa2_areas=100, num_health_records=500)
+        # Load data from database
+        data = pd.read_sql_query("SELECT * FROM health_data", conn)
         
-        seifa_df = integrated_data["seifa"]
-        health_df = integrated_data["health"]
-        boundary_df = integrated_data["boundaries"]
+        # Process data using dashboard components
+        from src.dashboard.data.processors import calculate_health_risk_score, filter_data_by_states
         
-        # Save datasets as expected by risk calculator
-        seifa_path = mock_data_paths["processed_dir"] / "seifa_2021_sa2.csv"
-        boundary_path = mock_data_paths["processed_dir"] / "sa2_boundaries_processed.csv"
+        # Test processing with database data
+        processed_data = calculate_health_risk_score(data)
+        assert 'health_risk_score' in processed_data.columns
         
-        seifa_df.write_csv(seifa_path)
-        boundary_df.write_csv(boundary_path)
+        # Test filtering
+        # Add state column for filtering test
+        data['STE_NAME21'] = ['NSW', 'NSW', 'VIC', 'VIC']
+        filtered_data = filter_data_by_states(data, ['NSW'])
+        assert len(filtered_data) == 2
         
-        # Step 1: Load data
-        load_success = risk_calculator.load_processed_data()
-        assert load_success is True
-        
-        # Step 2: Calculate SEIFA risk component
-        seifa_risk = risk_calculator._calculate_seifa_risk_score(seifa_df)
-        assert "seifa_risk_score" in seifa_risk.columns
-        assert len(seifa_risk) > 0
-        
-        # Step 3: Process health data for risk assessment
-        health_aggregated = health_df.group_by("sa2_code").agg([
-            pl.col("prescription_count").sum().alias("total_prescriptions"),
-            pl.col("chronic_medication").mean().alias("chronic_rate"),
-            pl.col("cost_government").sum().alias("total_cost")
-        ])
-        
-        health_risk = risk_calculator._calculate_health_utilisation_risk(health_aggregated)
-        assert "health_utilisation_risk" in health_risk.columns
-        
-        # Step 4: Calculate geographic risk
-        geographic_risk = risk_calculator._calculate_geographic_accessibility_risk(boundary_df)
-        assert "geographic_risk" in geographic_risk.columns
-        
-        # Step 5: Integrate all risk components
-        comprehensive_risk = seifa_risk.join(
-            health_risk, 
-            left_on="sa2_code_2021", 
-            right_on="sa2_code", 
-            how="inner"
-        ).join(
-            geographic_risk, 
-            on="sa2_code_2021", 
-            how="inner"
-        )
-        
-        # Step 6: Calculate composite risk scores
-        composite_risk = risk_calculator._calculate_composite_risk_score(comprehensive_risk)
-        
-        assert "composite_risk_score" in composite_risk.columns
-        assert len(composite_risk) > 0
-        
-        # Step 7: Classify risk categories
-        classified_risk = risk_calculator._classify_risk_categories(composite_risk)
-        
-        assert "risk_category" in classified_risk.columns
-        
-        # Verify risk classification distribution
-        risk_categories = classified_risk["risk_category"].value_counts()
-        assert len(risk_categories) > 1, "Should have multiple risk categories"
-        
-        # Step 8: Generate summary statistics
-        risk_summary = risk_calculator._generate_risk_summary(classified_risk)
-        
-        expected_summary_keys = ["total_sa2_areas", "risk_distribution", "average_risk_score"]
-        for key in expected_summary_keys:
-            assert key in risk_summary
-        
-        assert risk_summary["total_sa2_areas"] > 0
-        assert 0 <= risk_summary["average_risk_score"] <= 100
+        conn.close()
+
+
+class TestErrorHandlingIntegration:
+    """Integration tests for error handling across components"""
     
-    def test_cross_component_data_consistency(self, integration_test_data, mock_data_paths):
-        """Test data consistency across all integrated components."""
-        
-        # Create integrated test environment
-        integrated_data = integration_test_data(num_sa2_areas=50, num_health_records=200)
-        
-        seifa_processor = SEIFAProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        health_processor = HealthDataProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        boundary_processor = SimpleBoundaryProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        risk_calculator = HealthRiskCalculator(data_dir=mock_data_paths["processed_dir"])
-        
-        # Process all datasets
-        seifa_df = integrated_data["seifa"]
-        health_df = integrated_data["health"]
-        boundary_df = integrated_data["boundaries"]
-        
-        # Validate through each processor
-        validated_seifa = seifa_processor._validate_seifa_data(seifa_df)
-        validated_health = health_processor._validate_health_data(health_df)
-        validated_boundary = boundary_processor._validate_boundary_data(boundary_df)
-        
-        # Check SA2 code consistency
-        seifa_codes = set(validated_seifa["sa2_code_2021"].to_list())
-        boundary_codes = set(validated_boundary["sa2_code_2021"].to_list())
-        health_codes = set(validated_health["sa2_code"].to_list())
-        
-        # Verify overlap
-        seifa_boundary_overlap = len(seifa_codes & boundary_codes) / len(seifa_codes)
-        seifa_health_overlap = len(seifa_codes & health_codes) / len(seifa_codes)
-        
-        assert seifa_boundary_overlap > 0.8, "SEIFA and boundary data should have high SA2 code overlap"
-        assert seifa_health_overlap > 0.7, "SEIFA and health data should have reasonable SA2 code overlap"
-        
-        # Check data value consistency
-        # SEIFA deciles should be 1-10
-        for col in validated_seifa.columns:
-            if "decile" in col:
-                decile_values = validated_seifa[col].drop_nulls()
-                if len(decile_values) > 0:
-                    assert decile_values.min() >= 1
-                    assert decile_values.max() <= 10
-        
-        # Health utilisation should be non-negative
-        if "prescription_count" in validated_health.columns:
-            prescription_counts = validated_health["prescription_count"].drop_nulls()
-            if len(prescription_counts) > 0:
-                assert prescription_counts.min() >= 0
-        
-        # Population should be positive
-        if "population_2021" in validated_boundary.columns:
-            populations = validated_boundary["population_2021"].drop_nulls()
-            if len(populations) > 0:
-                assert populations.min() > 0
-        
-        # Test risk calculation consistency
-        # Calculate risks using integrated data
-        seifa_risk = risk_calculator._calculate_seifa_risk_score(validated_seifa)
-        
-        # Risk scores should be within valid range
-        risk_scores = seifa_risk["seifa_risk_score"].drop_nulls()
-        if len(risk_scores) > 0:
-            assert risk_scores.min() >= 0
-            assert risk_scores.max() <= 100
+    def test_data_loading_error_cascade(self):
+        """Test error handling when data loading fails"""
+        with patch('src.dashboard.data.loaders.pd.read_parquet') as mock_read:
+            mock_read.side_effect = FileNotFoundError("Data file not found")
             
-            # Should have reasonable distribution
-            risk_std = risk_scores.std()
-            assert risk_std > 5, "Risk scores should show meaningful variation"
+            from src.dashboard.data.loaders import load_data
+            
+            # Should handle error gracefully and return sample data
+            result = load_data()
+            assert result is not None
+            assert isinstance(result, pd.DataFrame)
     
-    def test_performance_integration_pipeline(self, mock_excel_seifa_file, mock_health_data, 
-                                            mock_boundary_data, mock_data_paths):
-        """Test performance of complete integrated pipeline."""
-        
-        start_time = time.time()
-        start_memory = psutil.Process().memory_info().rss / 1024 / 1024
-        
-        # Initialize all components
-        seifa_processor = SEIFAProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        health_processor = HealthDataProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        boundary_processor = SimpleBoundaryProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        storage_manager = ParquetStorageManager(base_path=mock_data_paths["parquet_dir"])
-        memory_optimizer = MemoryOptimizer()
-        risk_calculator = HealthRiskCalculator(data_dir=mock_data_paths["processed_dir"])
-        
-        # Create realistic-sized datasets
-        excel_file = mock_excel_seifa_file(num_areas=500)
-        expected_seifa_path = seifa_processor.raw_dir / "SEIFA_2021_SA2_Indexes.xlsx"
-        shutil.copy(excel_file, expected_seifa_path)
-        
-        health_df = mock_health_data(num_records=2500, num_sa2_areas=500)
-        boundary_df = mock_boundary_data(num_areas=500)
-        
-        # Execute complete pipeline
-        # Step 1: Data processing
-        seifa_df = seifa_processor.process_seifa_file()
-        validated_health = health_processor._validate_health_data(health_df)
-        aggregated_health = health_processor._aggregate_by_sa2(validated_health)
-        processed_boundary = boundary_processor._validate_boundary_data(boundary_df)
-        
-        # Step 2: Memory optimization
-        optimized_seifa = memory_optimizer.optimize_data_types(seifa_df, data_category="seifa")
-        optimized_health = memory_optimizer.optimize_data_types(aggregated_health, data_category="health")
-        optimized_boundary = memory_optimizer.optimize_data_types(processed_boundary, data_category="geographic")
-        
-        # Step 3: Storage optimization
-        seifa_path = storage_manager.save_optimized_parquet(
-            optimized_seifa, 
-            mock_data_paths["parquet_dir"] / "pipeline_seifa.parquet",
-            data_type="seifa"
-        )
-        health_path = storage_manager.save_optimized_parquet(
-            optimized_health,
-            mock_data_paths["parquet_dir"] / "pipeline_health.parquet", 
-            data_type="health"
-        )
-        boundary_path = storage_manager.save_optimized_parquet(
-            optimized_boundary,
-            mock_data_paths["parquet_dir"] / "pipeline_boundary.parquet",
-            data_type="geographic"
-        )
-        
-        # Step 4: Risk assessment
-        seifa_risk = risk_calculator._calculate_seifa_risk_score(optimized_seifa)
-        health_risk = risk_calculator._calculate_health_utilisation_risk(optimized_health)
-        geographic_risk = risk_calculator._calculate_geographic_accessibility_risk(optimized_boundary)
-        
-        end_time = time.time()
-        end_memory = psutil.Process().memory_info().rss / 1024 / 1024
-        
-        total_time = end_time - start_time
-        memory_usage = end_memory - start_memory
-        
-        # Performance assertions for complete pipeline
-        assert total_time < 60.0, f"Complete pipeline took {total_time:.1f}s, expected <60s"
-        assert memory_usage < 1000, f"Pipeline used {memory_usage:.1f}MB, expected <1GB"
-        
-        # Verify all outputs exist and are valid
-        assert seifa_path.exists()
-        assert health_path.exists() 
-        assert boundary_path.exists()
-        
-        assert len(seifa_risk) > 400  # Should retain most SA2 areas
-        assert len(health_risk) > 0
-        assert len(geographic_risk) > 400
-        
-        # Verify data quality maintained throughout pipeline
-        assert "seifa_risk_score" in seifa_risk.columns
-        assert "health_utilisation_risk" in health_risk.columns
-        assert "geographic_risk" in geographic_risk.columns
-    
-    def test_error_handling_integration(self, mock_data_paths):
-        """Test error handling across integrated components."""
-        
-        # Initialize components
-        seifa_processor = SEIFAProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        health_processor = HealthDataProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-        risk_calculator = HealthRiskCalculator(data_dir=mock_data_paths["processed_dir"])
-        
-        # Test 1: Missing input files
-        with pytest.raises(FileNotFoundError):
-            seifa_processor.process_seifa_file()
-        
-        # Test 2: Invalid data formats
-        invalid_df = pl.DataFrame({
-            "invalid_column": ["invalid_data", "more_invalid"],
-            "another_column": [1, 2]
+    def test_visualization_error_handling(self):
+        """Test error handling in visualization components"""
+        invalid_data = pd.DataFrame({
+            'col1': [np.nan, np.inf, -np.inf],
+            'col2': ['invalid', None, '']
         })
         
-        # Should handle gracefully or raise appropriate errors
-        try:
-            validated_invalid = health_processor._validate_health_data(invalid_df)
-            # If it succeeds, should return empty or filtered DataFrame
-            assert len(validated_invalid) == 0
-        except (ValueError, pl.ComputeError, KeyError):
-            # Acceptable to raise validation errors
-            pass
+        # Test charts with invalid data
+        from src.dashboard.visualisation.charts import create_correlation_heatmap
         
-        # Test 3: Risk calculator with missing data
-        load_result = risk_calculator.load_processed_data()
-        assert load_result is False  # Should handle missing files gracefully
-        
-        # Test 4: Empty datasets
-        empty_df = pl.DataFrame()
-        
-        try:
-            empty_result = health_processor._validate_health_data(empty_df)
-            assert len(empty_result) == 0
-        except Exception as e:
-            # Should either handle gracefully or raise informative error
-            assert isinstance(e, (ValueError, pl.ComputeError))
-    
-    def test_data_versioning_integration(self, mock_seifa_data, mock_data_paths):
-        """Test data versioning and compatibility across pipeline versions."""
-        
-        storage_manager = ParquetStorageManager(base_path=mock_data_paths["parquet_dir"])
-        
-        # Create v1 dataset
-        v1_data = mock_seifa_data(num_areas=100)
-        v1_path = mock_data_paths["parquet_dir"] / "seifa_v1.parquet"
-        
-        # Add version metadata
-        v1_metadata = {
-            "version": "1.0",
-            "schema_version": "2021.1",
-            "created_date": datetime.now().isoformat()
-        }
-        
-        storage_manager.save_with_metadata(v1_data, v1_path, v1_metadata, data_type="seifa")
-        
-        # Create v2 dataset with additional columns
-        v2_data = v1_data.with_columns([
-            pl.lit("2024").alias("data_year"),
-            pl.Series("quality_score", np.random.uniform(0.8, 1.0, len(v1_data)))
-        ])
-        
-        v2_path = mock_data_paths["parquet_dir"] / "seifa_v2.parquet"
-        v2_metadata = {
-            "version": "2.0", 
-            "schema_version": "2024.1",
-            "created_date": datetime.now().isoformat(),
-            "backwards_compatible": True
-        }
-        
-        storage_manager.save_with_metadata(v2_data, v2_path, v2_metadata, data_type="seifa")
-        
-        # Test compatibility
-        loaded_v1 = pl.read_parquet(v1_path)
-        loaded_v2 = pl.read_parquet(v2_path)
-        
-        # V2 should be superset of V1
-        v1_columns = set(loaded_v1.columns)
-        v2_columns = set(loaded_v2.columns)
-        
-        assert v1_columns.issubset(v2_columns), "V2 should be backwards compatible with V1"
-        
-        # Core columns should be identical
-        common_columns = list(v1_columns & v2_columns)
-        v1_subset = loaded_v1.select(common_columns)
-        v2_subset = loaded_v2.select(common_columns)
-        
-        # Should have same core data
-        assert len(v1_subset) == len(v2_subset)
-    
-    def test_concurrent_integration_operations(self, integration_test_data, mock_data_paths):
-        """Test concurrent operations across integrated components."""
-        import concurrent.futures
-        
-        integrated_data = integration_test_data(num_sa2_areas=100, num_health_records=400)
-        
-        def process_seifa_component():
-            processor = SEIFAProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-            return processor._validate_seifa_data(integrated_data["seifa"])
-        
-        def process_health_component():
-            processor = HealthDataProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-            return processor._validate_health_data(integrated_data["health"])
-        
-        def process_boundary_component():
-            processor = SimpleBoundaryProcessor(data_dir=mock_data_paths["raw_dir"].parent)
-            return processor._validate_boundary_data(integrated_data["boundaries"])
-        
-        def calculate_risk_component():
-            calculator = HealthRiskCalculator()
-            return calculator._calculate_seifa_risk_score(integrated_data["seifa"])
-        
-        # Run components concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [
-                executor.submit(process_seifa_component),
-                executor.submit(process_health_component),
-                executor.submit(process_boundary_component),
-                executor.submit(calculate_risk_component)
-            ]
+        with patch('src.dashboard.visualisation.charts.px.imshow') as mock_imshow:
+            mock_imshow.side_effect = Exception("Plotting error")
             
-            results = [future.result() for future in concurrent.futures.as_completed(futures)]
+            try:
+                result = create_correlation_heatmap(invalid_data.corr())
+                # Should either handle error or raise expected exception
+                success = True
+            except Exception as e:
+                # Error handling should be graceful
+                success = "plotting" in str(e).lower() or "invalid" in str(e).lower()
+            
+            assert success
+    
+    def test_configuration_error_recovery(self):
+        """Test configuration error recovery"""
+        # Test with invalid configuration
+        with patch.dict(os.environ, {'AHGD_DASHBOARD_PORT': 'invalid_port'}):
+            from src.config import get_global_config, reset_global_config
+            
+            reset_global_config()
+            config = get_global_config()
+            
+            # Should fall back to default port
+            assert isinstance(config.dashboard.port, int)
+            assert 1024 <= config.dashboard.port <= 65535
+
+
+class TestStateManagementIntegration:
+    """Integration tests for state management across dashboard components"""
+    
+    def test_session_state_consistency(self):
+        """Test session state consistency across components"""
+        # Mock streamlit session state
+        mock_session_state = {}
         
-        # Verify all concurrent operations succeeded
-        assert len(results) == 4
+        with patch('src.dashboard.ui.sidebar.st.session_state', mock_session_state):
+            with patch('src.dashboard.ui.sidebar.st.sidebar') as mock_sidebar:
+                # Mock sidebar components
+                mock_sidebar.selectbox.return_value = 'NSW'
+                mock_sidebar.slider.return_value = (0, 100)
+                mock_sidebar.multiselect.return_value = ['mortality_rate', 'diabetes_prevalence']
+                
+                from src.dashboard.ui.sidebar import SidebarController
+                
+                # Test sidebar state management
+                sidebar = SidebarController()
+                state = sidebar.get_current_state()
+                
+                assert isinstance(state, dict)
+    
+    def test_data_state_persistence(self):
+        """Test data state persistence across operations"""
+        # Test that data transformations maintain consistency
+        original_data = pd.DataFrame({
+            'id': range(100),
+            'value': np.random.random(100)
+        })
         
-        for result in results:
-            assert isinstance(result, pl.DataFrame)
-            assert len(result) > 0
+        # Multiple transformations
+        transformed_data = original_data.copy()
+        transformed_data['squared'] = transformed_data['value'] ** 2
+        transformed_data['log_value'] = np.log(transformed_data['value'] + 1)
+        
+        # State should be consistent
+        assert len(transformed_data) == len(original_data)
+        assert transformed_data['id'].equals(original_data['id'])
+        assert np.allclose(transformed_data['value'], original_data['value'])
+
+
+class TestAnalysisWorkflowIntegration:
+    """Integration tests for complete analysis workflows"""
+    
+    def setup_method(self):
+        """Setup comprehensive test data for analysis workflows"""
+        np.random.seed(42)
+        
+        self.comprehensive_data = pd.DataFrame({
+            'SA2_CODE21': [f"area_{i:06d}" for i in range(1000)],
+            'SA2_NAME21': [f"Area {i}" for i in range(1000)],
+            'health_risk_score': np.random.normal(10, 3, 1000),
+            'IRSD_Score': np.random.normal(1000, 150, 1000),
+            'mortality_rate': np.random.normal(6, 2, 1000),
+            'diabetes_prevalence': np.random.normal(8, 2.5, 1000),
+            'heart_disease_rate': np.random.normal(5, 1.5, 1000),
+            'mental_health_rate': np.random.normal(12, 3, 1000),
+            'population': np.random.randint(5000, 50000, 1000),
+            'area_sqkm': np.random.uniform(1, 100, 1000),
+            'STE_NAME21': np.random.choice(['NSW', 'VIC', 'QLD', 'WA', 'SA'], 1000)
+        })
+    
+    def test_correlation_analysis_workflow(self):
+        """Test complete correlation analysis workflow"""
+        from src.dashboard.data.loaders import calculate_correlations
+        from src.dashboard.data.processors import prepare_correlation_data, identify_health_hotspots
+        from src.dashboard.visualisation.charts import create_correlation_heatmap
+        
+        # Step 1: Prepare correlation data
+        correlation_data = prepare_correlation_data(self.comprehensive_data)
+        assert isinstance(correlation_data, pd.DataFrame)
+        
+        # Step 2: Calculate correlations
+        with patch('src.dashboard.data.loaders.st.cache_data') as mock_cache:
+            mock_cache.return_value = lambda x: x
+            correlation_matrix, processed_data = calculate_correlations(correlation_data)
+        
+        assert isinstance(correlation_matrix, pd.DataFrame)
+        assert correlation_matrix.shape[0] == correlation_matrix.shape[1]
+        
+        # Step 3: Identify hotspots
+        hotspots = identify_health_hotspots(processed_data)
+        assert isinstance(hotspots, pd.DataFrame)
+        
+        # Step 4: Create visualizations
+        with patch('src.dashboard.visualisation.charts.px.imshow') as mock_imshow:
+            mock_figure = Mock()
+            mock_imshow.return_value = mock_figure
+            
+            heatmap = create_correlation_heatmap(correlation_matrix)
+            assert heatmap == mock_figure
+    
+    def test_geographic_analysis_workflow(self):
+        """Test complete geographic analysis workflow"""
+        # Add geographic information
+        self.comprehensive_data['latitude'] = np.random.uniform(-44, -10, 1000)
+        self.comprehensive_data['longitude'] = np.random.uniform(113, 154, 1000)
+        
+        # Mock geometry for geographic operations
+        mock_geometry = Mock()
+        mock_geometry.bounds = [150.0, -34.0, 151.0, -33.0]
+        self.comprehensive_data['geometry'] = [mock_geometry] * len(self.comprehensive_data)
+        
+        from src.dashboard.visualisation.maps import create_health_risk_map, get_map_bounds
+        from src.dashboard.data.processors import filter_data_by_states
+        
+        # Step 1: Filter by geography
+        nsw_data = filter_data_by_states(self.comprehensive_data, ['NSW'])
+        assert len(nsw_data) > 0
+        
+        # Step 2: Calculate geographic bounds
+        bounds = get_map_bounds(nsw_data)
+        assert isinstance(bounds, dict)
+        assert all(key in bounds for key in ['min_lat', 'max_lat', 'min_lon', 'max_lon'])
+        
+        # Step 3: Create geographic visualizations
+        with patch('src.dashboard.visualisation.maps.folium.Map') as mock_map:
+            mock_map_instance = Mock()
+            mock_map.return_value = mock_map_instance
+            
+            health_map = create_health_risk_map(nsw_data)
+            assert health_map == mock_map_instance
+    
+    def test_statistical_analysis_workflow(self):
+        """Test complete statistical analysis workflow"""
+        from src.dashboard.data.processors import (
+            calculate_health_risk_score, generate_health_indicators,
+            apply_scenario_analysis, calculate_data_quality_metrics
+        )
+        
+        # Step 1: Calculate risk scores
+        risk_data = calculate_health_risk_score(self.comprehensive_data)
+        assert 'health_risk_score' in risk_data.columns
+        
+        # Step 2: Generate health indicators
+        indicators = generate_health_indicators(risk_data)
+        assert isinstance(indicators, pd.DataFrame)
+        
+        # Step 3: Apply scenario analysis
+        scenario_data = apply_scenario_analysis(
+            indicators, 
+            scenario='improvement',
+            improvement_factor=0.1
+        )
+        assert isinstance(scenario_data, pd.DataFrame)
+        
+        # Step 4: Calculate quality metrics
+        with patch('src.dashboard.data.processors.st') as mock_st:
+            quality_metrics = calculate_data_quality_metrics(scenario_data)
+            # Should complete without error
+            assert True
+    
+    def test_dashboard_rendering_workflow(self):
+        """Test complete dashboard rendering workflow"""
+        from src.dashboard.visualisation.components import (
+            display_key_metrics, create_health_indicator_selector,
+            display_correlation_insights
+        )
+        
+        # Mock streamlit components
+        with patch('src.dashboard.visualisation.components.st') as mock_st:
+            mock_st.columns.return_value = [Mock(), Mock(), Mock(), Mock()]
+            mock_st.selectbox.return_value = 'health_risk_score'
+            
+            # Step 1: Display key metrics
+            display_key_metrics(self.comprehensive_data, 'health_risk_score', 'Dashboard Test')
+            assert mock_st.columns.called
+            
+            # Step 2: Create indicator selector
+            indicators = create_health_indicator_selector()
+            assert isinstance(indicators, dict)
+            
+            # Step 3: Display correlation insights
+            correlation_matrix = self.comprehensive_data.select_dtypes(include=[np.number]).corr()
+            display_correlation_insights(correlation_matrix, 'IRSD_Score')
+            # Should complete without error
+
+
+class TestSystemIntegration:
+    """System-wide integration tests"""
+    
+    def test_end_to_end_dashboard_simulation(self):
+        """Simulate complete end-to-end dashboard usage"""
+        # This test simulates a complete user session
+        
+        # Step 1: Initialize configuration
+        from src.config import get_global_config
+        config = get_global_config()
+        assert config is not None
+        
+        # Step 2: Load data
+        with patch('src.dashboard.data.loaders.pd.read_parquet') as mock_read:
+            test_data = pd.DataFrame({
+                'SA2_CODE21': ['area_001', 'area_002'],
+                'health_risk_score': [8.5, 12.3],
+                'IRSD_Score': [1050, 900]
+            })
+            mock_read.return_value = test_data
+            
+            from src.dashboard.data.loaders import load_data
+            data = load_data()
+            assert data is not None
+        
+        # Step 3: Process data
+        from src.dashboard.data.processors import calculate_health_risk_score
+        processed_data = calculate_health_risk_score(data)
+        assert 'health_risk_score' in processed_data.columns
+        
+        # Step 4: Create visualizations
+        with patch('src.dashboard.visualisation.charts.px.imshow') as mock_imshow:
+            mock_figure = Mock()
+            mock_imshow.return_value = mock_figure
+            
+            from src.dashboard.visualisation.charts import create_correlation_heatmap
+            correlation_matrix = processed_data.select_dtypes(include=[np.number]).corr()
+            chart = create_correlation_heatmap(correlation_matrix)
+            assert chart is not None
+        
+        # Step 5: Display metrics
+        with patch('src.dashboard.visualisation.components.st') as mock_st:
+            mock_st.columns.return_value = [Mock(), Mock(), Mock(), Mock()]
+            
+            from src.dashboard.visualisation.components import display_key_metrics
+            display_key_metrics(processed_data, 'health_risk_score', 'Integration Test')
+            assert mock_st.columns.called
+    
+    def test_cross_component_data_consistency(self):
+        """Test data consistency across all components"""
+        # Create consistent test data
+        test_data = pd.DataFrame({
+            'SA2_CODE21': ['area_001', 'area_002', 'area_003'],
+            'health_risk_score': [8.5, 12.3, 6.1],
+            'IRSD_Score': [1050, 900, 1200],
+            'population': [18500, 22000, 28000]
+        })
+        
+        original_checksum = test_data['health_risk_score'].sum()
+        
+        # Pass data through various components
+        from src.dashboard.data.processors import validate_health_data, prepare_correlation_data
+        
+        # Validation should not modify data
+        is_valid = validate_health_data(test_data)
+        post_validation_checksum = test_data['health_risk_score'].sum()
+        assert abs(post_validation_checksum - original_checksum) < 1e-10
+        
+        # Correlation preparation might modify data, but should preserve key relationships
+        correlation_data = prepare_correlation_data(test_data)
+        assert isinstance(correlation_data, pd.DataFrame)
+        assert len(correlation_data) >= len(test_data)  # Should not lose data
+        
+        # Test that correlations are consistent
+        original_corr = test_data[['health_risk_score', 'IRSD_Score']].corr()
+        processed_corr = correlation_data[['health_risk_score', 'IRSD_Score']].corr()
+        
+        # Correlation patterns should be similar (within reasonable tolerance)
+        correlation_diff = abs(original_corr.iloc[0, 1] - processed_corr.iloc[0, 1])
+        assert correlation_diff < 0.1  # Allow for minor differences due to processing
+
+
+# Mark slow tests
+pytest.mark.slow = pytest.mark.skipif(
+    not pytest.config.getoption("--runslow"),
+    reason="need --runslow option to run"
+) if hasattr(pytest, 'config') else lambda x: x

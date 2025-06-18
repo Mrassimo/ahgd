@@ -1,0 +1,266 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC to catch dependency issues
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: ${{ github.workspace }}/src
+  UV_CACHE_DIR: ~/.cache/uv
+
+jobs:
+  lint-and-format:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        
+    - name: Set up Python
+      run: uv python install 3.11
+      
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: uv-${{ runner.os }}-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          uv-${{ runner.os }}-
+          
+    - name: Install dependencies
+      run: |
+        uv sync --all-groups
+        uv add --group dev ruff black mypy bandit safety
+        
+    - name: Lint with ruff
+      run: |
+        uv run ruff check src/ scripts/ tests/
+        uv run ruff format --check src/ scripts/ tests/
+        
+    - name: Format check with black
+      run: uv run black --check --diff src/ scripts/ tests/
+      
+    - name: Type check with mypy
+      run: |
+        uv run mypy src/ scripts/ --ignore-missing-imports --install-types --non-interactive
+        
+    - name: Security check with bandit
+      run: uv run bandit -r src/ scripts/ -f json -o bandit-report.json
+      continue-on-error: true
+      
+    - name: Dependency vulnerability check
+      run: uv run safety check --json --output safety-report.json
+      continue-on-error: true
+      
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+        retention-days: 30
+
+  test:
+    name: Test Suite
+    needs: lint-and-format
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+      
+    - name: Cache uv dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/uv
+        key: uv-${{ matrix.os }}-${{ matrix.python-version }}-${{ hashFiles('**/uv.lock') }}
+        restore-keys: |
+          uv-${{ matrix.os }}-${{ matrix.python-version }}-
+          uv-${{ matrix.os }}-
+          
+    - name: Install dependencies
+      run: uv sync --all-groups
+      
+    - name: Create test database
+      run: |
+        mkdir -p data/test
+        touch health_analytics_test.db
+        
+    - name: Run unit tests
+      run: uv run pytest tests/unit/ -v --cov=src --cov-report=xml --cov-report=html --junit-xml=junit-unit.xml
+      env:
+        AHGD_TEST_MODE: true
+        AHGD_DB_PATH: health_analytics_test.db
+        
+    - name: Run integration tests
+      run: uv run pytest tests/integration/ -v --cov=src --cov-append --cov-report=xml --cov-report=html --junit-xml=junit-integration.xml
+      env:
+        AHGD_TEST_MODE: true
+        AHGD_DB_PATH: health_analytics_test.db
+        
+    - name: Run dashboard tests
+      run: uv run pytest tests/dashboard/ -v --cov=src --cov-append --cov-report=xml --cov-report=html --junit-xml=junit-dashboard.xml
+      env:
+        AHGD_TEST_MODE: true
+        AHGD_DB_PATH: health_analytics_test.db
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+        path: |
+          junit-*.xml
+          htmlcov/
+          coverage.xml
+        retention-days: 30
+
+  performance-tests:
+    name: Performance & Load Tests
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        
+    - name: Set up Python
+      run: uv python install 3.11
+      
+    - name: Install dependencies
+      run: |
+        uv sync --all-groups
+        uv add --group dev pytest-benchmark
+        
+    - name: Create sample data for performance tests
+      run: uv run python scripts/generate_sample_data.py
+      continue-on-error: true
+      
+    - name: Run performance tests
+      run: uv run pytest tests/ -k "benchmark" --benchmark-json=benchmark.json -v
+      continue-on-error: true
+      
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: benchmark-results
+        path: benchmark.json
+        retention-days: 30
+
+  dashboard-tests:
+    name: Streamlit Dashboard Tests
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        version: "latest"
+        
+    - name: Set up Python
+      run: uv python install 3.11
+      
+    - name: Install dependencies
+      run: |
+        uv sync --all-groups
+        uv add --group dev selenium pytest-xvfb
+        
+    - name: Install Chrome for testing
+      uses: browser-actions/setup-chrome@latest
+      
+    - name: Create test data
+      run: |
+        mkdir -p data/test
+        touch health_analytics_test.db
+        
+    - name: Test dashboard startup
+      run: |
+        timeout 30s uv run streamlit run src/dashboard/app.py --server.headless true --server.port 8501 &
+        sleep 10
+        curl -f http://localhost:8501 || exit 1
+        pkill -f streamlit
+      env:
+        AHGD_TEST_MODE: true
+        AHGD_DB_PATH: health_analytics_test.db
+        
+    - name: Run dashboard UI tests
+      run: uv run pytest tests/dashboard/ -v --tb=short
+      env:
+        AHGD_TEST_MODE: true
+        AHGD_DB_PATH: health_analytics_test.db
+
+  test-summary:
+    name: Test Summary
+    needs: [lint-and-format, test, performance-tests, dashboard-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Check test results
+      run: |
+        echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Lint and Format: ${{ needs.lint-and-format.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Test Suite: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Performance Tests: ${{ needs.performance-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Dashboard Tests: ${{ needs.dashboard-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.lint-and-format.result }}" != "success" ] || [ "${{ needs.test.result }}" != "success" ]; then
+          echo "❌ Required tests failed"
+          exit 1
+        else
+          echo "✅ All required tests passed"
+        fi

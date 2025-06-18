@@ -1,61 +1,104 @@
 [project]
-name = "australian-health-analytics"
-version = "0.1.0"
-description = "Personal Australian Health Data Analytics Platform"
+name = "australian-health-data-analytics"
+version = "2.0.0"
+description = "Comprehensive Australian Health Data Analytics Platform"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Massimo Raso", email = "massimo.raso@gmail.com"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
-keywords = ["health", "data", "analytics", "australia", "gis"]
+keywords = ["health", "data", "analytics", "australia", "streamlit", "gis", "polars"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Topic :: Scientific/Engineering :: GIS",
 ]
 
 dependencies = [
-    # Modern data processing stack
-    "polars[all]>=0.20.0",
-    "duckdb>=0.9.0",
-    "httpx>=0.25.0",
-    "rich>=13.0.0",
-    "typer>=0.9.0",
-    # Geographic processing
-    "geopandas>=0.14.0",
-    "folium>=0.15.0",
-    "contextily>=1.4.0",
+    # Core dependencies - Enhanced with comprehensive analytics
+    "altair>=5.5.0",
+    "duckdb>=1.3.1",
+    "folium>=0.20.0",
+    "geopandas>=1.1.0",
+    "httpx>=0.28.1",
+    "pandas>=2.0.0",
+    "plotly>=5.20.0",
+    "polars[all]>=1.30.0",
+    "rich>=13.9.4",
+    "streamlit>=1.45.1",
+    "streamlit-folium>=0.15.0",
+    "typer>=0.16.0",
+    # Performance monitoring dependencies
+    "psutil>=5.9.0",
+    "requests>=2.31.0",
+    "redis>=5.0.0",
+    # Advanced analytics dependencies
+    "jupyter>=1.0.0",
+    "scikit-learn>=1.4.0",
+    "scipy>=1.12.0",
+    "numpy>=1.26.0",
+    "matplotlib>=3.8.0",
+    "seaborn>=0.13.0",
+    "statsmodels>=0.14.0",
+    "xgboost>=2.0.0",
+    "lightgbm>=4.3.0",
+    "networkx>=3.2.0",
+    "pymc>=5.10.0",
+    "arviz>=0.17.0",
+    "pingouin>=0.5.4",
+    "lifelines>=0.27.8",
+    "yellowbrick>=1.5",
+    "shap>=0.44.0",
+    "lime>=0.2.0.1",
+    "optuna>=3.5.0",
+    "prophet>=1.1.5",
+    "geopy>=2.4.1",
+    "contextily>=1.5.0",
+    "rasterio>=1.3.9",
+    "pysal>=24.1",
+    "esda>=2.5.1",
+    "splot>=1.1.5.post1",
+    "libpysal>=4.9.2",
+    # Data versioning and pipeline management
+    "dvc[s3,ssh]>=3.40.0",
+    "dvclive>=3.40.0",
+    # Additional utility dependencies
     "geojson>=3.0.0",
-    # Analysis and documentation
-    "altair>=4.2.1,<5.0.0",
     "great-expectations>=0.18.0",
-    # Web interface options
-    "streamlit>=1.28.0",
     "fastapi>=0.104.0",
-    # Data validation and quality
     "pydantic>=2.0.0",
     "pandera>=0.17.0",
-    # Utilities
     "python-dotenv>=1.0.0",
     "loguru>=0.7.0",
     "tqdm>=4.66.0",
-    "requests>=2.31.0",
     "beautifulsoup4>=4.12.0",
-    "pandas>=2.1.0", # For compatibility with some libraries
-    "numpy>=1.24.0",
-    "scipy>=1.11.0",
-    "scikit-learn>=1.3.0",
     "dbfread>=2.0.7",
-    "psutil>=7.0.0",
-    "matplotlib>=3.10.3",
-    "seaborn>=0.13.2",
-    "plotly>=6.1.2",
-    "streamlit-folium>=0.25.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/australian-health-analytics"
+Repository = "https://github.com/yourusername/australian-health-analytics"
+Documentation = "https://yourusername.github.io/australian-health-analytics/"
+
+[project.scripts]
+health-analytics = "src.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [project.optional-dependencies]
 dev = [
@@ -83,35 +126,191 @@ docs = [
     "mkdocstrings[python]>=0.23.0",
 ]
 
-[project.urls]
-Homepage = "https://github.com/yourusername/australian-health-analytics"
-Repository = "https://github.com/yourusername/australian-health-analytics"
-Documentation = "https://yourusername.github.io/australian-health-analytics/"
+[dependency-groups]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.12.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.100.0",
+    "factory-boy>=3.3.0",
+    "selenium>=4.15.0",
+    "pytest-xvfb>=3.0.0",
+]
 
-[project.scripts]
-health-analytics = "src.cli:app"
+dev = [
+    # Code quality and formatting
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.5.0",
+    
+    # Security scanning
+    "bandit>=1.7.0",
+    "safety>=2.3.0",
+    "pip-audit>=2.6.0",
+    "semgrep>=1.45.0",
+    
+    # Documentation
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=1.3.0",
+    "sphinx-autoapi>=3.0.0",
+    "myst-parser>=2.0.0",
+    "furo>=2023.9.10",
+    "sphinx-autobuild>=2021.3.14",
+    "pdoc3>=0.10.0",
+    "pydoc-markdown>=4.8.0",
+    "pydocstyle>=6.3.0",
+    "doc8>=1.1.0",
+    "codespell>=2.2.0",
+    
+    # Code analysis
+    "pylint>=3.0.0",
+    "flake8>=6.0.0",
+    "radon>=6.0.0",
+    
+    # Build and deployment
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "wheel>=0.42.0",
+]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src",
+    "--cov=scripts",
+    "--cov-report=html:htmlcov",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "--cov-fail-under=40",
+    "-ra",
+    "--tb=short",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow tests that may take longer to run",
+    "database: Tests that require database access",
+    "network: Tests that require network access",
+]
 
-[tool.hatch.metadata]
-allow-direct-references = true
+[tool.coverage.run]
+source = ["src", "scripts"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src"]
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
 
+# Ruff configuration
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "ARG", # flake8-unused-arguments
+    "COM", # flake8-commas
+    "S",   # flake8-bandit
+    "T20", # flake8-print
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    "E501",  # line too long (covered by line-length)
+    "B008",  # do not perform function calls in argument defaults
+    "S101",  # use of assert
+    "T201",  # print statements (allowed in scripts)
+    "COM812", # trailing comma (handled by formatter)
+]
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+    "htmlcov",
+    "data",
+    "logs",
+]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101", "ARG001", "ARG002"]
+"scripts/*" = ["T201", "S101"]
+
+[tool.ruff.isort]
+known-first-party = ["src", "scripts"]
+force-single-line = true
+
+# Black configuration
 [tool.black]
-line-length = 88
+line-length = 100
 target-version = ['py311']
-skip-string-normalization = true
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-known_first_party = ["src"]
-
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | htmlcov
+  | data
+  | logs
+)/
+'''
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
@@ -126,22 +325,30 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+show_error_codes = true
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "--cov=src --cov-report=term-missing --cov-report=html"
-
-[tool.coverage.run]
-source = ["src"]
-omit = ["*/tests/*", "*/test_*.py"]
-
-[tool.coverage.report]
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
+[[tool.mypy.overrides]]
+module = [
+    "pandas.*",
+    "geopandas.*",
+    "folium.*",
+    "streamlit.*",
+    "plotly.*",
+    "altair.*",
+    "polars.*",
+    "duckdb.*",
 ]
+ignore_missing_imports = true
+
+# Bandit configuration
+[tool.bandit]
+exclude_dirs = ["tests", "htmlcov", "data", "logs"]
+skips = ["B101", "B601"]  # Skip assert_used and shell_injection for test files
+
+# isort configuration  
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 100
+known_first_party = ["src", "scripts"]
+force_single_line = true

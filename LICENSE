@@ -19,3 +19,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Data Attribution
+
+This project uses data from Australian Government sources:
+
+- Australian Bureau of Statistics (ABS) Census 2021 data
+- Australian Bureau of Statistics (ABS) SEIFA 2021 data
+- Australian Institute of Health and Welfare (AIHW) health data
+- Public Health Information Development Unit (PHIDU) data
+
+All data is used in accordance with the respective licensing terms and conditions
+of the source organisations. Users of this software are responsible for ensuring
+compliance with data licensing requirements when using or redistributing this work.

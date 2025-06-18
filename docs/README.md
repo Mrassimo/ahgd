@@ -1,130 +1,374 @@
-# 🏥 Australian Health Analytics Platform
+# Australian Health Analytics Dashboard Documentation
 
-**Professional Data Engineering Portfolio**
+This directory contains the comprehensive documentation for the Australian Health Analytics Dashboard (AHGD) project, built with Sphinx.
 
-[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-brightgreen)](https://massimoraso.github.io/australian-health-analytics/)
-[![Data Processing](https://img.shields.io/badge/Records%20Processed-497K+-blue)](https://massimoraso.github.io/australian-health-analytics/)
-[![Performance](https://img.shields.io/badge/Memory%20Optimized-57.5%25-success)](https://massimoraso.github.io/australian-health-analytics/)
-[![Speed](https://img.shields.io/badge/Speed%20Improvement-10--30x-orange)](https://massimoraso.github.io/australian-health-analytics/)
+## Documentation Structure
 
-## 🎯 Portfolio Highlights
-
-This GitHub Pages site showcases a professional-grade health analytics platform built with modern data engineering technologies, demonstrating:
-
-### 📊 **Big Data Processing Excellence**
-- **497,181+ health records** processed from multiple Australian government sources
-- **92.9% integration success rate** across complex multi-source datasets
-- **2,454 SA2 geographic areas** analyzed with full boundary integration
-
-### ⚡ **Performance Optimization Mastery**
-- **57.5% memory reduction** through intelligent data structure optimization
-- **10-30x processing speed improvement** over traditional pandas approaches
-- **60-70% storage compression** using advanced Parquet+ZSTD techniques
-
-### 🏗️ **Modern Technology Stack**
-- **Polars**: Lightning-fast DataFrame operations with lazy evaluation
-- **DuckDB**: Embedded OLAP database for complex analytical queries
-- **GeoPandas**: Advanced spatial data processing and geographic intelligence
-- **AsyncIO**: Parallel processing for maximum throughput optimization
-
-## 🌐 Live Portfolio
-
-**Visit the interactive dashboard: [Australian Health Analytics Platform](https://massimoraso.github.io/australian-health-analytics/)**
-
-### 🖥️ Features Showcased
-- **Interactive health risk mapping** across Australian SA2 regions
-- **Real-time performance metrics** and technical achievements
-- **Professional UI/UX design** with mobile responsiveness
-- **Advanced data visualizations** using Chart.js and Leaflet.js
-- **Geographic intelligence** with population health insights
-
-## 🚀 Technical Architecture
-
-### Bronze-Silver-Gold Data Lake Implementation
 ```
-Raw Data Sources → Data Processing → Analytics Ready
-     Bronze      →     Silver     →     Gold
+docs/
+├── source/                 # Sphinx source files
+│   ├── api/               # Auto-generated API documentation
+│   ├── guides/            # User and development guides
+│   ├── tutorials/         # Step-by-step tutorials
+│   ├── deployment/        # Deployment documentation
+│   ├── reference/         # Configuration and troubleshooting
+│   ├── _static/           # Static assets (CSS, images)
+│   ├── _templates/        # Custom Sphinx templates
+│   └── conf.py           # Sphinx configuration
+├── build/                 # Generated documentation (created during build)
+├── Makefile              # Unix/Linux build commands
+├── make.bat              # Windows build commands
+└── README.md             # This file
 ```
 
-- **Bronze Layer**: Raw data ingestion with comprehensive validation
-- **Silver Layer**: Cleaned, enriched datasets with schema enforcement  
-- **Gold Layer**: Business-ready aggregated analytics with performance optimization
+## Quick Start
 
-### Data Sources Integrated
-- Australian Bureau of Statistics (ABS) Census 2021
-- SEIFA 2021 socio-economic indexes (2,454 areas)
-- Medicare Benefits Schedule (MBS) historical data
-- Pharmaceutical Benefits Scheme (PBS) records (492K+ entries)
-- Geographic boundary files (96MB+ processed efficiently)
+### Prerequisites
 
-## 📈 Performance Metrics
-
-| Metric | Achievement |
-|--------|-------------|
-| **Processing Speed** | 10-30x faster than traditional methods |
-| **Memory Optimization** | 57.5% reduction vs baseline approaches |
-| **Storage Efficiency** | 60-70% compression with Parquet+ZSTD |
-| **Integration Success** | 92.9% across all data sources |
-| **Query Response** | Sub-second for 500K+ record datasets |
-| **Scalability** | Linear scaling tested to 500K+ records |
-
-## 💼 Professional Positioning
-
-### Ideal for Roles
-- **Senior Data Engineer** - Demonstrated big data processing expertise
-- **Analytics Platform Developer** - Full-stack analytics application development
-- **GIS Specialist** - Advanced geographic data processing capabilities
-- **Health Data Analyst** - Domain expertise in population health analytics
-
-### Value Proposition
-✅ **Proven performance optimization** with measurable improvements  
-✅ **Modern technology expertise** implementing cutting-edge tools  
-✅ **Complex problem solving** across multiple government data sources  
-✅ **Full-stack capabilities** from data processing to web applications  
-✅ **Production readiness** with scalable architecture design  
-
-## 🔧 Local Development
-
-To run this portfolio locally:
+Ensure you have the documentation dependencies installed:
 
 ```bash
-# Clone the repository
-git clone https://github.com/massimoraso/australian-health-analytics.git
-cd australian-health-analytics
+# Install with UV (recommended)
+uv pip install -e .[dev]
 
-# Serve the docs directory
-python -m http.server 8000 --directory docs
-
-# Or use Node.js
-npx serve docs
-
-# Visit http://localhost:8000
+# Or install specific documentation packages
+uv pip install sphinx sphinx-autoapi furo myst-parser sphinx-autobuild
 ```
 
-## 📱 Mobile Optimized
+### Building Documentation
 
-The portfolio is fully responsive and optimized for:
-- **Desktop displays** (1200px+)
-- **Tablet devices** (768px - 1024px)
-- **Mobile phones** (320px - 768px)
-- **Performance loading** on all devices
+#### Using the Build Script (Recommended)
 
-## 🔍 SEO Optimized
+```bash
+# Build HTML documentation
+python scripts/build_docs.py build
 
-- **Structured data** for search engine understanding
-- **Open Graph tags** for social media sharing
-- **Performance optimization** for Core Web Vitals
-- **Accessibility compliance** (WCAG 2.1 AA)
+# Serve documentation locally with auto-reload
+python scripts/build_docs.py watch
 
-## 📞 Professional Contact
+# Run all quality checks
+python scripts/build_docs.py all
+```
 
-**Available for technical discussions and career opportunities:**
+#### Using Make Commands
 
-- 📧 **Email**: [your.email@example.com]
-- 💼 **LinkedIn**: [linkedin.com/in/yourprofile]
-- 🔗 **GitHub**: [github.com/yourusername]
-- 🌐 **Portfolio**: [Australian Health Analytics Platform](https://massimoraso.github.io/australian-health-analytics/)
+**On Unix/Linux/macOS:**
 
----
+```bash
+cd docs
 
-**Built with modern data engineering excellence • Showcasing 497,181+ records processing • Ready for production deployment**
+# Clean previous builds
+make clean
+
+# Build HTML documentation
+make html
+
+# Serve documentation locally
+make serve
+
+# Build with live reload
+make watch
+
+# Check for broken links
+make linkcheck
+
+# Check documentation coverage
+make coverage
+```
+
+**On Windows:**
+
+```cmd
+cd docs
+
+# Build HTML documentation
+make.bat html
+
+# Serve documentation
+make.bat serve
+```
+
+### Viewing Documentation
+
+After building, open `docs/build/html/index.html` in your browser, or use:
+
+```bash
+# Serve documentation on http://localhost:8000
+python scripts/build_docs.py serve
+```
+
+## Documentation Features
+
+### Auto-Generated API Documentation
+
+The documentation automatically generates API reference from Python docstrings using Sphinx AutoAPI:
+
+- **Complete API coverage** of all modules in `src/`
+- **Cross-references** between modules and functions
+- **Type hints** and parameter documentation
+- **Usage examples** for key functions
+
+### Modern Theme and Features
+
+- **Furo theme** for modern, responsive design
+- **Dark/light mode** toggle
+- **Search functionality** with real-time results
+- **Mobile-friendly** responsive layout
+- **Syntax highlighting** for code blocks
+
+### Multiple Output Formats
+
+- **HTML** - Interactive web documentation
+- **PDF** - Print-ready documentation
+- **EPUB** - E-book format
+
+### Quality Assurance
+
+- **Link checking** to catch broken references
+- **Documentation coverage** reporting
+- **Spell checking** for content quality
+- **Style linting** for consistent formatting
+
+## Content Guidelines
+
+### Writing Style
+
+- Use **British English** spelling and conventions
+- Write in **clear, concise language**
+- Include **practical examples** where appropriate
+- Structure content with **logical headings**
+
+### Code Documentation
+
+All Python code should include comprehensive docstrings:
+
+```python
+def example_function(param1: str, param2: int = 10) -> bool:
+    """
+    Brief description of the function.
+    
+    Longer description explaining the purpose, algorithm,
+    or important considerations.
+    
+    Args:
+        param1: Description of parameter 1
+        param2: Description of parameter 2 with default value
+        
+    Returns:
+        Description of return value
+        
+    Raises:
+        ValueError: When param1 is empty
+        ProcessingError: When processing fails
+        
+    Example:
+        >>> result = example_function("test", 20)
+        >>> print(result)
+        True
+    """
+```
+
+### reStructuredText Guidelines
+
+Use consistent reStructuredText formatting:
+
+```rst
+Page Title
+==========
+
+Section Header
+--------------
+
+Subsection Header
+~~~~~~~~~~~~~~~~~
+
+Code Blocks
+^^^^^^^^^^^
+
+.. code-block:: python
+
+   # Python code example
+   from src.config import get_config
+   config = get_config()
+
+Notes and Warnings
+^^^^^^^^^^^^^^^^^^
+
+.. note::
+   This is an informational note.
+
+.. warning::
+   This is a warning about potential issues.
+
+.. tip::
+   This is a helpful tip for users.
+```
+
+## Adding New Documentation
+
+### Creating New Pages
+
+1. **Create the .rst file** in the appropriate directory:
+   - `guides/` for user and developer guides
+   - `tutorials/` for step-by-step instructions
+   - `reference/` for reference material
+   - `deployment/` for deployment instructions
+
+2. **Add to table of contents** in the relevant `index.rst` file:
+
+```rst
+.. toctree::
+   :maxdepth: 2
+
+   existing_page
+   your_new_page
+```
+
+3. **Follow the content guidelines** above
+
+### Updating API Documentation
+
+API documentation is auto-generated from docstrings. To update:
+
+1. **Update docstrings** in the source code
+2. **Rebuild documentation** to see changes
+3. **Add manual examples** in `api/` files if needed
+
+### Adding Images and Assets
+
+1. **Add files** to `docs/source/_static/`
+2. **Reference in documentation**:
+
+```rst
+.. image:: _static/your-image.png
+   :alt: Description of image
+   :width: 600px
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+Documentation is automatically built and deployed using GitHub Actions:
+
+- **Builds on every push** to main and develop branches
+- **Deploys to GitHub Pages** on main branch
+- **Runs quality checks** including link checking and spell checking
+- **Tests documentation** build performance
+
+### Quality Checks
+
+The CI pipeline runs several quality checks:
+
+```bash
+# Documentation formatting
+doc8 docs/source/
+
+# Spell checking
+codespell docs/source/
+
+# Link checking
+sphinx-build -b linkcheck docs/source/ docs/build/linkcheck/
+
+# Coverage checking
+sphinx-build -b coverage docs/source/ docs/build/coverage/
+```
+
+## Development Workflow
+
+### Local Development
+
+1. **Make changes** to documentation or docstrings
+2. **Build and review** locally:
+   ```bash
+   python scripts/build_docs.py watch
+   ```
+3. **Run quality checks**:
+   ```bash
+   python scripts/build_docs.py all
+   ```
+4. **Commit changes** and create pull request
+
+### Best Practices
+
+- **Test locally** before committing
+- **Check links** are not broken
+- **Verify examples** work correctly
+- **Update relevant sections** when changing code
+- **Follow style guidelines** consistently
+
+## Troubleshooting
+
+### Common Issues
+
+**Documentation Not Building:**
+```bash
+# Check Sphinx installation
+sphinx-build --version
+
+# Check for syntax errors
+sphinx-build -W docs/source/ docs/build/html/
+```
+
+**Missing Dependencies:**
+```bash
+# Install all documentation dependencies
+uv pip install -e .[dev]
+```
+
+**Auto-reload Not Working:**
+```bash
+# Try explicit autobuild command
+sphinx-autobuild docs/source/ docs/build/html/
+```
+
+**Links Not Working:**
+```bash
+# Check for broken links
+make linkcheck
+```
+
+### Performance Issues
+
+If documentation builds slowly:
+
+1. **Use incremental builds**: `sphinx-build -E` for environment rebuild
+2. **Limit API documentation**: Adjust `autoapi_dirs` in `conf.py`
+3. **Check file sizes**: Large images or assets slow builds
+4. **Monitor memory usage**: Large codebases may need more memory
+
+## Contributing
+
+### Documentation Standards
+
+- **Follow existing patterns** in structure and style
+- **Include practical examples** in all tutorials
+- **Test all code examples** to ensure they work
+- **Update related sections** when making changes
+- **Use cross-references** to link related concepts
+
+### Review Process
+
+1. **Create feature branch** for documentation changes
+2. **Build and test locally** before submitting
+3. **Request review** from team members
+4. **Address feedback** and update as needed
+5. **Merge to develop** after approval
+
+## Support
+
+For documentation-related questions:
+
+- **Check existing documentation** first
+- **Review troubleshooting section** above
+- **Search GitHub issues** for similar problems
+- **Create new issue** with specific details
+- **Contact development team** for urgent issues
+
+## Resources
+
+- [Sphinx Documentation](https://www.sphinx-doc.org/)
+- [reStructuredText Primer](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html)
+- [Furo Theme Documentation](https://pradyunsg.me/furo/)
+- [Sphinx AutoAPI](https://sphinx-autoapi.readthedocs.io/)
+- [MyST Parser](https://myst-parser.readthedocs.io/)

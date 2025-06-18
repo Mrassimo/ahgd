@@ -1,1 +1,1 @@
-"""Test suite for Australian Health Analytics platform."""
+"""Test package for Australian Health Geography Data Analytics."""
