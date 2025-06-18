@@ -1,7 +1,7 @@
 # Australian Health Analytics Platform
 # Modern Docker container with Python 3.11+ and UV package manager
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
