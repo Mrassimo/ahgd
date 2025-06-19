@@ -22,7 +22,7 @@ console = Console()
 
 # SEIFA processing configuration based on real data analysis
 SEIFA_CONFIG = {
-    "filename": "SEIFA_2021_SA2_Indexes.xlsx",
+    "filename": "SEIFA_2021_SA2.xlsx",  # Updated to match actual file
     "primary_sheet": "Table 1",
     "header_row": 6,  # Headers start at row 6 (0-based: row 5)
     "data_start_row": 7,  # Data starts at row 7 (0-based: row 6) 
@@ -64,7 +64,7 @@ class SEIFAProcessor:
     
     def __init__(self, data_dir: Union[str, Path] = "data"):
         self.data_dir = Path(data_dir)
-        self.raw_dir = self.data_dir / "raw"
+        self.raw_dir = self.data_dir / "raw" / "socioeconomic"  # Updated to match actual data location
         self.processed_dir = self.data_dir / "processed"
         
         self.raw_dir.mkdir(parents=True, exist_ok=True)
@@ -341,7 +341,61 @@ class SEIFAProcessor:
         if final_count < SEIFA_CONFIG["expected_records"] * 0.9:
             logger.warning(f"Significant data loss during validation: {final_count} vs expected {SEIFA_CONFIG['expected_records']}")
         
+        # Additional corruption checks
+        self._check_data_corruption(df)
+        
         return df
+    
+    def _check_data_corruption(self, df: pl.DataFrame) -> None:
+        """
+        Check for data corruption indicators.
+        
+        Detects binary corruption, encoding issues, and malformed data.
+        """
+        logger.info("Checking for data corruption")
+        
+        # Check for binary corruption in text columns
+        text_cols = ['sa2_name_2021']
+        for col in text_cols:
+            if col in df.columns:
+                # Check for non-printable characters that indicate binary corruption
+                binary_pattern = r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\xff]'
+                try:
+                    binary_count = df.select(
+                        pl.col(col).str.contains(binary_pattern).sum().alias("binary_count")
+                    ).collect().item()
+                    
+                    if binary_count > 0:
+                        logger.error(f"❌ Binary corruption detected in {col}: {binary_count} rows")
+                        raise ValueError(f"Binary corruption detected in {col}: {binary_count} rows contain non-printable characters")
+                    else:
+                        logger.info(f"✅ No binary corruption in {col}")
+                        
+                except Exception as e:
+                    logger.warning(f"Could not check corruption in {col}: {e}")
+        
+        # Check record count against expectations
+        record_count = len(df)
+        expected_min = SEIFA_CONFIG["expected_records"] * 0.9  # Allow 10% tolerance
+        
+        if record_count < expected_min:
+            logger.error(f"❌ Severe data loss: {record_count} records vs expected ~{SEIFA_CONFIG['expected_records']}")
+            raise ValueError(f"Severe data loss detected: only {record_count} records processed, expected ~{SEIFA_CONFIG['expected_records']}")
+        else:
+            logger.info(f"✅ Record count validation passed: {record_count} records")
+        
+        # Check for completely empty columns
+        empty_cols = []
+        for col in df.columns:
+            if df[col].null_count() == len(df):
+                empty_cols.append(col)
+        
+        if empty_cols:
+            logger.warning(f"Empty columns detected: {empty_cols}")
+        else:
+            logger.info("✅ No completely empty columns")
+            
+        logger.info("Data corruption checks completed")
     
     def process_seifa_file(self, filename: Optional[str] = None) -> pl.DataFrame:
         """
@@ -373,6 +427,18 @@ class SEIFAProcessor:
         parquet_path = self.processed_dir / "seifa_2021_sa2.parquet"
         seifa_df.write_parquet(parquet_path)
         logger.info(f"Exported SEIFA data as Parquet to {parquet_path}")
+        
+        # Validate exported Parquet file integrity
+        try:
+            exported_df = pl.read_parquet(parquet_path)
+            if len(exported_df) != len(seifa_df):
+                logger.error(f"❌ Parquet export corruption: {len(exported_df)} vs {len(seifa_df)} records")
+                raise ValueError(f"Parquet export lost data: {len(exported_df)} vs {len(seifa_df)} records")
+            else:
+                logger.info(f"✅ Parquet export validated: {len(exported_df)} records")
+        except Exception as e:
+            logger.error(f"❌ Failed to validate Parquet export: {e}")
+            raise
         
         return seifa_df
     

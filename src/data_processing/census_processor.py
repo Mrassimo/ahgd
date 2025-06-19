@@ -7,10 +7,13 @@ Processes Australian Bureau of Statistics (ABS) Census data with
 
 from pathlib import Path
 from typing import Dict, List, Optional, Union
+import zipfile
+import os
 
 import polars as pl
 from loguru import logger
 from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 console = Console()
 
@@ -25,7 +28,7 @@ class CensusProcessor:
     
     def __init__(self, data_dir: Union[str, Path] = "data"):
         self.data_dir = Path(data_dir)
-        self.raw_dir = self.data_dir / "raw" / "abs"
+        self.raw_dir = self.data_dir / "raw" / "demographics"  # Updated to match actual data location
         self.processed_dir = self.data_dir / "processed"
         
         # Census data schema mapping
@@ -65,29 +68,138 @@ class CensusProcessor:
             "English_Only_Percent": pl.Float32,
         }
     
-    def load_census_datapack(self, file_pattern: str = "*.csv") -> pl.LazyFrame:
+    def extract_census_zips(self) -> Path:
+        """
+        Extract census ZIP files containing demographic data.
+        
+        Extracts large census DataPack ZIP files to enable processing
+        of the full Australian demographic dataset.
+        
+        Returns path to extraction directory.
+        """
+        zip_files = [
+            "2021_GCP_AUS_SA2.zip",
+            "2021_GCP_NSW_SA2.zip", 
+            "2021_GCP_VIC_SA2.zip",
+            "2021_GCP_QLD_SA2.zip",
+            "2021_GCP_WA_SA2.zip",
+            "2021_GCP_SA_SA2.zip",
+            "2021_GCP_TAS_SA2.zip",
+            "2021_GCP_NT_SA2.zip",
+            "2021_GCP_ACT_SA2.zip"
+        ]
+        
+        # Create extraction directory
+        extraction_dir = self.raw_dir / "extracted_census"
+        extraction_dir.mkdir(exist_ok=True)
+        
+        extracted_files = 0
+        total_size = 0
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}"),
+            console=console,
+        ) as progress:
+            
+            for zip_name in zip_files:
+                zip_path = self.raw_dir / zip_name
+                if zip_path.exists():
+                    task = progress.add_task(f"Extracting {zip_name}...", total=None)
+                    
+                    try:
+                        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                            # Get info about the ZIP contents
+                            file_list = zip_ref.namelist()
+                            logger.info(f"ZIP {zip_name} contains {len(file_list)} files")
+                            
+                            # Extract only CSV files to avoid extracting metadata/docs
+                            csv_files = [f for f in file_list if f.lower().endswith('.csv')]
+                            
+                            for csv_file in csv_files:
+                                zip_ref.extract(csv_file, extraction_dir)
+                                extracted_files += 1
+                            
+                            # Get uncompressed size
+                            uncompressed_size = sum(info.file_size for info in zip_ref.infolist() 
+                                                  if info.filename.lower().endswith('.csv'))
+                            total_size += uncompressed_size
+                            
+                        progress.update(task, completed=True)
+                        logger.info(f"✅ Extracted {len(csv_files)} CSV files from {zip_name}")
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Failed to extract {zip_name}: {e}")
+                        progress.update(task, completed=True)
+                        
+                else:
+                    logger.debug(f"ZIP file not found: {zip_path}")
+        
+        if extracted_files > 0:
+            logger.info(f"🎉 Successfully extracted {extracted_files} CSV files "
+                       f"({total_size / (1024*1024):.1f}MB uncompressed)")
+            console.print(f"✨ Census data extraction complete: {extracted_files} files ready for processing")
+        else:
+            logger.warning("No census ZIP files found for extraction")
+            console.print("⚠️  No census ZIP files found - using any existing CSV files")
+        
+        return extraction_dir
+    
+    def load_census_datapack(self, extraction_dir: Optional[Path] = None, file_pattern: str = "*.csv") -> pl.LazyFrame:
         """
         Load census DataPack with lazy evaluation.
+        
+        First attempts to extract ZIP files if not already done,
+        then loads extracted CSV files for processing.
         
         Returns LazyFrame for memory-efficient processing of large datasets.
         Only loads data when .collect() is called.
         """
-        census_files = list(self.raw_dir.glob(file_pattern))
+        # If no extraction directory provided, try to extract ZIPs first
+        if extraction_dir is None:
+            extraction_dir = self.extract_census_zips()
+        
+        # Look for CSV files in extraction directory first
+        search_dirs = [extraction_dir, self.raw_dir]
+        census_files = []
+        
+        for search_dir in search_dirs:
+            if search_dir.exists():
+                found_files = list(search_dir.rglob(file_pattern))  # Use rglob for recursive search
+                census_files.extend(found_files)
+                if found_files:
+                    logger.info(f"Found {len(found_files)} census files in {search_dir}")
         
         if not census_files:
-            logger.warning(f"No census files found in {self.raw_dir}")
+            logger.warning(f"No census files found in {search_dirs}")
             return pl.LazyFrame()
         
-        logger.info(f"Loading {len(census_files)} census files with lazy evaluation")
+        # Remove duplicates (same filename in different directories)
+        unique_files = {}
+        for file_path in census_files:
+            filename = file_path.name
+            if filename not in unique_files:
+                unique_files[filename] = file_path
+        
+        final_files = list(unique_files.values())
+        logger.info(f"Loading {len(final_files)} unique census files with lazy evaluation")
         
         # Scan multiple CSV files with automatic schema detection
-        lazy_df = pl.scan_csv(
-            census_files,
-            try_parse_dates=True,
-            ignore_errors=True,  # Skip malformed rows
-        )
-        
-        return lazy_df
+        try:
+            lazy_df = pl.scan_csv(
+                final_files,
+                try_parse_dates=True,
+                ignore_errors=True,  # Skip malformed rows
+                truncate_ragged_lines=True,  # Handle inconsistent column counts
+                encoding="utf8-lossy",  # Handle encoding issues
+            )
+            
+            logger.info("✅ Census DataPack loaded successfully")
+            return lazy_df
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to load census files: {e}")
+            return pl.LazyFrame()
     
     def process_basic_demographics(self) -> pl.DataFrame:
         """

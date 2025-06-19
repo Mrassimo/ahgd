@@ -17,12 +17,13 @@ from typing import Dict, List, Optional, Union
 import polars as pl
 from loguru import logger
 from rich.console import Console
+from rich.progress import track
 
 console = Console()
 
 # MBS (Medicare Benefits Schedule) configuration
 MBS_CONFIG = {
-    "historical_filename": "MBS_Demographics_Historical_1993-2015.zip",
+    "historical_filename": "mbs_demographics_historical_1993_2015.zip",  # Updated to match actual file
     "expected_records_historical": 1000000,  # Approximate record count
     "demographic_columns": ["age_group", "gender", "postcode", "state"],
     "service_columns": ["item_number", "service_category", "benefit_amount"],
@@ -31,8 +32,8 @@ MBS_CONFIG = {
 
 # PBS (Pharmaceutical Benefits Scheme) configuration
 PBS_CONFIG = {
-    "current_filename": "PBS_Item_Report_2016_Current.csv",
-    "historical_filename": "PBS_Item_Historical_1992-2014.zip", 
+    "current_filename": "pbs_current_2016.csv",  # Updated to match actual file
+    "historical_filename": "pbs_historical_1992_2014.zip",  # Updated to match actual file
     "expected_records_current": 500000,  # Approximate record count
     "prescription_columns": ["atc_code", "drug_name", "strength", "form"],
     "utilisation_columns": ["ddd_per_1000_pop_per_day", "prescription_count"],
@@ -96,7 +97,7 @@ class HealthDataProcessor:
     
     def __init__(self, data_dir: Union[str, Path] = "data"):
         self.data_dir = Path(data_dir)
-        self.raw_dir = self.data_dir / "raw"
+        self.raw_dir = self.data_dir / "raw" / "health"  # Updated to match actual data location
         self.processed_dir = self.data_dir / "processed"
         
         self.raw_dir.mkdir(parents=True, exist_ok=True)
@@ -204,7 +205,10 @@ class HealthDataProcessor:
             # Process each CSV file and combine
             all_dataframes = []
             
-            for csv_file in csv_files[:3]:  # Limit to first 3 files for performance
+            logger.info(f"Processing all {len(csv_files)} MBS CSV files...")
+            console.print(f"🏥 Processing {len(csv_files)} Medicare data files")
+            
+            for csv_file in track(csv_files, description="Processing MBS files"):
                 logger.info(f"Processing MBS file: {csv_file.name}")
                 
                 try:

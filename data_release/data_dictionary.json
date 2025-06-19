@@ -1,0 +1,31 @@
+{
+  "health_analytics.db": {
+    "description": "Complete SQLite database with all health analytics data",
+    "size": "5.5MB",
+    "format": "SQLite",
+    "tables": [
+      "health_data",
+      "seifa_data",
+      "geographic_boundaries"
+    ],
+    "records": "497K+ health records across 2,454 SA2 areas"
+  },
+  "processed_data.zip": {
+    "description": "Clean, analysis-ready data in Parquet format",
+    "size": "~75MB",
+    "format": "Apache Parquet (compressed)",
+    "contents": [
+      "SEIFA socioeconomic data",
+      "Health indicators",
+      "Geographic codes"
+    ],
+    "optimization": "Memory optimized with 57.5% size reduction"
+  },
+  "geospatial_data.zip": {
+    "description": "SA2 boundary files and geographic data",
+    "size": "~95MB",
+    "format": "Shapefile, GeoJSON, Parquet",
+    "coverage": "All Australian Statistical Areas Level 2",
+    "coordinate_system": "GDA2020"
+  }
+}

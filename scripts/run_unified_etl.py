@@ -18,6 +18,12 @@ from ahgd_etl.models import (
     PersonCharacteristicDimensionBuilder
 )
 
+# Import our data processors for complete pipeline
+sys.path.append(str(Path(__file__).parent.parent / "src"))
+from data_processing.census_processor import CensusProcessor
+from data_processing.seifa_processor import SEIFAProcessor
+from data_processing.health_processor import HealthDataProcessor
+
 
 class ETLPipeline:
     """Main ETL pipeline orchestrator."""
@@ -144,23 +150,67 @@ class ETLPipeline:
         return results
     
     def run_census_facts(self):
-        """Process census fact tables."""
+        """Process census fact tables using our enhanced processors."""
         self.logger.info("\n" + "=" * 60)
-        self.logger.info("STEP 5: Census Fact Tables")
+        self.logger.info("STEP 5: Real Data Processing")
         self.logger.info("=" * 60)
         
-        # Check if census data exists
-        census_dir = Path("data/raw/census/extracted")
-        if not census_dir.exists() or not list(census_dir.glob("*/*.csv")):
-            self.logger.warning("No census data found. Skipping fact tables.")
-            self.logger.info("Run with real census data to generate fact tables.")
-            return {}
+        results = {}
         
-        # TODO: Implement fact table transformers
-        self.logger.info("⚠️  Fact table transformers not yet implemented")
-        self.logger.info("   Dimensions are ready for fact table processing")
+        # SEIFA Socio-economic Processing
+        self.logger.info("\n🏠 Processing SEIFA socio-economic data...")
+        try:
+            seifa_processor = SEIFAProcessor()
+            seifa_df = seifa_processor.process_complete_pipeline()
+            results['seifa'] = seifa_df
+            self.logger.info(f"✅ SEIFA processing complete: {len(seifa_df)} SA2 areas")
+        except Exception as e:
+            self.logger.error(f"❌ SEIFA processing failed: {e}")
+            results['seifa'] = None
         
-        return {}
+        # Census Demographics Processing (with ZIP extraction)
+        self.logger.info("\n📊 Processing Census demographics with ZIP extraction...")
+        try:
+            census_processor = CensusProcessor()
+            
+            # Extract ZIP files first (this is the critical fix!)
+            extraction_dir = census_processor.extract_census_zips()
+            
+            # Process the extracted census data
+            demographics_df = census_processor.process_full_pipeline()
+            results['census'] = demographics_df
+            self.logger.info(f"✅ Census processing complete: {len(demographics_df)} demographic records")
+        except Exception as e:
+            self.logger.error(f"❌ Census processing failed: {e}")
+            results['census'] = None
+        
+        # Health Data Processing (without artificial limits)
+        self.logger.info("\n🏥 Processing Health data (MBS/PBS) without limits...")
+        try:
+            health_processor = HealthDataProcessor()
+            health_summary = health_processor.process_complete_pipeline()
+            results['health'] = health_summary
+            
+            # Health processor returns a summary dict, get record counts
+            mbs_count = health_summary.get('mbs_records', 0) if health_summary else 0
+            pbs_count = health_summary.get('pbs_records', 0) if health_summary else 0
+            self.logger.info(f"✅ Health processing complete: {mbs_count} MBS + {pbs_count} PBS records")
+        except Exception as e:
+            self.logger.error(f"❌ Health processing failed: {e}")
+            results['health'] = None
+        
+        # Summary of data recovery
+        total_records = 0
+        if results['seifa'] is not None:
+            total_records += len(results['seifa'])
+        if results['census'] is not None:
+            total_records += len(results['census'])
+        if results['health'] is not None and isinstance(results['health'], dict):
+            total_records += results['health'].get('mbs_records', 0) + results['health'].get('pbs_records', 0)
+        
+        self.logger.info(f"\n🎉 Data Recovery Summary: {total_records:,} total records processed")
+        
+        return results
     
     def run_validation(self):
         """Run data quality validation."""

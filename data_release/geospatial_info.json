@@ -1,0 +1,15 @@
+{
+  "file": "geospatial_data.zip",
+  "description": "SA2 boundaries and geospatial data for Australian health analysis",
+  "contents": [
+    "mock_sa2_2021.shp",
+    "sa2_detail.geojson",
+    "sa2_overview.geojson",
+    "sa2_boundaries_2021.parquet",
+    "seifa_2021_sa2.parquet"
+  ],
+  "format": "Mixed (Shapefile, GeoJSON, Parquet)",
+  "size_mb": 49.76,
+  "coordinate_system": "GDA2020 / EPSG:7844",
+  "usage": "Extract and read with geopandas.read_file() or similar GIS tools"
+}

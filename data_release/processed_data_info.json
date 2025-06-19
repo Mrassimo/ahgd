@@ -1,0 +1,14 @@
+{
+  "file": "processed_data.zip",
+  "description": "Clean, processed health and demographic data in Parquet format",
+  "contents": [
+    "data/processed/phidu_pha_data.parquet",
+    "data/processed/sa2_boundaries_2021.parquet",
+    "data/processed/aihw_grim_data.parquet",
+    "data/processed/aihw_mort_table1.parquet",
+    "data/processed/seifa_2021_sa2.parquet"
+  ],
+  "format": "Apache Parquet (compressed)",
+  "size_mb": 50.92,
+  "usage": "Extract and read with pandas.read_parquet() or polars.read_parquet()"
+}
