@@ -1,0 +1,1408 @@
+{
+  "seifa_2021": {
+    "metadata": {
+      "parquet": "seifa_2021_sa2.parquet",
+      "csv": "seifa_2021_sa2.csv",
+      "description": "SEIFA Socio-Economic Disadvantage Indices"
+    },
+    "file_analysis": {
+      "file_path": "data/processed/seifa_2021_sa2.parquet",
+      "file_size_mb": 0.04754161834716797,
+      "last_modified": "2025-06-19T10:52:32.249516",
+      "record_count": 2293,
+      "column_count": 11,
+      "memory_usage_mb": 0.21243000030517578
+    },
+    "schema_analysis": {
+      "sa2_code_2021": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2293,
+        "unique_percentage": 100.0,
+        "string_analysis": {
+          "avg_length": 9.0,
+          "max_length": 9,
+          "min_length": 9,
+          "sample_values": [
+            "314011386",
+            "308031218",
+            "202011020",
+            "315031409",
+            "111011213"
+          ]
+        }
+      },
+      "sa2_name_2021": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2293,
+        "unique_percentage": 100.0,
+        "string_analysis": {
+          "avg_length": 15.392062799825556,
+          "max_length": 32,
+          "min_length": 3,
+          "sample_values": [
+            "Thomastown",
+            "East Victoria Park - Carlisle",
+            "Wurtulla - Birtinya",
+            "Gingin - Dandaragan",
+            "Karoonda - Lameroo"
+          ]
+        }
+      },
+      "irsd_score": {
+        "data_type": "Int64",
+        "null_count": 13,
+        "null_percentage": 0.57,
+        "unique_count": 307,
+        "unique_percentage": 13.39,
+        "statistics": {
+          "min": 800.0,
+          "max": 1157.0,
+          "mean": 1006.3881578947369,
+          "median": 1014.0,
+          "std": 65.65796690372237
+        }
+      },
+      "irsd_decile": {
+        "data_type": "Int64",
+        "null_count": 13,
+        "null_percentage": 0.57,
+        "unique_count": 11,
+        "unique_percentage": 0.48,
+        "statistics": {
+          "min": 1.0,
+          "max": 10.0,
+          "mean": 5.603947368421053,
+          "median": 6.0,
+          "std": 2.8109486681467124
+        }
+      },
+      "irsad_score": {
+        "data_type": "Int64",
+        "null_count": 13,
+        "null_percentage": 0.57,
+        "unique_count": 346,
+        "unique_percentage": 15.09,
+        "statistics": {
+          "min": 814.0,
+          "max": 1188.0,
+          "mean": 1002.5482456140351,
+          "median": 999.0,
+          "std": 78.38961292294447
+        }
+      },
+      "irsad_decile": {
+        "data_type": "Int64",
+        "null_count": 13,
+        "null_percentage": 0.57,
+        "unique_count": 11,
+        "unique_percentage": 0.48,
+        "statistics": {
+          "min": 1.0,
+          "max": 10.0,
+          "mean": 5.588596491228071,
+          "median": 6.0,
+          "std": 2.8097572977572463
+        }
+      },
+      "ier_score": {
+        "data_type": "Int64",
+        "null_count": 12,
+        "null_percentage": 0.52,
+        "unique_count": 317,
+        "unique_percentage": 13.82,
+        "statistics": {
+          "min": 804.0,
+          "max": 1183.0,
+          "mean": 1005.0197281893907,
+          "median": 1005.0,
+          "std": 64.5570606851958
+        }
+      },
+      "ier_decile": {
+        "data_type": "Int64",
+        "null_count": 12,
+        "null_percentage": 0.52,
+        "unique_count": 11,
+        "unique_percentage": 0.48,
+        "statistics": {
+          "min": 1.0,
+          "max": 10.0,
+          "mean": 5.633055677334503,
+          "median": 6.0,
+          "std": 2.8114636571691416
+        }
+      },
+      "ieo_score": {
+        "data_type": "Int64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 356,
+        "unique_percentage": 15.53,
+        "statistics": {
+          "min": 824.0,
+          "max": 1200.0,
+          "mean": 1000.715656345399,
+          "median": 990.0,
+          "std": 85.79007773640245
+        }
+      },
+      "ieo_decile": {
+        "data_type": "Int64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 10,
+        "unique_percentage": 0.44,
+        "statistics": {
+          "min": 1.0,
+          "max": 10.0,
+          "mean": 5.5695595290013085,
+          "median": 6.0,
+          "std": 2.82117981019164
+        }
+      },
+      "usual_resident_population": {
+        "data_type": "Int64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2171,
+        "unique_percentage": 94.68,
+        "statistics": {
+          "min": 16.0,
+          "max": 28116.0,
+          "mean": 10812.173571740079,
+          "median": 10043.0,
+          "std": 5891.169586234041
+        }
+      }
+    },
+    "data_quality": {
+      "completeness_score": 99.7,
+      "columns_with_nulls": 6,
+      "duplicate_rows": 0,
+      "data_quality_grade": "A+ (Excellent)"
+    },
+    "statistical_summary": {
+      "numeric_columns": 9,
+      "string_columns": 2,
+      "boolean_columns": 0,
+      "datetime_columns": 0,
+      "high_cardinality_columns": [
+        "sa2_code_2021",
+        "sa2_name_2021"
+      ],
+      "low_cardinality_columns": [
+        "irsd_decile",
+        "irsad_decile",
+        "ier_decile",
+        "ieo_decile"
+      ]
+    },
+    "relationships": {
+      "potential_foreign_keys": [
+        "sa2_code_2021"
+      ],
+      "spatial_columns": [
+        "sa2_code_2021",
+        "sa2_name_2021"
+      ],
+      "temporal_columns": [],
+      "categorical_columns": [
+        "irsd_decile",
+        "irsad_decile",
+        "ier_decile",
+        "ieo_decile"
+      ]
+    },
+    "anomalies": [
+      "ID column usual_resident_population has low uniqueness: 94.68%"
+    ],
+    "recommendations": [
+      "Enable spatial indexing for geographic columns"
+    ],
+    "status": "ANALYSIS_COMPLETE"
+  },
+  "sa2_boundaries": {
+    "metadata": {
+      "parquet": "sa2_boundaries_2021.parquet",
+      "description": "Statistical Area Level 2 Geographic Boundaries"
+    },
+    "file_analysis": {
+      "file_path": "data/processed/sa2_boundaries_2021.parquet",
+      "file_size_mb": 65.80437088012695,
+      "last_modified": "2025-06-17T20:52:21.659876",
+      "record_count": 2454,
+      "column_count": 17,
+      "memory_usage_mb": 67.6480360031128
+    },
+    "schema_analysis": {
+      "SA2_CODE21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2454,
+        "unique_percentage": 100.0,
+        "string_analysis": {
+          "avg_length": 9.0,
+          "max_length": 9,
+          "min_length": 9,
+          "sample_values": [
+            "401021008",
+            "211051280",
+            "212021454",
+            "404011097",
+            "205041494"
+          ]
+        }
+      },
+      "SA2_NAME21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2454,
+        "unique_percentage": 100.0,
+        "string_analysis": {
+          "avg_length": 15.405867970660147,
+          "max_length": 45,
+          "min_length": 3,
+          "sample_values": [
+            "Langwarrin",
+            "Robertson",
+            "Dianella - North",
+            "York - Beverley",
+            "Kempsey"
+          ]
+        }
+      },
+      "CHG_FLAG21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 3,
+        "unique_percentage": 0.12,
+        "string_analysis": {
+          "avg_length": 1.0,
+          "max_length": 1,
+          "min_length": 1,
+          "sample_values": [
+            "0",
+            "3",
+            "1"
+          ]
+        }
+      },
+      "CHG_LBL21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 3,
+        "unique_percentage": 0.12,
+        "string_analysis": {
+          "avg_length": 8.343928280358599,
+          "max_length": 11,
+          "min_length": 3,
+          "sample_values": [
+            "No change",
+            "Name change",
+            "New"
+          ]
+        }
+      },
+      "SA3_CODE21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 340,
+        "unique_percentage": 13.85,
+        "string_analysis": {
+          "avg_length": 5.0,
+          "max_length": 5,
+          "min_length": 5,
+          "sample_values": [
+            "12102",
+            "20301",
+            "12003",
+            "31305",
+            "60101"
+          ]
+        }
+      },
+      "SA3_NAME21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 340,
+        "unique_percentage": 13.85,
+        "string_analysis": {
+          "avg_length": 13.669111654441728,
+          "max_length": 36,
+          "min_length": 4,
+          "sample_values": [
+            "Caboolture Hinterland",
+            "Port Adelaide - West",
+            "Sunbury",
+            "Mildura",
+            "Canterbury"
+          ]
+        }
+      },
+      "SA4_CODE21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 89,
+        "unique_percentage": 3.63,
+        "string_analysis": {
+          "avg_length": 3.0,
+          "max_length": 3,
+          "min_length": 3,
+          "sample_values": [
+            "506",
+            "319",
+            "312",
+            "108",
+            "406"
+          ]
+        }
+      },
+      "SA4_NAME21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 89,
+        "unique_percentage": 3.63,
+        "string_analysis": {
+          "avg_length": 18.75876120619397,
+          "max_length": 38,
+          "min_length": 4,
+          "sample_values": [
+            "Sydney - Outer West and Blue Mountains",
+            "Darling Downs - Maranoa",
+            "Central Coast",
+            "South Australia - Outback",
+            "Northern Territory - Outback"
+          ]
+        }
+      },
+      "GCC_CODE21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 16,
+        "unique_percentage": 0.65,
+        "string_analysis": {
+          "avg_length": 5.0,
+          "max_length": 5,
+          "min_length": 5,
+          "sample_values": [
+            "5GPER",
+            "1GSYD",
+            "9OTER",
+            "4GADE",
+            "6GHOB"
+          ]
+        }
+      },
+      "GCC_NAME21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 16,
+        "unique_percentage": 0.65,
+        "string_analysis": {
+          "avg_length": 14.277506112469437,
+          "max_length": 28,
+          "min_length": 10,
+          "sample_values": [
+            "Greater Brisbane",
+            "Rest of SA",
+            "Rest of WA",
+            "Other Territories",
+            "Rest of NSW"
+          ]
+        }
+      },
+      "STE_CODE21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 9,
+        "unique_percentage": 0.37,
+        "string_analysis": {
+          "avg_length": 1.0,
+          "max_length": 1,
+          "min_length": 1,
+          "sample_values": [
+            "9",
+            "4",
+            "2",
+            "3",
+            "5"
+          ]
+        }
+      },
+      "STE_NAME21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 9,
+        "unique_percentage": 0.37,
+        "string_analysis": {
+          "avg_length": 13.12836185819071,
+          "max_length": 28,
+          "min_length": 8,
+          "sample_values": [
+            "New South Wales",
+            "Western Australia",
+            "Tasmania",
+            "South Australia",
+            "Australian Capital Territory"
+          ]
+        }
+      },
+      "AUS_CODE21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 1,
+        "unique_percentage": 0.04,
+        "string_analysis": {
+          "avg_length": 3.0,
+          "max_length": 3,
+          "min_length": 3,
+          "sample_values": [
+            "AUS"
+          ]
+        }
+      },
+      "AUS_NAME21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 1,
+        "unique_percentage": 0.04,
+        "string_analysis": {
+          "avg_length": 9.0,
+          "max_length": 9,
+          "min_length": 9,
+          "sample_values": [
+            "Australia"
+          ]
+        }
+      },
+      "AREASQKM21": {
+        "data_type": "Float64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2447,
+        "unique_percentage": 99.71,
+        "statistics": {
+          "min": 0.4642,
+          "max": 513391.3333,
+          "mean": 3132.8830227791364,
+          "median": 11.9576,
+          "std": 24131.07695839426
+        }
+      },
+      "LOCI_URI21": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2454,
+        "unique_percentage": 100.0,
+        "string_analysis": {
+          "avg_length": 55.0,
+          "max_length": 55,
+          "min_length": 55,
+          "sample_values": [
+            "http://linked.data.gov.au/dataset/asgsed3/SA2/504011046",
+            "http://linked.data.gov.au/dataset/asgsed3/SA2/507051188",
+            "http://linked.data.gov.au/dataset/asgsed3/SA2/101051540",
+            "http://linked.data.gov.au/dataset/asgsed3/SA2/112011240",
+            "http://linked.data.gov.au/dataset/asgsed3/SA2/509021244"
+          ]
+        }
+      },
+      "geometry": {
+        "data_type": "Binary",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2454,
+        "unique_percentage": 100.0
+      }
+    },
+    "data_quality": {
+      "completeness_score": 100.0,
+      "columns_with_nulls": 0,
+      "duplicate_rows": 0,
+      "data_quality_grade": "A+ (Excellent)"
+    },
+    "statistical_summary": {
+      "numeric_columns": 1,
+      "string_columns": 15,
+      "boolean_columns": 0,
+      "datetime_columns": 0,
+      "high_cardinality_columns": [
+        "SA2_CODE21",
+        "SA2_NAME21",
+        "AREASQKM21",
+        "LOCI_URI21",
+        "geometry"
+      ],
+      "low_cardinality_columns": [
+        "CHG_FLAG21",
+        "CHG_LBL21",
+        "SA4_CODE21",
+        "SA4_NAME21",
+        "GCC_CODE21",
+        "GCC_NAME21",
+        "STE_CODE21",
+        "STE_NAME21",
+        "AUS_CODE21",
+        "AUS_NAME21"
+      ]
+    },
+    "relationships": {
+      "potential_foreign_keys": [
+        "SA2_CODE21",
+        "SA3_CODE21",
+        "SA4_CODE21",
+        "GCC_CODE21",
+        "STE_CODE21",
+        "AUS_CODE21"
+      ],
+      "spatial_columns": [
+        "SA2_CODE21",
+        "SA2_NAME21"
+      ],
+      "temporal_columns": [],
+      "categorical_columns": [
+        "CHG_FLAG21",
+        "CHG_LBL21",
+        "SA4_CODE21",
+        "SA4_NAME21",
+        "GCC_CODE21",
+        "GCC_NAME21",
+        "STE_CODE21",
+        "STE_NAME21"
+      ]
+    },
+    "anomalies": [
+      "Column AUS_CODE21 has only one unique value",
+      "Column AUS_NAME21 has only one unique value",
+      "High coefficient of variation in AREASQKM21: 7.70"
+    ],
+    "recommendations": [
+      "Enable spatial indexing for geographic columns"
+    ],
+    "status": "ANALYSIS_COMPLETE"
+  },
+  "pbs_health": {
+    "metadata": {
+      "csv": "pbs_current_processed.csv",
+      "description": "Pharmaceutical Benefits Scheme Health Data"
+    },
+    "file_analysis": {
+      "file_path": "data/processed/pbs_current_processed.csv",
+      "file_size_mb": 6.962370872497559,
+      "last_modified": "2025-06-19T10:52:32.440244",
+      "record_count": 492434,
+      "column_count": 3,
+      "memory_usage_mb": 7.431976318359375
+    },
+    "schema_analysis": {
+      "year": {
+        "data_type": "Int64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 1,
+        "unique_percentage": 0.0,
+        "statistics": {
+          "min": 2016.0,
+          "max": 2016.0,
+          "mean": 2016.0,
+          "median": 2016.0,
+          "std": 0.0
+        }
+      },
+      "month": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 7,
+        "unique_percentage": 0.0,
+        "string_analysis": {
+          "avg_length": 5.135912629915887,
+          "max_length": 8,
+          "min_length": 3,
+          "sample_values": [
+            "February",
+            "July",
+            "January",
+            "June",
+            "May"
+          ]
+        }
+      },
+      "state": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 8,
+        "unique_percentage": 0.0,
+        "string_analysis": {
+          "avg_length": 2.689542151841668,
+          "max_length": 3,
+          "min_length": 2,
+          "sample_values": [
+            "QLD",
+            "VIC",
+            "TAS",
+            "ACT",
+            "WA"
+          ]
+        }
+      }
+    },
+    "data_quality": {
+      "completeness_score": 100.0,
+      "columns_with_nulls": 0,
+      "duplicate_rows": 492378,
+      "data_quality_grade": "A+ (Excellent)"
+    },
+    "statistical_summary": {
+      "numeric_columns": 1,
+      "string_columns": 2,
+      "boolean_columns": 0,
+      "datetime_columns": 0,
+      "high_cardinality_columns": [],
+      "low_cardinality_columns": [
+        "year",
+        "month",
+        "state"
+      ]
+    },
+    "relationships": {
+      "potential_foreign_keys": [],
+      "spatial_columns": [
+        "state"
+      ],
+      "temporal_columns": [
+        "year",
+        "month"
+      ],
+      "categorical_columns": [
+        "month",
+        "state"
+      ]
+    },
+    "anomalies": [
+      "Column year has only one unique value"
+    ],
+    "recommendations": [
+      "Remove duplicate rows to ensure data integrity",
+      "Enable spatial indexing for geographic columns"
+    ],
+    "status": "ANALYSIS_COMPLETE"
+  },
+  "aihw_mortality": {
+    "metadata": {
+      "parquet": "aihw_mort_table1.parquet",
+      "description": "AIHW Mortality Statistics Table 1"
+    },
+    "file_analysis": {
+      "file_path": "data/processed/aihw_mort_table1.parquet",
+      "file_size_mb": 0.524470329284668,
+      "last_modified": "2025-06-17T21:07:18.428812",
+      "record_count": 15855,
+      "column_count": 19,
+      "memory_usage_mb": 2.3188047409057617
+    },
+    "schema_analysis": {
+      "mort": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 1057,
+        "unique_percentage": 6.67,
+        "string_analysis": {
+          "avg_length": 7.684011352885525,
+          "max_length": 8,
+          "min_length": 4,
+          "sample_values": [
+            "LGA46510",
+            "GCC8ACTE",
+            "SA321701",
+            "LGA53150",
+            "LGA22670"
+          ]
+        }
+      },
+      "category": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 8,
+        "unique_percentage": 0.05,
+        "string_analysis": {
+          "avg_length": 28.375591296121097,
+          "max_length": 46,
+          "min_length": 15,
+          "sample_values": [
+            "Statistical Area Level 3 (SA3)",
+            "Greater Capital City Statistical Areas (GCCSA)",
+            "Primary Health Network (PHN)",
+            "Remoteness area",
+            "State and territory"
+          ]
+        }
+      },
+      "geography": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 912,
+        "unique_percentage": 5.75,
+        "string_analysis": {
+          "avg_length": 12.80321665089877,
+          "max_length": 44,
+          "min_length": 3,
+          "sample_values": [
+            "Hilltops",
+            "Gippsland - East",
+            "Gladstone",
+            "Victoria",
+            "Dandaragan"
+          ]
+        }
+      },
+      "YEAR": {
+        "data_type": "Int64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 5,
+        "unique_percentage": 0.03,
+        "statistics": {
+          "min": 2019.0,
+          "max": 2023.0,
+          "mean": 2021.0,
+          "median": 2021.0,
+          "std": 1.4142581628292101
+        }
+      },
+      "SEX": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 3,
+        "unique_percentage": 0.02,
+        "string_analysis": {
+          "avg_length": 6.333333333333333,
+          "max_length": 7,
+          "min_length": 5,
+          "sample_values": [
+            "Males",
+            "Females",
+            "Persons"
+          ]
+        }
+      },
+      "deaths": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 2496,
+        "unique_percentage": 15.74,
+        "string_analysis": {
+          "avg_length": 2.843519394512772,
+          "max_length": 7,
+          "min_length": 1,
+          "sample_values": [
+            "2,382",
+            "1,237",
+            "1,116",
+            "97",
+            "1,414"
+          ]
+        }
+      },
+      "population": {
+        "data_type": "String",
+        "null_count": 105,
+        "null_percentage": 0.66,
+        "unique_count": 13240,
+        "unique_percentage": 83.51,
+        "string_analysis": {
+          "avg_length": 5.764063492063492,
+          "max_length": 10,
+          "min_length": 1,
+          "sample_values": [
+            "9,783",
+            "16,460",
+            "135,338",
+            "561",
+            "82,385"
+          ]
+        }
+      },
+      "crude_rate_per_100000": {
+        "data_type": "Float64",
+        "null_count": 277,
+        "null_percentage": 1.75,
+        "unique_count": 7495,
+        "unique_percentage": 47.27,
+        "statistics": {
+          "min": 24.1,
+          "max": 2580.6,
+          "mean": 749.6144434458853,
+          "median": 723.55,
+          "std": 265.61890909121144
+        }
+      },
+      "age_standardised_rate_per_100000": {
+        "data_type": "Float64",
+        "null_count": 3020,
+        "null_percentage": 19.05,
+        "unique_count": 4536,
+        "unique_percentage": 28.61,
+        "statistics": {
+          "min": 201.8,
+          "max": 1384.6,
+          "mean": 542.6675652512661,
+          "median": 529.3,
+          "std": 127.08735590087187
+        }
+      },
+      "rate_ratio": {
+        "data_type": "Float64",
+        "null_count": 3020,
+        "null_percentage": 19.05,
+        "unique_count": 164,
+        "unique_percentage": 1.03,
+        "statistics": {
+          "min": 0.45,
+          "max": 2.64,
+          "mean": 1.043074405921309,
+          "median": 1.03,
+          "std": 0.19311313328145335
+        }
+      },
+      "premature_deaths": {
+        "data_type": "String",
+        "null_count": 264,
+        "null_percentage": 1.67,
+        "unique_count": 1455,
+        "unique_percentage": 9.18,
+        "string_analysis": {
+          "avg_length": 2.3439805015714192,
+          "max_length": 6,
+          "min_length": 1,
+          "sample_values": [
+            "601",
+            "34",
+            "1,234",
+            "251",
+            "104"
+          ]
+        }
+      },
+      "premature_deaths_percent": {
+        "data_type": "Float64",
+        "null_count": 2044,
+        "null_percentage": 12.89,
+        "unique_count": 784,
+        "unique_percentage": 4.94,
+        "statistics": {
+          "min": 5.6,
+          "max": 100.0,
+          "mean": 35.948055897473026,
+          "median": 33.9,
+          "std": 13.220112426825406
+        }
+      },
+      "premature_deaths_asr_per_100000": {
+        "data_type": "Float64",
+        "null_count": 4375,
+        "null_percentage": 27.59,
+        "unique_count": 3030,
+        "unique_percentage": 19.11,
+        "statistics": {
+          "min": 63.8,
+          "max": 893.7,
+          "mean": 217.88968641114982,
+          "median": 206.2,
+          "std": 79.55590885834611
+        }
+      },
+      "potential_years_of_life_lost": {
+        "data_type": "String",
+        "null_count": 264,
+        "null_percentage": 1.67,
+        "unique_count": 5595,
+        "unique_percentage": 35.29,
+        "string_analysis": {
+          "avg_length": 3.960682445000321,
+          "max_length": 7,
+          "min_length": 1,
+          "sample_values": [
+            "4,980",
+            "1,645",
+            "2,040",
+            "1,975",
+            "92,187"
+          ]
+        }
+      },
+      "pyll_rate_per_1000": {
+        "data_type": "Float64",
+        "null_count": 277,
+        "null_percentage": 1.75,
+        "unique_count": 1316,
+        "unique_percentage": 8.3,
+        "statistics": {
+          "min": 0.0,
+          "max": 416.7,
+          "mean": 47.084856849403,
+          "median": 41.1,
+          "std": 27.572087192496987
+        }
+      },
+      "potentially_avoidable_deaths": {
+        "data_type": "String",
+        "null_count": 264,
+        "null_percentage": 1.67,
+        "unique_count": 1028,
+        "unique_percentage": 6.48,
+        "string_analysis": {
+          "avg_length": 2.0470784426912965,
+          "max_length": 6,
+          "min_length": 1,
+          "sample_values": [
+            "767",
+            "271",
+            "2,888",
+            "2,651",
+            "102"
+          ]
+        }
+      },
+      "pad_percent": {
+        "data_type": "Float64",
+        "null_count": 3000,
+        "null_percentage": 18.92,
+        "unique_count": 536,
+        "unique_percentage": 3.38,
+        "statistics": {
+          "min": 13.3,
+          "max": 100.0,
+          "mean": 49.14352392065344,
+          "median": 48.6,
+          "std": 7.8620243363987905
+        }
+      },
+      "pad_asr_per_100000": {
+        "data_type": "Float64",
+        "null_count": 6201,
+        "null_percentage": 39.11,
+        "unique_count": 1909,
+        "unique_percentage": 12.04,
+        "statistics": {
+          "min": 26.6,
+          "max": 559.8,
+          "mean": 112.8146157033354,
+          "median": 104.4,
+          "std": 48.237413385372214
+        }
+      },
+      "median_age": {
+        "data_type": "Float64",
+        "null_count": 2007,
+        "null_percentage": 12.66,
+        "unique_count": 389,
+        "unique_percentage": 2.45,
+        "statistics": {
+          "min": 35.0,
+          "max": 92.4,
+          "mean": 80.36116406701328,
+          "median": 81.3,
+          "std": 5.704309799424053
+        }
+      }
+    },
+    "data_quality": {
+      "completeness_score": 91.66,
+      "columns_with_nulls": 13,
+      "duplicate_rows": 0,
+      "data_quality_grade": "A (Very Good)"
+    },
+    "statistical_summary": {
+      "numeric_columns": 10,
+      "string_columns": 9,
+      "boolean_columns": 0,
+      "datetime_columns": 0,
+      "high_cardinality_columns": [],
+      "low_cardinality_columns": [
+        "category",
+        "YEAR",
+        "SEX",
+        "rate_ratio",
+        "premature_deaths_percent",
+        "pad_percent",
+        "median_age"
+      ]
+    },
+    "relationships": {
+      "potential_foreign_keys": [],
+      "spatial_columns": [],
+      "temporal_columns": [
+        "YEAR",
+        "potential_years_of_life_lost"
+      ],
+      "categorical_columns": [
+        "mort",
+        "category",
+        "geography",
+        "YEAR",
+        "SEX",
+        "rate_ratio",
+        "premature_deaths",
+        "premature_deaths_percent",
+        "pyll_rate_per_1000",
+        "potentially_avoidable_deaths",
+        "pad_percent",
+        "median_age"
+      ]
+    },
+    "anomalies": [
+      "ID column potentially_avoidable_deaths has low uniqueness: 6.48%"
+    ],
+    "recommendations": [],
+    "status": "ANALYSIS_COMPLETE"
+  },
+  "aihw_grim": {
+    "metadata": {
+      "parquet": "aihw_grim_data.parquet",
+      "description": "AIHW General Record of Incidence of Mortality"
+    },
+    "file_analysis": {
+      "file_path": "data/processed/aihw_grim_data.parquet",
+      "file_size_mb": 0.8166112899780273,
+      "last_modified": "2025-06-17T21:07:18.528900",
+      "record_count": 373141,
+      "column_count": 8,
+      "memory_usage_mb": 29.730396270751953
+    },
+    "schema_analysis": {
+      "grim": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 56,
+        "unique_percentage": 0.02,
+        "string_analysis": {
+          "avg_length": 8.0,
+          "max_length": 8,
+          "min_length": 8,
+          "sample_values": [
+            "GRIM0605",
+            "GRIM0908",
+            "GRIM1302",
+            "GRIM1020",
+            "GRIM2001"
+          ]
+        }
+      },
+      "cause_of_death": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 56,
+        "unique_percentage": 0.02,
+        "string_analysis": {
+          "avg_length": 30.363205865879117,
+          "max_length": 103,
+          "min_length": 6,
+          "sample_values": [
+            "All diseases of the digestive system",
+            "All certain conditions originating in the perinatal period",
+            "Land transport accidents",
+            "Dementia including Alzheimer's disease",
+            "Sudden infant death syndrome (SIDS)"
+          ]
+        }
+      },
+      "year": {
+        "data_type": "Int64",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 117,
+        "unique_percentage": 0.03,
+        "statistics": {
+          "min": 1907.0,
+          "max": 2023.0,
+          "mean": 1964.9567187738683,
+          "median": 1965.0,
+          "std": 33.756042420163766
+        }
+      },
+      "sex": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 3,
+        "unique_percentage": 0.0,
+        "string_analysis": {
+          "avg_length": 6.334487499363512,
+          "max_length": 7,
+          "min_length": 5,
+          "sample_values": [
+            "Males",
+            "Females",
+            "Persons"
+          ]
+        }
+      },
+      "age_group": {
+        "data_type": "String",
+        "null_count": 0,
+        "null_percentage": 0.0,
+        "unique_count": 19,
+        "unique_percentage": 0.01,
+        "string_analysis": {
+          "avg_length": 4.684210526315789,
+          "max_length": 5,
+          "min_length": 3,
+          "sample_values": [
+            "25\u201329",
+            "10\u201314",
+            "80\u201384",
+            "15\u201319",
+            "70\u201374"
+          ]
+        }
+      },
+      "deaths": {
+        "data_type": "Float64",
+        "null_count": 140847,
+        "null_percentage": 37.75,
+        "unique_count": 8130,
+        "unique_percentage": 2.18,
+        "statistics": {
+          "min": 0.0,
+          "max": 190939.0,
+          "mean": 503.33209209019606,
+          "median": 16.0,
+          "std": 3502.1964178777694
+        }
+      },
+      "crude_rate_per_100000": {
+        "data_type": "Float64",
+        "null_count": 140847,
+        "null_percentage": 37.75,
+        "unique_count": 14720,
+        "unique_percentage": 3.94,
+        "statistics": {
+          "min": 0.0,
+          "max": 37025.6,
+          "mean": 182.24987300575995,
+          "median": 3.1,
+          "std": 1175.8742138980938
+        }
+      },
+      "age_standardised_rate_per_100000": {
+        "data_type": "Float64",
+        "null_count": 360978,
+        "null_percentage": 96.74,
+        "unique_count": 2401,
+        "unique_percentage": 0.64,
+        "statistics": {
+          "min": 0.0,
+          "max": 2417.6,
+          "mean": 82.34016278878565,
+          "median": 11.2,
+          "std": 246.28197712595488
+        }
+      }
+    },
+    "data_quality": {
+      "completeness_score": 78.47,
+      "columns_with_nulls": 3,
+      "duplicate_rows": 0,
+      "data_quality_grade": "D (Poor)"
+    },
+    "statistical_summary": {
+      "numeric_columns": 4,
+      "string_columns": 4,
+      "boolean_columns": 0,
+      "datetime_columns": 0,
+      "high_cardinality_columns": [],
+      "low_cardinality_columns": [
+        "grim",
+        "cause_of_death",
+        "year",
+        "sex",
+        "age_group",
+        "deaths",
+        "crude_rate_per_100000",
+        "age_standardised_rate_per_100000"
+      ]
+    },
+    "relationships": {
+      "potential_foreign_keys": [],
+      "spatial_columns": [],
+      "temporal_columns": [
+        "year"
+      ],
+      "categorical_columns": [
+        "grim",
+        "cause_of_death",
+        "year",
+        "sex",
+        "age_group",
+        "deaths",
+        "crude_rate_per_100000",
+        "age_standardised_rate_per_100000"
+      ]
+    },
+    "anomalies": [
+      "High coefficient of variation in deaths: 6.96",
+      "High coefficient of variation in crude_rate_per_100000: 6.45",
+      "High missing data in age_standardised_rate_per_100000: 96.74%"
+    ],
+    "recommendations": [
+      "Consider data imputation or source improvement for missing values"
+    ],
+    "status": "ANALYSIS_COMPLETE"
+  },
+  "phidu_pha": {
+    "metadata": {
+      "parquet": "phidu_pha_data.parquet",
+      "description": "Public Health Information Development Unit Primary Health Area Data"
+    },
+    "file_analysis": {
+      "file_path": "data/processed/phidu_pha_data.parquet",
+      "file_size_mb": 0.0053348541259765625,
+      "last_modified": "2025-06-17T21:07:18.530225",
+      "record_count": 10,
+      "column_count": 5,
+      "memory_usage_mb": 0.0010976791381835938
+    },
+    "schema_analysis": {
+      "Link to Contents": {
+        "data_type": "String",
+        "null_count": 6,
+        "null_percentage": 60.0,
+        "unique_count": 5,
+        "unique_percentage": 50.0,
+        "string_analysis": {
+          "avg_length": 181.75,
+          "max_length": 286,
+          "min_length": 42,
+          "sample_values": [
+            "The data in this workbook can also be viewed on the PHIDU website as maps (phidu.torrens.edu.au/social-health-atlases/maps), and as graphs (phidu.torrens.edu.au/social-health-atlases/graphs).",
+            "The Social Health Atlas of Australia includes data on a range of population characteristics, including demography, socioeconomic status, health status and risk factors, and use of health and welfare services.",
+            "\u00a9 2025 PHIDU, Torrens University Australia",
+            "Data are provided by Population Health Area, Statistical Areas Level 3 and 4, Greater Capital City Statistical Area and Rest of State/ Territory region, and State/ Territory and Australia, based on the Australian Bureau of Statistics Australian Statistical Geographical Standard (ASGS)."
+          ]
+        }
+      },
+      "Unnamed: 1": {
+        "data_type": "String",
+        "null_count": 7,
+        "null_percentage": 70.0,
+        "unique_count": 4,
+        "unique_percentage": 40.0,
+        "string_analysis": {
+          "avg_length": 33.333333333333336,
+          "max_length": 42,
+          "min_length": 26,
+          "sample_values": [
+            "Data by Population Health Area (2021 ASGS)",
+            "Social Health Atlas of Australia",
+            "Published 2025: April 2025"
+          ]
+        }
+      },
+      "Unnamed: 2": {
+        "data_type": "Float64",
+        "null_count": 10,
+        "null_percentage": 100.0,
+        "unique_count": 1,
+        "unique_percentage": 10.0,
+        "statistics": {
+          "min": null,
+          "max": null,
+          "mean": null,
+          "median": null,
+          "std": null
+        }
+      },
+      "Unnamed: 3": {
+        "data_type": "Float64",
+        "null_count": 10,
+        "null_percentage": 100.0,
+        "unique_count": 1,
+        "unique_percentage": 10.0,
+        "statistics": {
+          "min": null,
+          "max": null,
+          "mean": null,
+          "median": null,
+          "std": null
+        }
+      },
+      "Unnamed: 4": {
+        "data_type": "String",
+        "null_count": 9,
+        "null_percentage": 90.0,
+        "unique_count": 2,
+        "unique_percentage": 20.0,
+        "string_analysis": {
+          "avg_length": 116.0,
+          "max_length": 116,
+          "min_length": 116,
+          "sample_values": [
+            "       This content is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Australia licence."
+          ]
+        }
+      }
+    },
+    "data_quality": {
+      "completeness_score": 16.0,
+      "columns_with_nulls": 5,
+      "duplicate_rows": 2,
+      "data_quality_grade": "D (Poor)"
+    },
+    "statistical_summary": {
+      "numeric_columns": 2,
+      "string_columns": 3,
+      "boolean_columns": 0,
+      "datetime_columns": 0,
+      "high_cardinality_columns": [],
+      "low_cardinality_columns": []
+    },
+    "relationships": {
+      "potential_foreign_keys": [],
+      "spatial_columns": [],
+      "temporal_columns": [],
+      "categorical_columns": []
+    },
+    "anomalies": [
+      "High missing data in Link to Contents: 60.0%",
+      "High missing data in Unnamed: 1: 70.0%",
+      "High missing data in Unnamed: 2: 100.0%",
+      "Column Unnamed: 2 has only one unique value",
+      "High missing data in Unnamed: 3: 100.0%",
+      "Column Unnamed: 3 has only one unique value",
+      "High missing data in Unnamed: 4: 90.0%"
+    ],
+    "recommendations": [
+      "Consider data imputation or source improvement for missing values",
+      "Remove duplicate rows to ensure data integrity"
+    ],
+    "status": "ANALYSIS_COMPLETE"
+  }
+}
