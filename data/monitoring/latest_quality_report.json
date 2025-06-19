@@ -1,0 +1,612 @@
+{
+  "timestamp": "2025-06-19T11:47:06.806603",
+  "datasets": {
+    "seifa_2021": {
+      "record_count": 2293,
+      "column_count": 11,
+      "completeness": 99.69868770566546,
+      "schema_compliance": {
+        "missing_columns": [],
+        "extra_columns": [
+          "ier_decile",
+          "irsad_decile",
+          "ieo_score",
+          "sa2_name_2021",
+          "ieo_decile",
+          "ier_score",
+          "usual_resident_population",
+          "irsad_score"
+        ],
+        "compliance_score": 100.0
+      },
+      "null_analysis": {
+        "sa2_code_2021": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "sa2_name_2021": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "irsd_score": {
+          "null_count": 13,
+          "null_percentage": 0.57,
+          "status": "ok"
+        },
+        "irsd_decile": {
+          "null_count": 13,
+          "null_percentage": 0.57,
+          "status": "ok"
+        },
+        "irsad_score": {
+          "null_count": 13,
+          "null_percentage": 0.57,
+          "status": "ok"
+        },
+        "irsad_decile": {
+          "null_count": 13,
+          "null_percentage": 0.57,
+          "status": "ok"
+        },
+        "ier_score": {
+          "null_count": 12,
+          "null_percentage": 0.52,
+          "status": "ok"
+        },
+        "ier_decile": {
+          "null_count": 12,
+          "null_percentage": 0.52,
+          "status": "ok"
+        },
+        "ieo_score": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "ieo_decile": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "usual_resident_population": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        }
+      },
+      "duplicate_analysis": {
+        "total_records": 2293,
+        "unique_records": 2293,
+        "duplicate_count": 0,
+        "duplicate_percentage": 0.0,
+        "status": "ok"
+      },
+      "data_type_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "temporal_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "geographic_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "quality_grade": "A+ (Excellent)",
+      "status": "monitored"
+    },
+    "sa2_boundaries": {
+      "record_count": 2454,
+      "column_count": 17,
+      "completeness": 100.0,
+      "schema_compliance": {
+        "missing_columns": [],
+        "extra_columns": [
+          "STE_CODE21",
+          "LOCI_URI21",
+          "CHG_LBL21",
+          "SA3_CODE21",
+          "SA4_CODE21",
+          "SA4_NAME21",
+          "SA3_NAME21",
+          "CHG_FLAG21",
+          "GCC_CODE21",
+          "AUS_CODE21",
+          "STE_NAME21",
+          "GCC_NAME21",
+          "AUS_NAME21",
+          "AREASQKM21"
+        ],
+        "compliance_score": 100.0
+      },
+      "null_analysis": {
+        "SA2_CODE21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "SA2_NAME21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "CHG_FLAG21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "CHG_LBL21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "SA3_CODE21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "SA3_NAME21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "SA4_CODE21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "SA4_NAME21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "GCC_CODE21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "GCC_NAME21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "STE_CODE21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "STE_NAME21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "AUS_CODE21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "AUS_NAME21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "AREASQKM21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "LOCI_URI21": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "geometry": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        }
+      },
+      "duplicate_analysis": {
+        "total_records": 2454,
+        "unique_records": 2454,
+        "duplicate_count": 0,
+        "duplicate_percentage": 0.0,
+        "status": "ok"
+      },
+      "data_type_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "temporal_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "geographic_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "quality_grade": "A+ (Excellent)",
+      "status": "monitored"
+    },
+    "pbs_health": {
+      "record_count": 492434,
+      "column_count": 3,
+      "completeness": 100.0,
+      "schema_compliance": {
+        "missing_columns": [],
+        "extra_columns": [],
+        "compliance_score": 100.0
+      },
+      "null_analysis": {
+        "year": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "month": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "state": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        }
+      },
+      "duplicate_analysis": {
+        "total_records": 492434,
+        "unique_records": 56,
+        "duplicate_count": 492378,
+        "duplicate_percentage": 99.99,
+        "status": "warning"
+      },
+      "data_type_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "temporal_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "geographic_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "quality_grade": "D (Poor)",
+      "status": "monitored"
+    },
+    "aihw_mortality": {
+      "record_count": 15855,
+      "column_count": 19,
+      "completeness": 93.75890056266493,
+      "schema_compliance": {
+        "missing_columns": [],
+        "extra_columns": [
+          "potentially_avoidable_deaths",
+          "pad_percent",
+          "age_standardised_rate_per_100000",
+          "category",
+          "geography",
+          "premature_deaths_asr_per_100000",
+          "pyll_rate_per_1000",
+          "median_age",
+          "premature_deaths",
+          "premature_deaths_percent",
+          "potential_years_of_life_lost",
+          "SEX",
+          "rate_ratio",
+          "population",
+          "mort",
+          "pad_asr_per_100000"
+        ],
+        "compliance_score": 100.0
+      },
+      "null_analysis": {
+        "mort": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "category": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "geography": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "YEAR": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "SEX": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "deaths": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "population": {
+          "null_count": 105,
+          "null_percentage": 0.66,
+          "status": "ok"
+        },
+        "crude_rate_per_100000": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "age_standardised_rate_per_100000": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "rate_ratio": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "premature_deaths": {
+          "null_count": 264,
+          "null_percentage": 1.67,
+          "status": "ok"
+        },
+        "premature_deaths_percent": {
+          "null_count": 2044,
+          "null_percentage": 12.89,
+          "status": "critical"
+        },
+        "premature_deaths_asr_per_100000": {
+          "null_count": 4375,
+          "null_percentage": 27.59,
+          "status": "critical"
+        },
+        "potential_years_of_life_lost": {
+          "null_count": 264,
+          "null_percentage": 1.67,
+          "status": "ok"
+        },
+        "pyll_rate_per_1000": {
+          "null_count": 277,
+          "null_percentage": 1.75,
+          "status": "ok"
+        },
+        "potentially_avoidable_deaths": {
+          "null_count": 264,
+          "null_percentage": 1.67,
+          "status": "ok"
+        },
+        "pad_percent": {
+          "null_count": 3000,
+          "null_percentage": 18.92,
+          "status": "critical"
+        },
+        "pad_asr_per_100000": {
+          "null_count": 6201,
+          "null_percentage": 39.11,
+          "status": "critical"
+        },
+        "median_age": {
+          "null_count": 2007,
+          "null_percentage": 12.66,
+          "status": "critical"
+        }
+      },
+      "duplicate_analysis": {
+        "total_records": 15855,
+        "unique_records": 15855,
+        "duplicate_count": 0,
+        "duplicate_percentage": 0.0,
+        "status": "ok"
+      },
+      "data_type_validation": {
+        "issues": [
+          "potential_years_of_life_lost: Year should be integer, found String"
+        ],
+        "status": "issues"
+      },
+      "temporal_validation": {
+        "issues": [
+          "potential_years_of_life_lost: Could not validate - '<' not supported between instances of 'str' and 'int'"
+        ],
+        "status": "issues"
+      },
+      "geographic_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "quality_grade": "C (Fair)",
+      "status": "monitored"
+    },
+    "aihw_grim": {
+      "record_count": 373141,
+      "column_count": 8,
+      "completeness": 95.28170986302766,
+      "schema_compliance": {
+        "missing_columns": [],
+        "extra_columns": [
+          "age_standardised_rate_per_100000",
+          "age_group",
+          "cause_of_death",
+          "sex",
+          "grim"
+        ],
+        "compliance_score": 100.0
+      },
+      "null_analysis": {
+        "grim": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "cause_of_death": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "year": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "sex": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "age_group": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "deaths": {
+          "null_count": 140847,
+          "null_percentage": 37.75,
+          "status": "critical"
+        },
+        "crude_rate_per_100000": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "age_standardised_rate_per_100000": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        }
+      },
+      "duplicate_analysis": {
+        "total_records": 373141,
+        "unique_records": 373141,
+        "duplicate_count": 0,
+        "duplicate_percentage": 0.0,
+        "status": "ok"
+      },
+      "data_type_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "temporal_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "geographic_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "quality_grade": "A+ (Excellent)",
+      "status": "monitored"
+    },
+    "phidu_pha": {
+      "record_count": 338,
+      "column_count": 5,
+      "completeness": 100.0,
+      "schema_compliance": {
+        "missing_columns": [],
+        "extra_columns": [
+          "health_service_areas",
+          "population_estimate"
+        ],
+        "compliance_score": 100.0
+      },
+      "null_analysis": {
+        "pha_code": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "pha_name": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "state_territory": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "population_estimate": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        },
+        "health_service_areas": {
+          "null_count": 0,
+          "null_percentage": 0.0,
+          "status": "ok"
+        }
+      },
+      "duplicate_analysis": {
+        "total_records": 338,
+        "unique_records": 338,
+        "duplicate_count": 0,
+        "duplicate_percentage": 0.0,
+        "status": "ok"
+      },
+      "data_type_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "temporal_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "geographic_validation": {
+        "issues": [],
+        "status": "ok"
+      },
+      "quality_grade": "A+ (Excellent)",
+      "status": "monitored"
+    }
+  },
+  "alerts": [
+    {
+      "level": "CRITICAL",
+      "dataset": "aihw_mortality",
+      "message": "Data completeness 93.8% below critical threshold 95.0%",
+      "timestamp": "2025-06-19T11:47:07.507249"
+    },
+    {
+      "level": "WARNING",
+      "dataset": "aihw_mortality",
+      "message": "Data type issues detected: 1 issues",
+      "timestamp": "2025-06-19T11:47:07.507253",
+      "details": [
+        "potential_years_of_life_lost: Year should be integer, found String"
+      ]
+    }
+  ],
+  "summary": {
+    "total_datasets": 6,
+    "monitored_datasets": 6,
+    "failed_datasets": 0,
+    "average_completeness": 98.12,
+    "quality_grades": [
+      "A+ (Excellent)",
+      "A+ (Excellent)",
+      "D (Poor)",
+      "C (Fair)",
+      "A+ (Excellent)",
+      "A+ (Excellent)"
+    ],
+    "monitoring_success_rate": 100.0
+  },
+  "recommendations": [
+    "\ud83d\udea8 Address 1 critical data quality issues immediately",
+    "\u26a0\ufe0f Review and fix 1 warning-level issues",
+    "\ud83d\udcca Schedule daily automated quality monitoring",
+    "\ud83d\udd04 Implement real-time alerting for critical issues",
+    "\ud83d\udcc8 Create quality trend analysis dashboard",
+    "\ud83d\udee1\ufe0f Add data validation gates in processing pipeline"
+  ]
+}

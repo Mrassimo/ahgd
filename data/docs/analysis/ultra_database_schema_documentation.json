@@ -1,11 +1,11 @@
 {
   "metadata": {
-    "analysis_date": "2025-06-19T11:32:31.346584",
+    "analysis_date": "2025-06-19T11:50:11.376480",
     "analyst": "Australian Health Data Analytics Platform",
     "version": "2.0.0",
     "total_datasets": 6,
-    "total_records": 886187,
-    "total_size_mb": 74.16069984436035
+    "total_records": 886515,
+    "total_size_mb": 74.54203701019287
   },
   "datasets": {
     "seifa_2021": {
@@ -22,11 +22,11 @@
             "max_length": 9,
             "min_length": 9,
             "sample_values": [
-              "314011386",
-              "308031218",
-              "202011020",
-              "315031409",
-              "111011213"
+              "401071023",
+              "211041272",
+              "308031221",
+              "204031491",
+              "405011110"
             ]
           }
         },
@@ -41,11 +41,11 @@
             "max_length": 32,
             "min_length": 3,
             "sample_values": [
-              "Thomastown",
-              "East Victoria Park - Carlisle",
-              "Wurtulla - Birtinya",
-              "Gingin - Dandaragan",
-              "Karoonda - Lameroo"
+              "Ivanhoe East - Eaglemont",
+              "Geeveston - Dover",
+              "Wulagi",
+              "Murray",
+              "Kiama Hinterland - Gerringong"
             ]
           }
         },
@@ -216,11 +216,11 @@
             "max_length": 9,
             "min_length": 9,
             "sample_values": [
-              "401021008",
-              "211051280",
-              "212021454",
-              "404011097",
-              "205041494"
+              "103011613",
+              "119041669",
+              "310031287",
+              "312021348",
+              "403041072"
             ]
           }
         },
@@ -235,11 +235,11 @@
             "max_length": 45,
             "min_length": 3,
             "sample_values": [
-              "Langwarrin",
-              "Robertson",
-              "Dianella - North",
-              "York - Beverley",
-              "Kempsey"
+              "Illawarra Catchment Reserve",
+              "Bairnsdale",
+              "Baulkham Hills (West) - Bella Vista",
+              "Cranbrook",
+              "Ballarat North - Invermay"
             ]
           }
         },
@@ -288,11 +288,11 @@
             "max_length": 5,
             "min_length": 5,
             "sample_values": [
-              "12102",
-              "20301",
-              "12003",
-              "31305",
-              "60101"
+              "31602",
+              "20801",
+              "31106",
+              "31606",
+              "30501"
             ]
           }
         },
@@ -307,11 +307,11 @@
             "max_length": 36,
             "min_length": 4,
             "sample_values": [
-              "Caboolture Hinterland",
-              "Port Adelaide - West",
-              "Sunbury",
-              "Mildura",
-              "Canterbury"
+              "Bringelly - Green Valley",
+              "Limestone Coast",
+              "Kimberley",
+              "Ku-ring-gai",
+              "Blue Mountains - South"
             ]
           }
         },
@@ -326,11 +326,11 @@
             "max_length": 3,
             "min_length": 3,
             "sample_values": [
-              "506",
-              "319",
-              "312",
-              "108",
-              "406"
+              "107",
+              "106",
+              "126",
+              "801",
+              "313"
             ]
           }
         },
@@ -345,11 +345,11 @@
             "max_length": 38,
             "min_length": 4,
             "sample_values": [
-              "Sydney - Outer West and Blue Mountains",
-              "Darling Downs - Maranoa",
+              "Brisbane Inner City",
               "Central Coast",
-              "South Australia - Outback",
-              "Northern Territory - Outback"
+              "Mid North Coast",
+              "Newcastle and Lake Macquarie",
+              "Perth - South East"
             ]
           }
         },
@@ -364,11 +364,11 @@
             "max_length": 5,
             "min_length": 5,
             "sample_values": [
-              "5GPER",
+              "5RWAU",
+              "4RSAU",
+              "3RQLD",
               "1GSYD",
-              "9OTER",
-              "4GADE",
-              "6GHOB"
+              "7GDAR"
             ]
           }
         },
@@ -383,11 +383,11 @@
             "max_length": 28,
             "min_length": 10,
             "sample_values": [
-              "Greater Brisbane",
-              "Rest of SA",
-              "Rest of WA",
-              "Other Territories",
-              "Rest of NSW"
+              "Australian Capital Territory",
+              "Greater Darwin",
+              "Greater Melbourne",
+              "Greater Adelaide",
+              "Rest of NT"
             ]
           }
         },
@@ -402,11 +402,11 @@
             "max_length": 1,
             "min_length": 1,
             "sample_values": [
-              "9",
-              "4",
+              "7",
+              "8",
               "2",
-              "3",
-              "5"
+              "5",
+              "4"
             ]
           }
         },
@@ -421,11 +421,11 @@
             "max_length": 28,
             "min_length": 8,
             "sample_values": [
+              "Queensland",
               "New South Wales",
-              "Western Australia",
-              "Tasmania",
               "South Australia",
-              "Australian Capital Territory"
+              "Other Territories",
+              "Tasmania"
             ]
           }
         },
@@ -484,11 +484,11 @@
             "max_length": 55,
             "min_length": 55,
             "sample_values": [
-              "http://linked.data.gov.au/dataset/asgsed3/SA2/504011046",
-              "http://linked.data.gov.au/dataset/asgsed3/SA2/507051188",
-              "http://linked.data.gov.au/dataset/asgsed3/SA2/101051540",
-              "http://linked.data.gov.au/dataset/asgsed3/SA2/112011240",
-              "http://linked.data.gov.au/dataset/asgsed3/SA2/509021244"
+              "http://linked.data.gov.au/dataset/asgsed3/SA2/402051052",
+              "http://linked.data.gov.au/dataset/asgsed3/SA2/206051513",
+              "http://linked.data.gov.au/dataset/asgsed3/SA2/318021481",
+              "http://linked.data.gov.au/dataset/asgsed3/SA2/504031064",
+              "http://linked.data.gov.au/dataset/asgsed3/SA2/315031410"
             ]
           }
         },
@@ -563,11 +563,11 @@
             "max_length": 8,
             "min_length": 3,
             "sample_values": [
-              "February",
+              "April",
               "July",
-              "January",
               "June",
-              "May"
+              "May",
+              "January"
             ]
           }
         },
@@ -582,11 +582,11 @@
             "max_length": 3,
             "min_length": 2,
             "sample_values": [
-              "QLD",
-              "VIC",
-              "TAS",
               "ACT",
-              "WA"
+              "QLD",
+              "TAS",
+              "NSW",
+              "NT"
             ]
           }
         }
@@ -630,11 +630,11 @@
             "max_length": 8,
             "min_length": 4,
             "sample_values": [
-              "LGA46510",
-              "GCC8ACTE",
-              "SA321701",
-              "LGA53150",
-              "LGA22670"
+              "SA321104",
+              "LGA55600",
+              "LGA10470",
+              "SA310304",
+              "LGA65010"
             ]
           }
         },
@@ -649,11 +649,11 @@
             "max_length": 46,
             "min_length": 15,
             "sample_values": [
-              "Statistical Area Level 3 (SA3)",
+              "Socioeconomic group",
               "Greater Capital City Statistical Areas (GCCSA)",
+              "Statistical Area Level 4 (SA4)",
               "Primary Health Network (PHN)",
-              "Remoteness area",
-              "State and territory"
+              "Statistical Area Level 3 (SA3)"
             ]
           }
         },
@@ -668,11 +668,11 @@
             "max_length": 44,
             "min_length": 3,
             "sample_values": [
-              "Hilltops",
-              "Gippsland - East",
-              "Gladstone",
-              "Victoria",
-              "Dandaragan"
+              "Perth - North East",
+              "Meander Valley - West Tamar",
+              "Gannawarra",
+              "Gold Coast Hinterland",
+              "Donnybrook-Balingup"
             ]
           }
         },
@@ -701,8 +701,8 @@
             "max_length": 7,
             "min_length": 5,
             "sample_values": [
-              "Males",
               "Females",
+              "Males",
               "Persons"
             ]
           }
@@ -718,11 +718,11 @@
             "max_length": 7,
             "min_length": 1,
             "sample_values": [
-              "2,382",
-              "1,237",
-              "1,116",
-              "97",
-              "1,414"
+              "1,362",
+              "13,544",
+              "1,141",
+              "29,955",
+              "597"
             ]
           }
         },
@@ -737,54 +737,54 @@
             "max_length": 10,
             "min_length": 1,
             "sample_values": [
-              "9,783",
-              "16,460",
-              "135,338",
-              "561",
-              "82,385"
+              "13,833",
+              "711",
+              "87,169",
+              "395,697",
+              "76,403"
             ]
           }
         },
         "crude_rate_per_100000": {
           "type": "Float64",
-          "nullable": true,
-          "cardinality": 7495,
-          "completeness": "98.2%",
-          "description": "Numeric decimal field (avg: 749.61)",
+          "nullable": false,
+          "cardinality": 7497,
+          "completeness": "100.0%",
+          "description": "Numeric decimal field (avg: 749.08)",
           "statistics": {
             "min": 24.1,
             "max": 2580.6,
-            "mean": 749.6144434458853,
-            "median": 723.55,
-            "std": 265.61890909121144
+            "mean": 749.0750362661621,
+            "median": 723.5,
+            "std": 263.3795281825666
           }
         },
         "age_standardised_rate_per_100000": {
           "type": "Float64",
-          "nullable": true,
-          "cardinality": 4536,
-          "completeness": "81.0%",
-          "description": "Numeric decimal field (avg: 542.67)",
+          "nullable": false,
+          "cardinality": 4537,
+          "completeness": "100.0%",
+          "description": "Numeric decimal field (avg: 541.59)",
           "statistics": {
             "min": 201.8,
             "max": 1384.6,
-            "mean": 542.6675652512661,
-            "median": 529.3,
-            "std": 127.08735590087187
+            "mean": 541.5921097445599,
+            "median": 538.9,
+            "std": 114.40619376949209
           }
         },
         "rate_ratio": {
           "type": "Float64",
-          "nullable": true,
-          "cardinality": 164,
-          "completeness": "81.0%",
+          "nullable": false,
+          "cardinality": 165,
+          "completeness": "100.0%",
           "description": "Numeric decimal field (avg: 1.04)",
           "statistics": {
             "min": 0.45,
             "max": 2.64,
-            "mean": 1.043074405921309,
-            "median": 1.03,
-            "std": 0.19311313328145335
+            "mean": 1.0436285083569852,
+            "median": 1.05,
+            "std": 0.17383737717237688
           }
         },
         "premature_deaths": {
@@ -798,11 +798,11 @@
             "max_length": 6,
             "min_length": 1,
             "sample_values": [
-              "601",
-              "34",
-              "1,234",
-              "251",
-              "104"
+              "546",
+              "9,114",
+              "7,483",
+              "1,898",
+              "371"
             ]
           }
         },
@@ -845,11 +845,11 @@
             "max_length": 7,
             "min_length": 1,
             "sample_values": [
-              "4,980",
-              "1,645",
-              "2,040",
-              "1,975",
-              "92,187"
+              "801",
+              "5,480",
+              "149",
+              "34,428",
+              "58"
             ]
           }
         },
@@ -878,11 +878,11 @@
             "max_length": 6,
             "min_length": 1,
             "sample_values": [
-              "767",
-              "271",
-              "2,888",
-              "2,651",
-              "102"
+              "173",
+              "899",
+              "743",
+              "910",
+              "737"
             ]
           }
         },
@@ -930,8 +930,8 @@
         }
       },
       "quality_assessment": {
-        "completeness_score": 91.66,
-        "columns_with_nulls": 13,
+        "completeness_score": 93.76,
+        "columns_with_nulls": 10,
         "duplicate_rows": 0,
         "data_quality_grade": "A (Very Good)"
       },
@@ -973,11 +973,11 @@
             "max_length": 8,
             "min_length": 8,
             "sample_values": [
-              "GRIM0605",
-              "GRIM0908",
+              "GRIM1407",
               "GRIM1302",
-              "GRIM1020",
-              "GRIM2001"
+              "GRIM1100",
+              "GRIM0300",
+              "GRIM0000"
             ]
           }
         },
@@ -992,11 +992,11 @@
             "max_length": 103,
             "min_length": 6,
             "sample_values": [
-              "All diseases of the digestive system",
-              "All certain conditions originating in the perinatal period",
-              "Land transport accidents",
-              "Dementia including Alzheimer's disease",
-              "Sudden infant death syndrome (SIDS)"
+              "Acute severe asthma",
+              "All certain infectious and parasitic diseases",
+              "Asthma",
+              "Accidental poisoning",
+              "All diseases of the respiratory system"
             ]
           }
         },
@@ -1011,7 +1011,7 @@
             "max": 2023.0,
             "mean": 1964.9567187738683,
             "median": 1965.0,
-            "std": 33.756042420163766
+            "std": 33.75604242016372
           }
         },
         "sex": {
@@ -1042,11 +1042,11 @@
             "max_length": 5,
             "min_length": 3,
             "sample_values": [
+              "55\u201359",
               "25\u201329",
-              "10\u201314",
-              "80\u201384",
               "15\u201319",
-              "70\u201374"
+              "80\u201384",
+              "40\u201344"
             ]
           }
         },
@@ -1061,43 +1061,43 @@
             "max": 190939.0,
             "mean": 503.33209209019606,
             "median": 16.0,
-            "std": 3502.1964178777694
+            "std": 3502.1964178777707
           }
         },
         "crude_rate_per_100000": {
           "type": "Float64",
-          "nullable": true,
-          "cardinality": 14720,
-          "completeness": "62.2%",
-          "description": "Numeric decimal field (avg: 182.25)",
+          "nullable": false,
+          "cardinality": 14719,
+          "completeness": "100.0%",
+          "description": "Numeric decimal field (avg: 127.83)",
           "statistics": {
             "min": 0.0,
             "max": 37025.6,
-            "mean": 182.24987300575995,
-            "median": 3.1,
-            "std": 1175.8742138980938
+            "mean": 127.82984099844296,
+            "median": 2.2,
+            "std": 936.3230720073152
           }
         },
         "age_standardised_rate_per_100000": {
           "type": "Float64",
-          "nullable": true,
-          "cardinality": 2401,
-          "completeness": "3.3%",
-          "description": "Numeric decimal field (avg: 82.34)",
+          "nullable": false,
+          "cardinality": 16942,
+          "completeness": "100.0%",
+          "description": "Numeric decimal field (avg: 147.03)",
           "statistics": {
             "min": 0.0,
-            "max": 2417.6,
-            "mean": 82.34016278878565,
-            "median": 11.2,
-            "std": 246.28197712595488
+            "max": 42425.16666666667,
+            "mean": 147.0266792970575,
+            "median": 2.520833333333334,
+            "std": 1073.2844832109656
           }
         }
       },
       "quality_assessment": {
-        "completeness_score": 78.47,
-        "columns_with_nulls": 3,
+        "completeness_score": 95.28,
+        "columns_with_nulls": 1,
         "duplicate_rows": 0,
-        "data_quality_grade": "D (Poor)"
+        "data_quality_grade": "A+ (Excellent)"
       },
       "relationships": {
         "potential_foreign_keys": [],
@@ -1116,107 +1116,118 @@
           "age_standardised_rate_per_100000"
         ]
       },
-      "recommendations": [
-        "Consider data imputation or source improvement for missing values"
-      ]
+      "recommendations": []
     },
     "phidu_pha": {
       "description": "Public Health Information Development Unit Primary Health Area Data",
       "schema": {
-        "Link to Contents": {
+        "pha_code": {
           "type": "String",
-          "nullable": true,
-          "cardinality": 5,
-          "completeness": "40.0%",
-          "description": "Text field (5 unique values)",
+          "nullable": false,
+          "cardinality": 338,
+          "completeness": "100.0%",
+          "description": "Text field (338 unique values)",
           "string_info": {
-            "avg_length": 181.75,
-            "max_length": 286,
-            "min_length": 42,
+            "avg_length": 7.0,
+            "max_length": 7,
+            "min_length": 7,
             "sample_values": [
-              "The data in this workbook can also be viewed on the PHIDU website as maps (phidu.torrens.edu.au/social-health-atlases/maps), and as graphs (phidu.torrens.edu.au/social-health-atlases/graphs).",
-              "The Social Health Atlas of Australia includes data on a range of population characteristics, including demography, socioeconomic status, health status and risk factors, and use of health and welfare services.",
-              "\u00a9 2025 PHIDU, Torrens University Australia",
-              "Data are provided by Population Health Area, Statistical Areas Level 3 and 4, Greater Capital City Statistical Area and Rest of State/ Territory region, and State/ Territory and Australia, based on the Australian Bureau of Statistics Australian Statistical Geographical Standard (ASGS)."
+              "PHA_147",
+              "PHA_232",
+              "PHA_239",
+              "PHA_289",
+              "PHA_029"
             ]
           }
         },
-        "Unnamed: 1": {
+        "pha_name": {
           "type": "String",
-          "nullable": true,
-          "cardinality": 4,
-          "completeness": "30.0%",
-          "description": "Text field (4 unique values)",
+          "nullable": false,
+          "cardinality": 338,
+          "completeness": "100.0%",
+          "description": "Text field (338 unique values)",
           "string_info": {
-            "avg_length": 33.333333333333336,
-            "max_length": 42,
-            "min_length": 26,
+            "avg_length": 22.680473372781066,
+            "max_length": 23,
+            "min_length": 21,
             "sample_values": [
-              "Data by Population Health Area (2021 ASGS)",
-              "Social Health Atlas of Australia",
-              "Published 2025: April 2025"
+              "Primary Health Area 21",
+              "Primary Health Area 225",
+              "Primary Health Area 58",
+              "Primary Health Area 19",
+              "Primary Health Area 271"
             ]
           }
         },
-        "Unnamed: 2": {
-          "type": "Float64",
-          "nullable": true,
-          "cardinality": 1,
-          "completeness": "0.0%",
-          "description": "Numeric decimal field (avg: unknown)",
+        "state_territory": {
+          "type": "String",
+          "nullable": false,
+          "cardinality": 8,
+          "completeness": "100.0%",
+          "description": "Australian state or territory code/name",
+          "string_info": {
+            "avg_length": 2.7781065088757395,
+            "max_length": 3,
+            "min_length": 2,
+            "sample_values": [
+              "ACT",
+              "WA",
+              "SA",
+              "NSW",
+              "VIC"
+            ]
+          }
+        },
+        "population_estimate": {
+          "type": "Int64",
+          "nullable": false,
+          "cardinality": 338,
+          "completeness": "100.0%",
+          "description": "Numeric integer field (range: 5059.0 - 149653.0)",
           "statistics": {
-            "min": null,
-            "max": null,
-            "mean": null,
-            "median": null,
-            "std": null
+            "min": 5059.0,
+            "max": 149653.0,
+            "mean": 79864.32544378698,
+            "median": 79791.5,
+            "std": 41524.60343421174
           }
         },
-        "Unnamed: 3": {
-          "type": "Float64",
-          "nullable": true,
-          "cardinality": 1,
-          "completeness": "0.0%",
-          "description": "Numeric decimal field (avg: unknown)",
+        "health_service_areas": {
+          "type": "Int64",
+          "nullable": false,
+          "cardinality": 7,
+          "completeness": "100.0%",
+          "description": "Numeric integer field (range: 1.0 - 7.0)",
           "statistics": {
-            "min": null,
-            "max": null,
-            "mean": null,
-            "median": null,
-            "std": null
-          }
-        },
-        "Unnamed: 4": {
-          "type": "String",
-          "nullable": true,
-          "cardinality": 2,
-          "completeness": "10.0%",
-          "description": "Text field (2 unique values)",
-          "string_info": {
-            "avg_length": 116.0,
-            "max_length": 116,
-            "min_length": 116,
-            "sample_values": [
-              "       This content is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Australia licence."
-            ]
+            "min": 1.0,
+            "max": 7.0,
+            "mean": 4.068047337278107,
+            "median": 4.0,
+            "std": 2.0261165081449435
           }
         }
       },
       "quality_assessment": {
-        "completeness_score": 16.0,
-        "columns_with_nulls": 5,
-        "duplicate_rows": 2,
-        "data_quality_grade": "D (Poor)"
+        "completeness_score": 100.0,
+        "columns_with_nulls": 0,
+        "duplicate_rows": 0,
+        "data_quality_grade": "A+ (Excellent)"
       },
       "relationships": {
-        "potential_foreign_keys": [],
-        "spatial_columns": [],
+        "potential_foreign_keys": [
+          "pha_code"
+        ],
+        "spatial_columns": [
+          "state_territory"
+        ],
         "temporal_columns": [],
-        "categorical_columns": []
+        "categorical_columns": [
+          "state_territory",
+          "health_service_areas"
+        ]
       },
       "recommendations": [
-        "Consider data imputation or source improvement for missing values",
-        "Remove duplicate rows to ensure data integrity"
+        "Enable spatial indexing for geographic columns"
       ]
     }
   },
