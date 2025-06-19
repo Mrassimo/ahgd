@@ -71,7 +71,6 @@ dependencies = [
     "dvclive>=3.40.0",
     # Additional utility dependencies
     "geojson>=3.0.0",
-    "great-expectations>=0.18.0",
     "fastapi>=0.104.0",
     "pydantic>=2.0.0",
     "pandera>=0.17.0",
