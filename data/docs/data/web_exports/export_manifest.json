@@ -1,0 +1,78 @@
+{
+  "generated_at": "2025-06-19 12:25:13",
+  "total_exports": 5,
+  "total_size_mb": 38.7,
+  "generation_time_seconds": 0.93,
+  "exports": {
+    "csv_exports": {
+      "seifa_2021_sa2": {
+        "file": "data/web_exports/seifa_2021_sa2.csv",
+        "size_mb": 0.127532958984375,
+        "records": 2293,
+        "description": "SEIFA 2021 Socio-Economic Disadvantage Indices"
+      },
+      "aihw_grim_data": {
+        "file": "data/web_exports/aihw_grim_data.csv",
+        "size_mb": 29.587742805480957,
+        "records": 373141,
+        "description": "AIHW General Record of Incidence of Mortality"
+      },
+      "aihw_mort_table1": {
+        "file": "data/web_exports/aihw_mort_table1.csv",
+        "size_mb": 2.0095252990722656,
+        "records": 15855,
+        "description": "AIHW Mortality Statistics Table 1"
+      },
+      "phidu_pha_data": {
+        "file": "data/web_exports/phidu_pha_data.csv",
+        "size_mb": 0.014190673828125,
+        "records": 338,
+        "description": "PHIDU Primary Health Area Data"
+      },
+      "pbs_current_processed": {
+        "file": "data/web_exports/pbs_current_processed.csv",
+        "size_mb": 6.962370872497559,
+        "records": 492434,
+        "description": "PBS Pharmaceutical Benefits Scheme Data"
+      }
+    },
+    "json_exports": {
+      "seifa_state_summary": {
+        "file": "data/web_exports/seifa_state_summary.json",
+        "description": "SEIFA disadvantage summary by state"
+      },
+      "seifa_2021_sa2_sample": {
+        "file": "data/web_exports/seifa_2021_sa2_sample.json",
+        "description": "Sample data for seifa_2021_sa2 (100 records)"
+      },
+      "aihw_mort_table1_sample": {
+        "file": "data/web_exports/aihw_mort_table1_sample.json",
+        "description": "Sample data for aihw_mort_table1 (100 records)"
+      },
+      "phidu_pha_data_sample": {
+        "file": "data/web_exports/phidu_pha_data_sample.json",
+        "description": "Sample data for phidu_pha_data (100 records)"
+      }
+    },
+    "geojson_exports": {
+      "sa2_boundaries_simplified": {
+        "file": "data/web_exports/sa2_boundaries_simplified.geojson",
+        "features": 1000,
+        "description": "Simplified SA2 boundaries for web mapping"
+      }
+    },
+    "metadata_exports": {
+      "data_catalog": {
+        "file": "data/web_exports/data_catalog.json",
+        "description": "Complete data catalog for marketplace"
+      }
+    },
+    "sample_data": {
+      "integrated_sample": {
+        "file": "data/web_exports/integrated_sample.json",
+        "records": 50,
+        "description": "Integrated SEIFA and geographic data sample"
+      }
+    }
+  }
+}
