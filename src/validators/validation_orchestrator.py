@@ -30,7 +30,9 @@ from .base import BaseValidator
 from .quality_checker import QualityChecker
 from .business_rules import AustralianHealthBusinessRulesValidator
 from .statistical_validator import StatisticalValidator
+from .advanced_statistical import AdvancedStatisticalValidator
 from .geographic_validator import GeographicValidator
+from .enhanced_geographic import EnhancedGeographicValidator
 
 
 @dataclass
@@ -124,7 +126,8 @@ class ValidationOrchestrator:
             'quality_checker': QualityChecker,
             'business_rules': AustralianHealthBusinessRulesValidator,
             'statistical_validator': StatisticalValidator,
-            'geographic_validator': GeographicValidator
+            'geographic_validator': GeographicValidator,
+            'enhanced_geographic_validator': EnhancedGeographicValidator
         }
         
         # Active validator instances

@@ -1,0 +1,325 @@
+# Enhanced Geographic Validation Rules Configuration
+# Advanced geographic and spatial validation settings for Australian SA2 data
+
+version: "1.0"
+schema_version: "2024-06"
+
+# Enhanced geographic validation configuration
+enhanced_geographic:
+  # SA2 Coverage Validation Configuration
+  sa2_coverage:
+    description: "Validate complete coverage of all 2,473 official SA2 areas in Australia"
+    
+    # Path to official ABS SA2 codes file (one code per line)
+    official_sa2_codes_file: "data_reference/abs_sa2_codes_2021.txt"
+    
+    # Alternative: download source for official codes
+    official_codes_source:
+      url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files"
+      format: "csv"
+      sa2_code_column: "SA2_CODE21"
+    
+    # SA2 code format validation
+    code_format:
+      pattern: "^[1-8]\\d{2}[0-9A-Z]{2}\\d{5}$"
+      description: "11-digit format: SSSAASSSSS (State-SubArea-AreaType-Serial)"
+      severity: "error"
+    
+    # Coverage thresholds
+    coverage_thresholds:
+      complete_coverage: 100.0     # 100% coverage expected
+      warning_threshold: 95.0      # Warn below 95%
+      error_threshold: 90.0        # Error below 90%
+    
+    # Duplicate detection
+    duplicate_tolerance: "none"    # No duplicates allowed
+    
+  # Boundary Topology Validation Configuration  
+  boundary_topology:
+    description: "Validate boundary topology including gaps, overlaps, and polygon validity"
+    
+    # Geometry validation settings
+    geometry_validation:
+      check_valid_geometries: true
+      check_self_intersections: true
+      check_closed_polygons: true
+      minimum_area_threshold: 0.0001      # Minimum area in square degrees
+      coordinate_precision: 0.000001      # 6 decimal places
+      
+    # Adjacency validation
+    adjacency_validation:
+      enabled: true
+      tolerance_metres: 100               # 100m tolerance for boundary matching
+      check_gaps: true
+      check_overlaps: true
+      overlap_tolerance: 0.00001          # Maximum allowed overlap area
+      
+    # Topology repair settings
+    topology_repair:
+      auto_fix_simple_errors: false       # Don't auto-fix in validation
+      buffer_distance_metres: 1           # Buffer for gap fixing
+      
+    # Performance settings
+    performance:
+      max_geometries_to_check: 1000       # Limit for performance
+      use_spatial_indexing: true
+      simplify_for_validation: true
+      simplification_tolerance: 10        # 10m simplification
+      
+  # Coordinate Reference System Validation Configuration
+  crs_validation:
+    description: "Validate CRS compliance with EPSG:7855 (GDA2020 MGA Zone 55)"
+    
+    # Target coordinate reference system
+    target_crs: 7855                      # GDA2020 MGA Zone 55
+    alternative_crs: [7854, 7856]         # Alternative MGA zones
+    
+    # Coordinate validation settings
+    coordinate_validation:
+      coordinate_precision: 6             # Minimum decimal places
+      precision_warning_threshold: 4     # Warn below 4 decimal places
+      
+    # Australian territorial bounds (including external territories)
+    territorial_bounds:
+      latitude_bounds:
+        min: -54.777                      # Macquarie Island
+        max: -9.142                       # Boigu Island, Torres Strait
+      longitude_bounds:
+        min: 72.246                       # Heard Island
+        max: 167.998                      # Norfolk Island
+        
+    # GDA2020 MGA Zone 55 projected coordinate bounds (approximate)
+    projected_bounds:
+      x_bounds:
+        min: 140000                       # Western bound
+        max: 880000                       # Eastern bound
+      y_bounds:
+        min: 5160000                      # Southern bound  
+        max: 8900000                      # Northern bound
+        
+    # Coordinate accuracy requirements
+    accuracy_requirements:
+      minimum_accuracy_metres: 100       # Minimum required accuracy
+      preferred_accuracy_metres: 10      # Preferred accuracy
+      
+    # Transformation validation
+    transformation_validation:
+      check_transformation_accuracy: true
+      max_transformation_error_metres: 50
+      
+  # Spatial Hierarchy Validation Configuration
+  spatial_hierarchy:
+    description: "Validate spatial hierarchy consistency (SA2 -> SA3 -> SA4 -> State)"
+    
+    # Hierarchy validation rules
+    hierarchy_rules:
+      sa2_sa3_relationship:
+        rule: "first_5_chars_match"
+        description: "SA3 code should match first 5 characters of SA2 code"
+        severity: "error"
+        
+      sa3_sa4_relationship:
+        rule: "first_3_chars_match"
+        description: "SA4 code should match first 3 characters of SA3 code"
+        severity: "error"
+        
+      sa4_state_relationship:
+        rule: "first_char_matches_state"
+        description: "State code should match first digit of SA4 code"
+        severity: "error"
+        
+    # Containment validation (requires geometry data)
+    containment_validation:
+      sa2_within_sa3:
+        enabled: true
+        tolerance_metres: 100
+        severity: "error"
+        
+      sa3_within_sa4:
+        enabled: true
+        tolerance_metres: 100
+        severity: "error"
+        
+      sa4_within_state:
+        enabled: true
+        tolerance_metres: 100
+        severity: "error"
+        
+    # Cross-validation with reference data
+    reference_validation:
+      use_abs_concordance_files: true
+      concordance_file_path: "data_reference/abs_sa_concordance_2021.csv"
+      
+  # Geographic Consistency Validation Configuration
+  geographic_consistency:
+    description: "Validate geographic consistency including area, density, and classifications"
+    
+    # Area calculation validation
+    area_validation:
+      calculation_method: "geodesic"      # More accurate for large areas
+      units: "square_kilometres"
+      
+      # Area plausibility ranges for Australian SA2s
+      plausibility_ranges:
+        urban_areas:
+          min_area_sqkm: 0.001           # Very small urban areas
+          max_area_sqkm: 50              # Large urban areas
+          
+        regional_areas:
+          min_area_sqkm: 10              # Small regional areas
+          max_area_sqkm: 10000           # Large regional areas
+          
+        remote_areas:
+          min_area_sqkm: 100             # Small remote areas
+          max_area_sqkm: 100000          # Very large remote areas
+          
+    # Population density validation
+    population_density_validation:
+      density_ranges:
+        urban_high: {min: 1000, max: 50000}    # People per sq km
+        urban_medium: {min: 100, max: 1000}
+        suburban: {min: 10, max: 100}
+        regional: {min: 1, max: 10}
+        remote: {min: 0, max: 1}
+        
+      extreme_density_thresholds:
+        maximum_density: 50000           # Maximum plausible density
+        minimum_density: 0               # Minimum density (uninhabited OK)
+        
+    # Centroid validation
+    centroid_validation:
+      check_within_boundaries: true
+      tolerance_metres: 1000             # 1km tolerance for centroid position
+      
+    # Coastal classification validation
+    coastal_validation:
+      coastal_distance_threshold_km: 5.0  # Distance from coast to be "coastal"
+      use_high_resolution_coastline: true
+      coastline_data_source: "PSMA_TOPO"
+      
+    # Remoteness classification validation
+    remoteness_validation:
+      validate_aria_classification: true
+      aria_categories: ["Major Cities", "Inner Regional", "Outer Regional", "Remote", "Very Remote"]
+      
+    # Indigenous area validation
+    indigenous_validation:
+      validate_indigenous_areas: true
+      check_ilua_boundaries: true        # Indigenous Land Use Agreements
+      check_native_title: true
+      
+# Performance and optimization settings
+performance:
+  # Parallel processing
+  parallel_processing:
+    enabled: true
+    max_workers: 4
+    chunk_size: 500
+    
+  # Memory management
+  memory_management:
+    max_memory_usage_gb: 8
+    use_chunked_processing: true
+    clear_cache_interval: 1000           # Clear cache every 1000 records
+    
+  # Spatial indexing
+  spatial_indexing:
+    create_rtree_index: true
+    create_geohash_index: true
+    index_cache_size_mb: 256
+    
+  # Geometry simplification for performance
+  geometry_simplification:
+    enabled: true
+    tolerance_metres: 10                 # 10m simplification for validation
+    preserve_topology: true
+    
+# Quality assurance settings
+quality_assurance:
+  # Validation logging
+  detailed_logging: true
+  log_validation_steps: true
+  capture_performance_metrics: true
+  
+  # Error reporting
+  error_reporting:
+    include_geometry_details: true
+    max_errors_per_rule: 100
+    include_correction_suggestions: true
+    
+  # Validation reproducibility
+  reproducibility:
+    set_random_seed: true
+    random_seed: 42
+    cache_validation_results: true
+    cache_ttl_hours: 24
+    
+# Integration with external data sources
+external_data_sources:
+  # Australian Bureau of Statistics
+  abs_data:
+    asgs_boundaries_url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3"
+    update_frequency: "annual"
+    cache_location: "data_cache/abs_boundaries/"
+    
+  # PSMA Australia (Geoscape)
+  psma_data:
+    gnaf_url: "https://data.gov.au/data/dataset/geocoded-national-address-file-g-naf"
+    administrative_boundaries: true
+    update_frequency: "quarterly"
+    
+  # Geoscience Australia
+  ga_data:
+    coastline_data: true
+    place_names: true
+    update_frequency: "as_needed"
+    
+# Custom validation rules
+custom_validation_rules:
+  # Island territories validation
+  island_territories:
+    enabled: true
+    validate_norfolk_island: true
+    validate_christmas_island: true
+    validate_cocos_islands: true
+    validate_ashmore_cartier: true
+    
+  # Cross-border SA2 validation
+  cross_border_validation:
+    enabled: true
+    check_interstate_boundaries: true
+    boundary_tolerance_metres: 50
+    
+  # Urban-rural classification validation
+  urban_rural_validation:
+    enabled: true
+    population_density_threshold: 1.0    # People per sq km
+    area_threshold_sqkm: 100
+    
+# Validation reporting configuration
+reporting:
+  # Report generation
+  generate_detailed_reports: true
+  include_maps: true
+  include_statistics: true
+  
+  # Export formats
+  export_formats: ["json", "csv", "html", "pdf"]
+  
+  # Visualization settings
+  visualization:
+    create_validation_maps: true
+    map_error_locations: true
+    use_interactive_maps: true
+    
+# Compliance and standards
+compliance:
+  # Australian standards compliance
+  abs_compliance: true
+  iso19115_metadata: true
+  epsg_standards: true
+  
+  # Data governance
+  data_lineage_tracking: true
+  audit_trail: true
+  change_detection: true

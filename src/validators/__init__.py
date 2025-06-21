@@ -9,7 +9,9 @@ Available Validators:
 - QualityChecker: Comprehensive data quality assessment framework
 - AustralianHealthBusinessRulesValidator: Australian health data business rules
 - StatisticalValidator: Statistical validation methods and outlier detection
+- AdvancedStatisticalValidator: Advanced statistical validation for Australian health data
 - GeographicValidator: Geographic and spatial validation
+- EnhancedGeographicValidator: Enhanced geographic validation for Australian SA2 data
 - ValidationOrchestrator: Coordinated validation pipeline management
 - ValidationReporter: Comprehensive validation reporting
 
@@ -37,12 +39,25 @@ from .statistical_validator import (
     CorrelationAnalysisResult, 
     TrendAnalysisResult
 )
+from .advanced_statistical import (
+    AdvancedStatisticalValidator,
+    RangeValidationConfig,
+    StatisticalReport
+)
 from .geographic_validator import (
     GeographicValidator,
     CoordinateValidationResult,
     BoundaryValidationResult,
     TopologyValidationResult,
     CoverageValidationResult
+)
+from .enhanced_geographic import (
+    EnhancedGeographicValidator,
+    SA2CoverageResult,
+    BoundaryTopologyResult,
+    CRSValidationResult,
+    SpatialHierarchyResult,
+    GeographicConsistencyResult
 )
 from .validation_orchestrator import (
     ValidationOrchestrator,
@@ -81,12 +96,25 @@ __all__ = [
     'CorrelationAnalysisResult',
     'TrendAnalysisResult',
     
+    # Advanced statistical validation
+    'AdvancedStatisticalValidator',
+    'RangeValidationConfig',
+    'StatisticalReport',
+    
     # Geographic validation
     'GeographicValidator',
     'CoordinateValidationResult',
     'BoundaryValidationResult',
     'TopologyValidationResult',
     'CoverageValidationResult',
+    
+    # Enhanced geographic validation
+    'EnhancedGeographicValidator',
+    'SA2CoverageResult',
+    'BoundaryTopologyResult',
+    'CRSValidationResult',
+    'SpatialHierarchyResult',
+    'GeographicConsistencyResult',
     
     # Orchestration
     'ValidationOrchestrator',
