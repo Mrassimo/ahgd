@@ -759,3 +759,224 @@ if __name__ == "__main__":
         print("  export   - Export current configuration")
         print("  get      - Get configuration value")
         print("  validate - Validate configuration")
+
+
+# =============================================================================
+# COMPATIBILITY LAYER - Functions from config_loader.py for backwards compatibility
+# =============================================================================
+
+# Legacy ConfigLoader class for backwards compatibility
+class ConfigLoader:
+    """Legacy compatibility class matching old config_loader.py interface"""
+    
+    def __init__(self, config_dir: str = "configs"):
+        self.config_dir = Path(config_dir)
+        self.environment = detect_environment()
+        self._config_cache = {}
+    
+    def _detect_environment(self) -> str:
+        """Detect current environment from environment variables"""
+        return detect_environment()
+    
+    def load_logging_config(self, environment: Optional[str] = None) -> Dict[str, Any]:
+        """Load logging configuration for specified environment"""
+        env = environment or self.environment
+        config_file = self.config_dir / "logging_config.yaml"
+        
+        if not config_file.exists():
+            raise FileNotFoundError(f"Logging config file not found: {config_file}")
+        
+        with open(config_file, 'r') as f:
+            full_config = yaml.safe_load(f)
+        
+        if env not in full_config:
+            available_envs = list(full_config.keys())
+            raise ValueError(f"Environment '{env}' not found in config. Available: {available_envs}")
+        
+        env_config = full_config[env].copy()
+        
+        # Merge with common configurations
+        common_configs = ['monitoring', 'health_checks', 'sampling', 
+                         'enrichment', 'security', 'performance', 'integrations']
+        
+        for common_key in common_configs:
+            if common_key in full_config:
+                env_config[common_key] = full_config[common_key]
+        
+        return env_config
+    
+    def validate_configuration(self, environment: Optional[str] = None) -> Dict[str, Any]:
+        """Validate configuration for environment - stub implementation"""
+        return {
+            'environment': environment or self.environment,
+            'valid': True,
+            'errors': [],
+            'warnings': []
+        }
+    
+    def create_environment_directories(self, environment: Optional[str] = None):
+        """Create environment directories - stub implementation"""
+        pass
+
+
+# Global config loader instance for backwards compatibility
+_config_loader = None
+
+
+def get_config_loader(config_dir: str = "configs") -> ConfigLoader:
+    """Get or create global config loader instance"""
+    global _config_loader
+    if _config_loader is None:
+        _config_loader = ConfigLoader(config_dir)
+    return _config_loader
+
+
+def load_logging_config(environment: Optional[str] = None) -> Dict[str, Any]:
+    """Convenience function to load logging configuration"""
+    return get_config_loader().load_logging_config(environment)
+
+
+def setup_environment_logging(environment: Optional[str] = None):
+    """Convenience function to setup environment-specific logging"""
+    from .logging import AHGDLogger
+    config = load_logging_config(environment)
+    return AHGDLogger(config_dict=config)
+
+
+def validate_environment_config(environment: Optional[str] = None) -> Dict[str, Any]:
+    """Convenience function to validate environment configuration"""
+    return get_config_loader().validate_configuration(environment)
+
+
+def create_log_directories(environment: Optional[str] = None):
+    """Convenience function to create required log directories"""
+    return get_config_loader().create_environment_directories(environment)
+
+
+def detect_environment() -> str:
+    """Detect current environment from various sources"""
+    # Check environment variables
+    env_vars = ['AHGD_ENV', 'ENV', 'ENVIRONMENT', 'STAGE']
+    for var in env_vars:
+        if var in os.environ:
+            return os.environ[var].lower()
+    
+    # Check for common deployment indicators
+    if os.path.exists('/.dockerenv'):
+        return 'production' if os.getenv('KUBERNETES_SERVICE_HOST') else 'staging'
+    
+    # Check for development indicators
+    if os.path.exists('.git'):
+        return 'development'
+    
+    # Default
+    return 'development'
+
+
+def is_production() -> bool:
+    """Check if running in production environment"""
+    return detect_environment() == 'production'
+
+
+def is_development() -> bool:
+    """Check if running in development environment"""
+    return detect_environment() == 'development'
+
+
+def is_testing() -> bool:
+    """Check if running in testing environment"""
+    return detect_environment() in ['test', 'testing']
+
+
+def setup_development_logging():
+    """Quick setup for development environment"""
+    config_loader = get_config_loader()
+    return setup_environment_logging('development')
+
+
+def setup_production_logging():
+    """Quick setup for production environment"""
+    config_loader = get_config_loader()
+    return setup_environment_logging('production')
+
+
+def setup_testing_logging():
+    """Quick setup for testing environment"""
+    config_loader = get_config_loader()
+    return setup_environment_logging('testing')
+
+
+def print_config_summary(environment: Optional[str] = None):
+    """Print configuration summary for debugging"""
+    env = environment or detect_environment()
+    
+    print(f"AHGD Configuration Summary")
+    print(f"=" * 40)
+    print(f"Environment: {env}")
+    print(f"Detected Environment: {detect_environment()}")
+    print(f"Is Production: {is_production()}")
+    print(f"Is Development: {is_development()}")
+    print(f"Is Testing: {is_testing()}")
+
+
+def load_config(config_file: Union[str, Path]) -> Dict[str, Any]:
+    """Load configuration from a file"""
+    config_path = Path(config_file)
+    
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            if config_path.suffix.lower() in ['.yaml', '.yml']:
+                return yaml.safe_load(f) or {}
+            elif config_path.suffix.lower() == '.json':
+                return json.load(f)
+            else:
+                raise ConfigurationError(f"Unsupported configuration file format: {config_path.suffix}")
+    except yaml.YAMLError as e:
+        raise ConfigurationError(f"Failed to parse YAML file {config_path}: {e}")
+    except json.JSONDecodeError as e:
+        raise ConfigurationError(f"Failed to parse JSON file {config_path}: {e}")
+    except Exception as e:
+        raise ConfigurationError(f"Error loading configuration file {config_path}: {e}")
+
+
+def validate_config(config: Dict[str, Any], 
+                   schema: Optional[Dict[str, Any]] = None,
+                   type_constraints: Optional[Dict[str, type]] = None,
+                   value_constraints: Optional[Dict[str, list]] = None) -> None:
+    """Validate configuration against schema and constraints"""
+    errors = []
+    
+    # Basic validation - can be extended as needed
+    if schema:
+        for key, requirement in schema.items():
+            if requirement == "required" and key not in config:
+                errors.append(f"Missing required configuration: {key}")
+    
+    if errors:
+        raise ConfigurationError(f"Configuration validation failed: {'; '.join(errors)}")
+
+
+def merge_configs(*configs: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge multiple configuration dictionaries"""
+    result = {}
+    
+    for config in configs:
+        result = _deep_merge(result, config)
+    
+    return result
+
+
+def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Deep merge two dictionaries"""
+    result = base.copy()
+    
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    
+    return result

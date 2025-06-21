@@ -13,8 +13,7 @@ import tempfile
 import yaml
 import json
 
-from src.utils.config import ConfigurationManager
-from src.utils.config_loader import load_config, validate_config, merge_configs
+from src.utils.config import ConfigurationManager, load_config, validate_config, merge_configs
 from src.utils.interfaces import ConfigurationError
 
 

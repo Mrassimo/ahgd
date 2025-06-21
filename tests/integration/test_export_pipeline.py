@@ -101,9 +101,47 @@ class TestExportPipelineIntegration:
                 'enable_compression': True,
                 'enable_partitioning': True,
                 'validation_level': 'standard'
+            },
+            'exports': {
+                'optimisation': {
+                    'enabled': True,
+                    'memory_efficient': True
+                },
+                'compression': {
+                    'default_algorithm': 'gzip',
+                    'level': 6
+                },
+                'partitioning': {
+                    'strategy': 'auto',
+                    'max_size': 100000
+                }
+            },
+            'system': {
+                'max_workers': 1,
+                'temp_dir': './temp'
             }
         }
-        return ExportPipeline(config)
+        
+        # Patch the get_config function and config manager to return our test config
+        with patch('src.utils.config.get_config') as mock_get_config, \
+             patch('src.utils.config.get_config_manager') as mock_get_config_manager:
+            
+            def get_config_side_effect(path, default=None):
+                keys = path.split('.')
+                result = config
+                for key in keys:
+                    result = result.get(key, default)
+                    if result is None:
+                        return default
+                return result or default
+            
+            # Mock configuration manager
+            mock_config_manager = MagicMock()
+            mock_config_manager.get.side_effect = get_config_side_effect
+            mock_get_config_manager.return_value = mock_config_manager
+            mock_get_config.side_effect = get_config_side_effect
+            
+            return ExportPipeline(config)
     
     @pytest.fixture
     def temp_output_dir(self):

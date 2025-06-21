@@ -686,7 +686,9 @@ class ExportPipeline:
             # Step 5: Save metadata
             metadata_path = output_path / 'complete_metadata.json'
             with open(metadata_path, 'w', encoding='utf-8') as f:
-                json.dump(metadata, f, indent=2, ensure_ascii=False)
+                # Convert metadata to JSON-serialisable format
+                json_safe_metadata = self._make_json_safe(metadata)
+                json.dump(json_safe_metadata, f, indent=2, ensure_ascii=False)
                 
             # Compile final results
             final_results = {
@@ -731,6 +733,10 @@ class ExportPipeline:
                         options: Dict[str, Any]) -> Dict[str, Any]:
         """Perform the actual data exports."""
         # Use production loader for exports
+        # Remove conflicting parameters from options
+        clean_options = {k: v for k, v in options.items() 
+                        if k not in ['compress', 'partition', 'optimise_for_web', 'formats']}
+        
         export_results = self.production_loader.load(
             data=data,
             output_path=task.output_path,
@@ -738,10 +744,27 @@ class ExportPipeline:
             compress=task.compression,
             partition=task.partition,
             optimise_for_web=task.web_optimise,
-            **options
+            **clean_options
         )
         
         return export_results
+    
+    def _make_json_safe(self, obj: Any) -> Any:
+        """Convert objects to JSON-serialisable format."""
+        if isinstance(obj, dict):
+            return {str(k): self._make_json_safe(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_json_safe(item) for item in obj]
+        elif hasattr(obj, 'dtype'):  # pandas dtype objects
+            return str(obj)
+        elif isinstance(obj, (np.integer, np.floating)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif hasattr(obj, '__dict__'):  # Complex objects
+            return str(obj)
+        else:
+            return obj
     
     def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         """Get status of export task.

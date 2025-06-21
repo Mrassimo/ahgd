@@ -84,9 +84,9 @@ geo = [
 
 [project.scripts]
 ahgd-extract = "src.extractors.cli:main"
-ahgd-transform = "src.transformers.cli:main"
+ahgd-transform = "src.pipelines.cli:main"
 ahgd-validate = "src.validators.cli:main"
-ahgd-pipeline = "src.pipelines.cli:main"
+ahgd-loader = "src.loaders.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

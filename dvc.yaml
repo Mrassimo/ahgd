@@ -1,97 +1,55 @@
+# dvc.yaml
+# Describes the high-level ETL pipeline for DVC
+# For more detailed pipeline orchestration, refer to configs/pipelines/
+
+vars:
+  - configs/default.yaml
+
 stages:
-  download:
-    cmd: python scripts/download_data.py
+  extract_all_sources:
+    cmd: ahgd-extract --all --output data_raw
     deps:
-      - scripts/download_data.py
-      - configs/data_sources.yaml
+      - src/extractors
+      - configs/extractors
+    params:
+      - external_services
     outs:
+      - data_raw:
+          cache: false
+
+  integrate_master_data:
+    cmd: ahgd-transform --input data_raw --output data_processed/master_health_record.parquet
+    deps:
+      - src/pipelines
+      - src/transformers
       - data_raw
+      - configs/pipelines
+      - configs/integration
     params:
-      - download.sources
-      - download.timeout
-    metrics:
-      - logs/download_metrics.json:
-          cache: false
-
-  preprocess:
-    cmd: python scripts/preprocess_data.py
-    deps:
-      - scripts/preprocess_data.py
-      - data_raw
+      - data_processing
     outs:
-      - data_processed/cleaned
-    params:
-      - preprocess.remove_duplicates
-      - preprocess.handle_missing
-      - preprocess.date_format
+      - data_processed/master_health_record.parquet:
+          cache: true
     metrics:
-      - logs/preprocess_metrics.json:
+      - reports/quality_reports/integration_summary.json:
           cache: false
 
-  extract_features:
-    cmd: python scripts/extract_features.py
+  validate_master_data:
+    cmd: ahgd-validate --input data_processed/master_health_record.parquet --rules schemas/ --report reports/validation_report.html
     deps:
-      - scripts/extract_features.py
-      - data_processed/cleaned
+      - src/validators
+      - data_processed/master_health_record.parquet
+      - configs/validation
     outs:
-      - data_processed/features
-    params:
-      - features.demographic
-      - features.geographic
-      - features.health_indicators
-    metrics:
-      - logs/feature_metrics.json:
+      - reports/validation_report.html:
           cache: false
 
-  train_model:
-    cmd: python scripts/train_model.py
+  export_final_data:
+    cmd: ahgd-loader --input data_processed/master_health_record.parquet --output data_exports
     deps:
-      - scripts/train_model.py
-      - data_processed/features
+      - src/loaders
+      - data_processed/master_health_record.parquet
+      - configs/exports
     outs:
-      - models/health_predictor.pkl
-    params:
-      - model.type
-      - model.hyperparameters
-      - model.validation_split
-    metrics:
-      - logs/model_metrics.json:
+      - data_exports:
           cache: false
-    plots:
-      - logs/confusion_matrix.csv:
-          template: confusion
-          x: actual
-          y: predicted
-      - logs/learning_curve.csv:
-          template: linear
-          x: epoch
-          y: loss
-
-  evaluate:
-    cmd: python scripts/evaluate_model.py
-    deps:
-      - scripts/evaluate_model.py
-      - models/health_predictor.pkl
-      - data_processed/features
-    metrics:
-      - logs/evaluation_metrics.json:
-          cache: false
-    plots:
-      - logs/roc_curve.csv:
-          template: simple
-          x: fpr
-          y: tpr
-      - logs/feature_importance.csv:
-          template: bar_horizontal
-          x: importance
-          y: feature
-
-  generate_report:
-    cmd: python scripts/generate_report.py
-    deps:
-      - scripts/generate_report.py
-      - logs/evaluation_metrics.json
-      - models/health_predictor.pkl
-    outs:
-      - reports/health_analysis_report.html
-      - reports/health_analysis_report.pdf

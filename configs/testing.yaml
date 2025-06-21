@@ -103,6 +103,7 @@ api:
       
     authentication:
       enabled: false  # Simplified for tests
+      secret_key: "test_secret_key_not_used"  # Override to prevent secret resolution
       
   request:
     max_size: "1MB"  # Small files in tests

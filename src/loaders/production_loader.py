@@ -23,7 +23,7 @@ import pyarrow.parquet as pq
 from loguru import logger
 
 from .base import BaseLoader
-from ..utils.interfaces import LoadingError
+from ..utils.interfaces import LoadingError, DataFormat
 from ..utils.config import get_config
 from ..utils.logging import get_logger, monitor_performance, track_lineage
 
@@ -39,7 +39,11 @@ class CompressionManager:
     }
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or get_config('exports.compression', {})
+        try:
+            self.config = config or get_config('exports.compression', {})
+        except Exception:
+            # Fallback to basic config if configuration loading fails
+            self.config = config or {}
         self.logger = get_logger(__name__)
         
     def get_optimal_compression(self, 
@@ -133,7 +137,11 @@ class PartitionManager:
     """Implements data partitioning strategies for large datasets."""
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or get_config('exports.partitioning', {})
+        try:
+            self.config = config or get_config('exports.partitioning', {})
+        except Exception:
+            # Fallback to basic config if configuration loading fails
+            self.config = config or {}
         self.logger = get_logger(__name__)
         
     def get_partition_strategy(self, 
@@ -325,17 +333,43 @@ class ExportOptimizer:
 class ProductionLoader(BaseLoader):
     """Main production loader for multi-format exports with optimisation."""
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
+    def __init__(self, 
+                 loader_id: str = "production_loader",
+                 config: Optional[Dict[str, Any]] = None,
+                 logger: Optional[Any] = None):
+        loader_config = config or {}
+        super().__init__(
+            loader_id=loader_id,
+            config=loader_config,
+            logger=logger or get_logger(__name__)
+        )
         self.compression_manager = CompressionManager(config)
         self.partition_manager = PartitionManager(config)
         self.export_optimiser = ExportOptimizer(config)
         self.logger = get_logger(__name__)
         
-        # Supported formats
+        # Supported formats (only those in DataFormat enum)
         self.supported_formats = {
-            'parquet', 'csv', 'json', 'geojson', 'xlsx', 'feather'
+            'parquet', 'csv', 'json', 'geojson', 'xlsx'
         }
+    
+    def get_supported_formats(self) -> List[DataFormat]:
+        """
+        Get the list of supported output formats.
+        
+        Returns:
+            List[DataFormat]: Supported formats
+        """
+        # Map string format names to DataFormat enum values
+        format_mapping = {
+            'parquet': DataFormat.PARQUET,
+            'csv': DataFormat.CSV,
+            'json': DataFormat.JSON,
+            'geojson': DataFormat.GEOJSON,
+            'xlsx': DataFormat.XLSX,
+        }
+        
+        return [format_mapping[fmt] for fmt in self.supported_formats if fmt in format_mapping]
         
     @monitor_performance("production_export")
     def load(self, 
@@ -398,9 +432,14 @@ class ProductionLoader(BaseLoader):
                     self.logger.warning(f"Unsupported format: {format_type}")
                     continue
                     
+                # Remove conflicting parameters from kwargs
+                clean_kwargs = {k: v for k, v in kwargs.items() 
+                               if k not in ['partitions', 'format_type', 'output_path', 
+                                          'compress', 'partition_strategy']}
+                
                 format_results = self._export_format(
                     partitions, format_type, output_path, 
-                    compress, partition_strategy, **kwargs
+                    compress, partition_strategy, **clean_kwargs
                 )
                 export_results['formats'][format_type] = format_results
                 
@@ -496,8 +535,6 @@ class ProductionLoader(BaseLoader):
                 data.to_json(filepath, orient='records', date_format='iso')
             elif format_type == 'xlsx':
                 data.to_excel(filepath, index=False)
-            elif format_type == 'feather':
-                data.to_feather(filepath)
                 
         file_info = {
             'filename': filepath.name,

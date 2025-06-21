@@ -31,7 +31,7 @@ from .monitoring import (
     check_external_service
 )
 
-from .config_loader import (
+from .config import (
     ConfigLoader,
     get_config_loader,
     load_logging_config,
@@ -45,7 +45,10 @@ from .config_loader import (
     setup_development_logging,
     setup_production_logging,
     setup_testing_logging,
-    print_config_summary
+    print_config_summary,
+    load_config,
+    validate_config,
+    merge_configs
 )
 
 __all__ = [
@@ -87,5 +90,8 @@ __all__ = [
     'setup_development_logging',
     'setup_production_logging',
     'setup_testing_logging',
-    'print_config_summary'
+    'print_config_summary',
+    'load_config',
+    'validate_config',
+    'merge_configs'
 ]

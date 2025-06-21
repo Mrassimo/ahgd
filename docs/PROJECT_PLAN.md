@@ -160,9 +160,10 @@ Create a production-grade, public dataset repository combining Australian health
 ## Phase 5: Deployment & Maintenance (1-2 weeks)
 
 ### 5.1 Deployment Pipeline
-- [ ] Automated deployment to Hugging Face
+- [ ] **Publish final datasets to Hugging Face** [text](https://huggingface.co/datasets/massomo/ahgd)
+- [ ] Automated deployment scripts (`git lfs push`)
 - [ ] Pre-deployment validation checks
-- [ ] Rollback capability
+- [ ] Rollback capability for dataset versions
 - [ ] Performance optimization for large file serving
 
 ### 5.2 Monitoring & Alerting
@@ -172,6 +173,11 @@ Create a production-grade, public dataset repository combining Australian health
 - [ ] Error alerting system
 
 ### 5.3 Maintenance Framework
+- [ ] Automated source checking scripts
+- [ ] Update scheduling system
+- [ ] Version migration utilities
+- [ ] Backup and recovery procedures
+
 - [ ] Automated source checking scripts
 - [ ] Update scheduling system
 - [ ] Version migration utilities

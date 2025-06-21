@@ -668,7 +668,7 @@ def sample_seifa_data() -> DataBatch:
 def setup_test_environment(monkeypatch):
     """Automatically set up test environment for all tests."""
     # Set test environment variables
-    monkeypatch.setenv("AHGD_ENV", "test")
+    monkeypatch.setenv("AHGD_ENV", "testing")
     monkeypatch.setenv("AHGD_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("AHGD_DISABLE_CACHE", "true")
     

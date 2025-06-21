@@ -161,6 +161,11 @@ class TestLoader(BaseLoader):
             "timestamp": datetime.now().isoformat()
         }
     
+    def get_supported_formats(self):
+        """Get supported formats for test loader."""
+        from src.utils.interfaces import DataFormat
+        return [DataFormat.CSV, DataFormat.JSON, DataFormat.PARQUET]
+    
     def get_output_metadata(self, destination: str):
         """Get test output metadata."""
         return {
@@ -526,6 +531,11 @@ class TestETLPipelineWithDatabase:
                     "records_loaded": len(data),
                     "format": "sqlite"
                 }
+            
+            def get_supported_formats(self):
+                """Get supported formats for SQLite loader."""
+                from src.utils.interfaces import DataFormat
+                return [DataFormat.CSV, DataFormat.JSON, DataFormat.SQLITE]
         
         loader = SQLiteLoader("sqlite_loader", sample_config["loaders"]["sqlite_loader"], mock_logger)
         
@@ -603,6 +613,11 @@ class TestETLPipelineWithDatabase:
                 except Exception as e:
                     self.db_connection.rollback()
                     raise LoadingError(f"Database error: {e}")
+            
+            def get_supported_formats(self):
+                """Get supported formats for transactional loader."""
+                from src.utils.interfaces import DataFormat
+                return [DataFormat.SQLITE]
             
             def set_failure_mode(self, should_fail: bool):
                 self._should_fail = should_fail
