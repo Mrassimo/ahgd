@@ -1,0 +1,457 @@
+# AHGD Development Environment Configuration
+# Overrides for development environment focused on developer productivity
+
+# =============================================================================
+# APPLICATION SETTINGS
+# =============================================================================
+
+app:
+  debug: true
+  hot_reload: true
+  auto_restart: true
+  detailed_errors: true
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+
+system:
+  # Reduced resource usage for development
+  max_workers: 2
+  worker_timeout: 1800  # 30 minutes
+  
+  memory:
+    limit_gb: 4  # Conservative for development
+    warning_threshold: 0.9
+    cleanup_interval: 600  # 10 minutes
+    gc_threshold: 512  # MB
+  
+  temp:
+    cleanup_on_startup: true
+    max_age_hours: 6  # Shorter retention in dev
+    max_size_gb: 2
+
+# =============================================================================
+# DATA PROCESSING
+# =============================================================================
+
+data_processing:
+  pipeline:
+    parallel_stages: false  # Sequential for easier debugging
+    stage_timeout: 900  # 15 minutes
+    continue_on_error: true  # Continue for debugging
+    max_retries: 1  # Fewer retries in dev
+    retry_delay: 10
+  
+  processing:
+    chunk_size: 1000  # Smaller chunks for faster feedback
+    batch_size: 100
+    memory_limit_per_worker: 1024  # MB
+    max_file_size_gb: 2  # Smaller files in dev
+  
+  cache:
+    ttl: 1800  # 30 minutes
+    max_size_gb: 1
+    
+  validation:
+    strict_mode: false  # Relaxed validation in dev
+    null_threshold: 0.2
+    duplicate_threshold: 0.1
+    outlier_detection: false  # Disable for speed
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+database:
+  # Development database (SQLite)
+  url: "sqlite:///./data_processed/ahgd_dev.db"
+  echo: true  # Log all SQL queries
+  
+  connection:
+    pool_size: 2
+    max_overflow: 5
+    pool_timeout: 30
+    
+  query:
+    timeout: 60  # Shorter timeout
+    fetch_size: 100
+    batch_size: 50
+    
+  backup:
+    enabled: false  # Disable backups in dev
+
+# =============================================================================
+# API CONFIGURATION  
+# =============================================================================
+
+api:
+  server:
+    host: "localhost"
+    port: 8000
+    workers: 1  # Single worker for development
+    reload: true  # Auto-reload on changes
+    log_level: "debug"
+    
+  security:
+    cors:
+      origins:
+        - "http://localhost:3000"
+        - "http://localhost:8080" 
+        - "http://127.0.0.1:3000"
+        - "http://127.0.0.1:8080"
+        
+    rate_limiting:
+      enabled: false  # Disabled for development
+      
+    authentication:
+      enabled: false  # Simplified auth in dev
+  
+  request:
+    timeout: 30  # Shorter timeout
+    
+  docs:
+    enabled: true  # Always enable docs in dev
+
+# =============================================================================
+# EXTERNAL SERVICES
+# =============================================================================
+
+external_services:
+  # Use mock data in development
+  abs:
+    mock: true
+    base_url: "http://localhost:8001/mock/abs"
+    timeout: 10
+    rate_limit: 10.0  # More permissive
+    
+  aihw:
+    mock: true
+    base_url: "http://localhost:8001/mock/aihw"
+    timeout: 10
+    rate_limit: 5.0
+    
+  bom:
+    mock: true
+    base_url: "http://localhost:8001/mock/bom" 
+    timeout: 10
+    rate_limit: 5.0
+    
+  osm:
+    mock: false  # Can use real OSM
+    rate_limit: 2.0  # More conservative in dev
+
+# =============================================================================
+# MONITORING
+# =============================================================================
+
+monitoring:
+  health_checks:
+    interval: 60  # Check every minute
+    timeout: 10
+    
+    checks:
+      database:
+        timeout: 5
+      external_services:
+        enabled: false  # Skip external checks
+        
+  metrics:
+    collection_interval: 30
+    retention_hours: 24  # 1 day retention
+    
+    system:
+      network: false  # Skip network metrics
+      
+  alerts:
+    enabled: false  # Disable alerts in dev
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+
+logging:
+  # Use dedicated logging config but with dev settings
+  use_dedicated_config: true
+  
+  fallback:
+    level: "DEBUG"
+    
+    console:
+      enabled: true
+      level: "DEBUG"
+      colored: true
+      
+    file:
+      level: "DEBUG"
+      path: "./logs/dev/ahgd_dev.log"
+      max_size: "10MB"
+      backup_count: 3
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+security:
+  encryption:
+    enabled: false  # Disable for simplicity in dev
+    
+  sensitive_data:
+    mask_in_logs: false  # Show sensitive data in dev logs
+    
+  audit:
+    enabled: false  # Disable audit logging in dev
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+
+features:
+  # Enable experimental features in dev
+  experimental: true
+  beta_features: true
+  
+  # Disable resource-intensive features
+  machine_learning: false
+  real_time_processing: false
+  
+  # Development-specific features
+  debug_toolbar: true
+  hot_reload: true
+  source_maps: true
+  mock_services: true
+
+# =============================================================================
+# PERFORMANCE
+# =============================================================================
+
+performance:
+  # Disable optimizations that make debugging harder
+  database:
+    query_caching: false
+    
+  application:
+    response_caching: false
+    compression: false
+    minification: false
+    
+  profiling:
+    enabled: true  # Enable profiling in dev
+    sample_rate: 1.0  # Profile everything
+
+# =============================================================================
+# INTEGRATIONS
+# =============================================================================
+
+integrations:
+  # Disable cloud integrations in dev
+  message_queue:
+    enabled: false
+    
+  search_engine:
+    enabled: false
+    
+  cloud_storage:
+    enabled: false
+    
+  observability:
+    tracing:
+      enabled: true  # Enable for debugging
+      endpoint: "http://localhost:4317"
+      
+    metrics:
+      enabled: true
+      port: 9090
+      
+    logging:
+      enabled: false
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+
+dev_tools:
+  linting:
+    enabled: true
+    auto_fix: true
+    
+  formatting:
+    enabled: true
+    auto_format: true
+    
+  testing:
+    enabled: true
+    coverage_threshold: 60  # Lower threshold in dev
+    parallel: false  # Sequential tests for debugging
+    verbose: true
+    
+    # Test data settings
+    use_fixtures: true
+    generate_test_data: true
+    test_data_size: "small"
+    
+  documentation:
+    auto_generate: true
+    auto_reload: true
+    
+  debugging:
+    enabled: true
+    profiler: "cProfile"
+    memory_profiler: true
+    interactive_debugger: true
+    
+    # Development servers
+    jupyter:
+      enabled: true
+      port: 8888
+      
+    notebook:
+      enabled: true
+      auto_reload: true
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+
+testing:
+  # Pytest configuration
+  pytest:
+    workers: 1  # Single worker for debugging
+    timeout: 120  # 2 minutes
+    verbose: true
+    capture: false  # Don't capture output
+    
+    markers:
+      - "unit: Unit tests"
+      - "integration: Integration tests"
+      - "slow: Slow running tests"
+      - "external: Tests requiring external services"
+    
+  # Coverage settings
+  coverage:
+    min_percentage: 60
+    source_dirs: ["src"]
+    omit_patterns:
+      - "*/tests/*"
+      - "*/test_*"
+      - "*/conftest.py"
+      - "*/mock_*"
+      
+  # Test database
+  test_database:
+    url: "sqlite:///./tests/test_ahgd.db"
+    reset_on_start: true
+    
+  # Mock settings
+  mocking:
+    enabled: true
+    external_services: true
+    database: false
+    file_system: false
+
+# =============================================================================
+# LOCAL DEVELOPMENT SETTINGS
+# =============================================================================
+
+local_dev:
+  # File watching for auto-reload
+  file_watcher:
+    enabled: true
+    patterns: ["*.py", "*.yaml", "*.yml", "*.json"]
+    ignore_patterns: ["*/__pycache__/*", "*/logs/*", "*/temp/*"]
+    
+  # Development server
+  dev_server:
+    auto_reload: true
+    show_traceback: true
+    debug_middleware: true
+    
+  # Code quality checks
+  pre_commit:
+    enabled: true
+    hooks:
+      - "black"
+      - "isort"
+      - "flake8"
+      - "mypy"
+    
+  # Environment management
+  environment:
+    virtual_env: true
+    requirements_check: true
+    dependency_sync: true
+    
+  # Development databases
+  databases:
+    create_test_data: true
+    migrate_on_start: true
+    drop_on_restart: false
+
+# =============================================================================
+# IDE INTEGRATION
+# =============================================================================
+
+ide:
+  # VS Code settings
+  vscode:
+    python_path: "./venv/bin/python"
+    test_discovery: true
+    linting: true
+    formatting: true
+    
+  # PyCharm settings
+  pycharm:
+    project_sdk: "./venv/bin/python"
+    run_configurations: true
+    
+  # Language server settings
+  language_server:
+    enabled: true
+    type_checking: true
+    auto_completion: true
+
+# =============================================================================
+# PIPELINE DEVELOPMENT
+# =============================================================================
+
+pipeline_dev:
+  # ETL development settings
+  etl:
+    sample_data: true
+    sample_size: 1000
+    fast_mode: true
+    skip_validation: false
+    
+  # Data sources
+  data_sources:
+    use_cache: true
+    cache_duration: 3600  # 1 hour
+    fallback_to_mock: true
+    
+  # Processing stages
+  stages:
+    extract:
+      parallel: false
+      timeout: 300  # 5 minutes
+      sample_only: true
+      
+    transform:
+      parallel: false
+      timeout: 600  # 10 minutes
+      validate_intermediate: true
+      
+    load:
+      parallel: false
+      timeout: 300
+      batch_size: 100
+      
+    validate:
+      enabled: true
+      strict_mode: false
+      
+  # Error handling
+  error_handling:
+    continue_on_error: true
+    max_errors: 10
+    save_error_data: true
+    detailed_logging: true

@@ -1,762 +1,559 @@
 """
-Concurrent Operations Performance Tests - Phase 5.4
+Concurrent operations performance tests for the AHGD ETL pipeline.
 
-Tests the platform's ability to handle concurrent processing, multi-user scenarios,
-and parallel data operations with realistic Australian health data loads. Validates
-thread scaling, resource contention handling, and performance under concurrent access.
-
-Key Performance Tests:
-- Multi-threaded data processing scalability
-- Concurrent user access simulation
-- Resource contention and lock performance
-- Thread pool optimization and scaling
-- Parallel I/O operations performance
-- Cross-component concurrent integration
+This module contains tests for:
+- Thread safety and performance
+- Parallel processing efficiency
+- Resource contention
+- Deadlock detection
+- Scalability under concurrent load
 """
 
-import pytest
-import polars as pl
-import numpy as np
-import time
-import psutil
-import gc
-import logging
-import threading
 import asyncio
-import queue
-from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Any, Optional
-from dataclasses import dataclass
 import concurrent.futures
+import pytest
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-import multiprocessing as mp
-from contextlib import contextmanager
+from typing import Dict, List, Any, Callable
+import pandas as pd
+import numpy as np
 
-from src.data_processing.seifa_processor import SEIFAProcessor
-from src.data_processing.health_processor import HealthDataProcessor
-from src.data_processing.simple_boundary_processor import SimpleBoundaryProcessor
-from src.data_processing.storage.parquet_storage_manager import ParquetStorageManager
-from src.data_processing.storage.memory_optimizer import MemoryOptimizer
-from src.data_processing.storage.incremental_processor import IncrementalProcessor
-from src.analysis.risk.health_risk_calculator import HealthRiskCalculator
-from tests.performance import PERFORMANCE_CONFIG, AUSTRALIAN_DATA_SCALE
-from tests.performance.test_large_scale_processing import AustralianHealthDataGenerator
+from src.performance.profiler import PerformanceProfiler
+from src.performance.monitoring import SystemMonitor, ResourceTracker
+from src.utils.logging import get_logger
 
-logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ConcurrentPerformanceResult:
-    """Results from concurrent operations performance testing."""
-    test_name: str
-    concurrent_operations: int
-    total_time_seconds: float
-    average_operation_time: float
-    throughput_operations_per_second: float
-    resource_utilization: Dict[str, float]
-    success_rate: float
-    scaling_efficiency: float
-    targets_met: Dict[str, bool]
-    operation_details: List[Dict[str, Any]]
-
-
-@dataclass
-class ThreadScalingResult:
-    """Results from thread scaling performance tests."""
-    thread_counts: List[int]
-    throughput_per_thread_count: List[float]
-    efficiency_per_thread_count: List[float]
-    optimal_thread_count: int
-    linear_scaling_achieved: bool
-    scaling_efficiency_score: float
-
-
-class ConcurrentOperationManager:
-    """Manages concurrent operations and resource monitoring."""
-    
-    def __init__(self):
-        self.operation_queue = queue.Queue()
-        self.result_queue = queue.Queue()
-        self.operation_lock = threading.Lock()
-        self.resource_monitor = {}
-        self.active_operations = 0
-    
-    @contextmanager
-    def monitor_operation(self, operation_name: str):
-        """Context manager for monitoring individual operations."""
-        start_time = time.time()
-        start_memory = psutil.Process().memory_info().rss / 1024 / 1024
-        start_cpu = psutil.Process().cpu_percent()
-        
-        with self.operation_lock:
-            self.active_operations += 1
-        
-        try:
-            yield
-        finally:
-            end_time = time.time()
-            end_memory = psutil.Process().memory_info().rss / 1024 / 1024
-            end_cpu = psutil.Process().cpu_percent()
-            
-            with self.operation_lock:
-                self.active_operations -= 1
-                self.resource_monitor[operation_name] = {
-                    'duration': end_time - start_time,
-                    'memory_delta': end_memory - start_memory,
-                    'cpu_delta': end_cpu - start_cpu,
-                    'timestamp': datetime.now().isoformat()
-                }
-    
-    def get_resource_utilization(self) -> Dict[str, float]:
-        """Get current resource utilization metrics."""
-        process = psutil.Process()
-        return {
-            'cpu_percent': process.cpu_percent(),
-            'memory_mb': process.memory_info().rss / 1024 / 1024,
-            'memory_percent': process.memory_percent(),
-            'active_operations': self.active_operations,
-            'thread_count': threading.active_count()
-        }
+logger = get_logger()
 
 
 class TestConcurrentOperations:
-    """Concurrent operations performance tests for Australian Health Analytics platform."""
+    """Test suite for concurrent operations performance."""
     
-    @pytest.fixture(scope="class")
-    def data_generator(self):
-        """Create Australian health data generator."""
-        return AustralianHealthDataGenerator(seed=42)
+    @classmethod
+    def setup_class(cls):
+        """Set up test environment."""
+        cls.profiler = PerformanceProfiler()
+        cls.system_monitor = SystemMonitor(collection_interval=1.0)
+        cls.resource_tracker = ResourceTracker()
+        
+        # Start monitoring
+        cls.system_monitor.start_monitoring()
     
-    @pytest.fixture(scope="class")
-    def concurrent_processors(self, tmp_path_factory):
-        """Create processors for concurrent testing."""
-        temp_dir = tmp_path_factory.mktemp("concurrent_test")
-        
-        return {
-            'seifa_processor': SEIFAProcessor(data_dir=temp_dir),
-            'health_processor': HealthDataProcessor(data_dir=temp_dir),
-            'boundary_processor': SimpleBoundaryProcessor(data_dir=temp_dir),
-            'storage_manager': ParquetStorageManager(base_path=temp_dir / "parquet"),
-            'memory_optimizer': MemoryOptimizer(),
-            'incremental_processor': IncrementalProcessor(temp_dir / "lake"),
-            'risk_calculator': HealthRiskCalculator(data_dir=temp_dir / "processed"),
-            'temp_dir': temp_dir
-        }
+    @classmethod
+    def teardown_class(cls):
+        """Clean up test environment."""
+        cls.system_monitor.stop_monitoring()
     
-    @pytest.fixture(scope="class")
-    def operation_manager(self):
-        """Create concurrent operation manager."""
-        return ConcurrentOperationManager()
+    def test_thread_pool_performance(self):
+        """Test performance scaling with different thread pool sizes."""
+        data_size = 1000
+        pool_sizes = [1, 2, 4, 8]
+        results = []
+        
+        def process_chunk(chunk_data):
+            """Process a chunk of data."""
+            return self._process_dataframe(chunk_data)
+        
+        for pool_size in pool_sizes:
+            with self.profiler.profile_operation(f"thread_pool_{pool_size}"):
+                start_time = time.time()
+                
+                # Create test data and split into chunks
+                test_data = self._create_test_dataframe(data_size)
+                chunks = self._split_dataframe(test_data, pool_size)
+                
+                # Process chunks in parallel
+                with ThreadPoolExecutor(max_workers=pool_size) as executor:
+                    futures = [executor.submit(process_chunk, chunk) for chunk in chunks]
+                    processed_chunks = [future.result() for future in concurrent.futures.as_completed(futures)]
+                
+                execution_time = time.time() - start_time
+                throughput = data_size / execution_time
+                
+                results.append({
+                    'pool_size': pool_size,
+                    'execution_time': execution_time,
+                    'throughput': throughput,
+                    'processed_chunks': len(processed_chunks)
+                })
+                
+                # Performance assertions
+                assert len(processed_chunks) == pool_size, f"Lost chunks: expected {pool_size}, got {len(processed_chunks)}"
+                
+        # Analyse scaling efficiency
+        self._analyse_parallel_scaling(results, "thread_pool")
+        logger.info("Thread pool performance test completed", results=results)
     
-    def test_thread_scaling_performance(self, data_generator, concurrent_processors, operation_manager):
-        """Test thread scaling performance and efficiency."""
-        logger.info("Testing thread scaling performance")
+    def test_process_pool_performance(self):
+        """Test performance scaling with different process pool sizes."""
+        data_size = 5000  # Larger data for process overhead to be worthwhile
+        pool_sizes = [1, 2, 4]  # Fewer processes due to overhead
+        results = []
         
-        health_processor = concurrent_processors['health_processor']
-        memory_optimizer = concurrent_processors['memory_optimizer']
-        
-        # Test with different thread counts
-        thread_counts = [1, 2, 4, 8, 12, 16]
-        scaling_results = []
-        
-        # Generate test datasets
-        num_datasets = 16
-        dataset_size = 50000
-        test_datasets = [
-            data_generator.generate_large_scale_health_data(dataset_size) 
-            for _ in range(num_datasets)
-        ]
-        
-        def process_dataset_task(dataset_id_and_data):
-            """Process a single dataset (for thread scaling test)."""
-            dataset_id, dataset = dataset_id_and_data
-            task_name = f"thread_scaling_task_{dataset_id}"
-            
-            with operation_manager.monitor_operation(task_name):
-                # Full processing pipeline
-                validated = health_processor._validate_health_data(dataset)
-                aggregated = health_processor._aggregate_by_sa2(validated)
-                optimized = memory_optimizer.optimize_data_types(aggregated, data_category="health")
+        for pool_size in pool_sizes:
+            with self.profiler.profile_operation(f"process_pool_{pool_size}"):
+                start_time = time.time()
                 
-                return {
-                    'dataset_id': dataset_id,
-                    'input_records': len(dataset),
-                    'output_records': len(optimized),
-                    'success': True
-                }
-        
-        for thread_count in thread_counts:
-            logger.info(f"Testing with {thread_count} threads")
-            
-            gc.collect()  # Clean up before test
-            start_time = time.time()
-            start_memory = psutil.Process().memory_info().rss / 1024 / 1024
-            
-            # Execute tasks with specified thread count
-            with ThreadPoolExecutor(max_workers=thread_count) as executor:
-                dataset_tasks = [(i, dataset) for i, dataset in enumerate(test_datasets[:thread_count*2])]
+                # Create test data and split into chunks
+                test_data = self._create_test_dataframe(data_size)
+                chunks = self._split_dataframe(test_data, pool_size)
                 
-                futures = [executor.submit(process_dataset_task, task) for task in dataset_tasks]
-                results = []
+                # Process chunks in separate processes
+                with ProcessPoolExecutor(max_workers=pool_size) as executor:
+                    futures = [executor.submit(self._process_dataframe_static, chunk) for chunk in chunks]
+                    processed_chunks = [future.result() for future in concurrent.futures.as_completed(futures)]
                 
-                for future in concurrent.futures.as_completed(futures, timeout=300):
-                    try:
-                        result = future.result()
-                        results.append(result)
-                    except Exception as e:
-                        logger.error(f"Task failed with {thread_count} threads: {e}")
-                        results.append({'success': False, 'error': str(e)})
-            
-            total_time = time.time() - start_time
-            end_memory = psutil.Process().memory_info().rss / 1024 / 1024
-            memory_usage = end_memory - start_memory
-            
-            # Calculate performance metrics
-            successful_results = [r for r in results if r.get('success', False)]
-            success_rate = len(successful_results) / len(results)
-            total_records_processed = sum(r['input_records'] for r in successful_results)
-            throughput = total_records_processed / total_time
-            
-            # Calculate scaling efficiency (vs single thread baseline)
-            if thread_count == 1:
-                baseline_throughput = throughput
-                efficiency = 1.0
-            else:
-                efficiency = throughput / (baseline_throughput * thread_count)
-            
-            scaling_results.append({
-                'thread_count': thread_count,
-                'total_time': total_time,
-                'throughput': throughput,
-                'efficiency': efficiency,
-                'success_rate': success_rate,
-                'memory_usage_mb': memory_usage,
-                'records_processed': total_records_processed,
-                'tasks_completed': len(successful_results)
-            })
-            
-            # Validate thread scaling performance
-            assert success_rate >= 0.95, f"Success rate {success_rate:.1%} should be ≥95% with {thread_count} threads"
-            assert total_time < 180, f"Processing with {thread_count} threads took {total_time:.1f}s, expected <180s"
+                execution_time = time.time() - start_time
+                throughput = data_size / execution_time
+                
+                results.append({
+                    'pool_size': pool_size,
+                    'execution_time': execution_time,
+                    'throughput': throughput,
+                    'processed_chunks': len(processed_chunks)
+                })
+                
+                # Performance assertions
+                assert len(processed_chunks) == pool_size, f"Lost chunks: expected {pool_size}, got {len(processed_chunks)}"
         
-        # Analyze thread scaling efficiency
-        throughputs = [r['throughput'] for r in scaling_results]
-        efficiencies = [r['efficiency'] for r in scaling_results]
-        
-        # Find optimal thread count (best throughput)
-        optimal_thread_count = scaling_results[np.argmax(throughputs)]['thread_count']
-        
-        # Check for linear scaling (efficiency should be reasonable)
-        linear_scaling_achieved = all(eff >= 0.7 for eff in efficiencies[1:4])  # Check first few thread counts
-        scaling_efficiency_score = np.mean(efficiencies[1:]) * 10  # Score out of 10
-        
-        thread_scaling_result = ThreadScalingResult(
-            thread_counts=thread_counts,
-            throughput_per_thread_count=throughputs,
-            efficiency_per_thread_count=efficiencies,
-            optimal_thread_count=optimal_thread_count,
-            linear_scaling_achieved=linear_scaling_achieved,
-            scaling_efficiency_score=scaling_efficiency_score
-        )
-        
-        # Thread scaling validation
-        assert optimal_thread_count >= 4, f"Optimal thread count {optimal_thread_count} should be ≥4"
-        assert linear_scaling_achieved, "Should achieve reasonable linear scaling for initial thread counts"
-        assert scaling_efficiency_score >= 6.0, f"Scaling efficiency score {scaling_efficiency_score:.1f} should be ≥6.0"
-        
-        logger.info(f"Thread scaling: optimal {optimal_thread_count} threads, "
-                   f"efficiency score: {scaling_efficiency_score:.1f}")
-        
-        return thread_scaling_result
+        # Analyse scaling efficiency
+        self._analyse_parallel_scaling(results, "process_pool")
+        logger.info("Process pool performance test completed", results=results)
     
-    def test_concurrent_data_processing_pipeline(self, data_generator, concurrent_processors, operation_manager):
-        """Test concurrent end-to-end data processing pipelines."""
-        logger.info("Testing concurrent data processing pipelines")
-        
-        # Create multiple complete datasets for concurrent processing
-        num_pipelines = 8
-        datasets_per_pipeline = {
-            'seifa': lambda: data_generator.generate_large_scale_seifa_data(),
-            'health': lambda: data_generator.generate_large_scale_health_data(100000),
-            'boundary': lambda: data_generator.generate_large_scale_boundary_data()
-        }
-        
-        def execute_complete_pipeline(pipeline_id: int):
-            """Execute a complete data processing pipeline."""
-            pipeline_name = f"concurrent_pipeline_{pipeline_id}"
-            
-            with operation_manager.monitor_operation(pipeline_name):
-                # Generate pipeline-specific data
-                seifa_data = datasets_per_pipeline['seifa']()
-                health_data = datasets_per_pipeline['health']()
-                boundary_data = datasets_per_pipeline['boundary']()
-                
-                # Get processors
-                seifa_processor = concurrent_processors['seifa_processor']
-                health_processor = concurrent_processors['health_processor']
-                boundary_processor = concurrent_processors['boundary_processor']
-                memory_optimizer = concurrent_processors['memory_optimizer']
-                storage_manager = concurrent_processors['storage_manager']
-                temp_dir = concurrent_processors['temp_dir']
-                
-                # Execute full pipeline
-                # Stage 1: Validation
-                validated_seifa = seifa_processor._validate_seifa_data(seifa_data)
-                validated_health = health_processor._validate_health_data(health_data)
-                validated_boundary = boundary_processor._validate_boundary_data(boundary_data)
-                
-                # Stage 2: Memory optimization
-                optimized_seifa = memory_optimizer.optimize_data_types(validated_seifa, data_category="seifa")
-                optimized_health = memory_optimizer.optimize_data_types(validated_health, data_category="health")
-                optimized_boundary = memory_optimizer.optimize_data_types(validated_boundary, data_category="geographic")
-                
-                # Stage 3: Processing and integration
-                aggregated_health = health_processor._aggregate_by_sa2(optimized_health)
-                enhanced_boundary = boundary_processor._calculate_population_density(optimized_boundary)
-                
-                # Stage 4: Storage
-                seifa_path = storage_manager.save_optimized_parquet(
-                    optimized_seifa, temp_dir / f"concurrent_seifa_{pipeline_id}.parquet", data_type="seifa"
-                )
-                health_path = storage_manager.save_optimized_parquet(
-                    aggregated_health, temp_dir / f"concurrent_health_{pipeline_id}.parquet", data_type="health"
-                )
-                boundary_path = storage_manager.save_optimized_parquet(
-                    enhanced_boundary, temp_dir / f"concurrent_boundary_{pipeline_id}.parquet", data_type="geographic"
-                )
-                
-                return {
-                    'pipeline_id': pipeline_id,
-                    'seifa_records': len(optimized_seifa),
-                    'health_records': len(aggregated_health),
-                    'boundary_records': len(enhanced_boundary),
-                    'files_created': [seifa_path, health_path, boundary_path],
-                    'total_records': len(optimized_seifa) + len(aggregated_health) + len(enhanced_boundary),
-                    'success': True
-                }
-        
-        # Execute concurrent pipelines
-        concurrent_start = time.time()
-        start_memory = psutil.Process().memory_info().rss / 1024 / 1024
-        
-        with ThreadPoolExecutor(max_workers=num_pipelines) as executor:
-            futures = [executor.submit(execute_complete_pipeline, i) for i in range(num_pipelines)]
-            pipeline_results = []
-            
-            for future in concurrent.futures.as_completed(futures, timeout=600):
-                try:
-                    result = future.result()
-                    pipeline_results.append(result)
-                except Exception as e:
-                    logger.error(f"Pipeline failed: {e}")
-                    pipeline_results.append({'success': False, 'error': str(e)})
-        
-        concurrent_total_time = time.time() - concurrent_start
-        end_memory = psutil.Process().memory_info().rss / 1024 / 1024
-        memory_usage = end_memory - start_memory
-        
-        # Analyze concurrent pipeline performance
-        successful_pipelines = [r for r in pipeline_results if r.get('success', False)]
-        failed_pipelines = [r for r in pipeline_results if not r.get('success', False)]
-        
-        success_rate = len(successful_pipelines) / num_pipelines
-        total_records_processed = sum(r['total_records'] for r in successful_pipelines)
-        average_pipeline_time = concurrent_total_time / num_pipelines
-        throughput = total_records_processed / concurrent_total_time
-        
-        # Resource utilization analysis
-        resource_utilization = operation_manager.get_resource_utilization()
-        
-        concurrent_result = ConcurrentPerformanceResult(
-            test_name="concurrent_pipeline_processing",
-            concurrent_operations=num_pipelines,
-            total_time_seconds=concurrent_total_time,
-            average_operation_time=average_pipeline_time,
-            throughput_operations_per_second=throughput,
-            resource_utilization=resource_utilization,
-            success_rate=success_rate,
-            scaling_efficiency=success_rate * (throughput / 1000),  # Normalize efficiency metric
-            targets_met={
-                'all_pipelines_successful': len(failed_pipelines) == 0,
-                'completion_time_acceptable': concurrent_total_time < 300,
-                'throughput_adequate': throughput > 5000,
-                'memory_usage_reasonable': memory_usage < 2048,
-                'success_rate_high': success_rate >= 0.95
-            },
-            operation_details=[{'resource_monitor': operation_manager.resource_monitor}]
-        )
-        
-        # Concurrent pipeline validation
-        assert len(failed_pipelines) == 0, f"All {num_pipelines} pipelines should succeed, {len(failed_pipelines)} failed"
-        assert concurrent_total_time < 300, f"Concurrent pipelines took {concurrent_total_time:.1f}s, expected <300s"
-        assert success_rate >= 0.95, f"Success rate {success_rate:.1%} should be ≥95%"
-        assert throughput > 5000, f"Throughput {throughput:.0f} records/s should be >5000"
-        
-        logger.info(f"Concurrent pipelines: {num_pipelines} pipelines, {concurrent_total_time:.1f}s, "
-                   f"{success_rate:.1%} success rate, {throughput:.0f} records/s")
-        
-        return concurrent_result
-    
-    def test_concurrent_storage_operations(self, data_generator, concurrent_processors, operation_manager):
-        """Test concurrent storage I/O operations."""
-        logger.info("Testing concurrent storage I/O operations")
-        
-        storage_manager = concurrent_processors['storage_manager']
-        temp_dir = concurrent_processors['temp_dir']
-        
-        # Create datasets for concurrent I/O testing
-        num_concurrent_ops = 12
-        storage_datasets = []
-        
-        for i in range(num_concurrent_ops):
-            if i % 3 == 0:
-                data = data_generator.generate_large_scale_seifa_data()
-                data_type = "seifa"
-            elif i % 3 == 1:
-                data = data_generator.generate_large_scale_health_data(75000)
-                data_type = "health"
-            else:
-                data = data_generator.generate_large_scale_boundary_data()
-                data_type = "geographic"
-            
-            storage_datasets.append((i, data, data_type))
-        
-        def concurrent_storage_operation(dataset_info):
-            """Perform concurrent storage read/write operations."""
-            dataset_id, dataset, data_type = dataset_info
-            operation_name = f"storage_op_{dataset_id}"
-            
-            with operation_manager.monitor_operation(operation_name):
-                # Write operation
-                write_start = time.time()
-                file_path = temp_dir / f"concurrent_storage_{dataset_id}.parquet"
-                saved_path = storage_manager.save_optimized_parquet(dataset, file_path, data_type=data_type)
-                write_time = time.time() - write_start
-                
-                # Read operation
-                read_start = time.time()
-                loaded_data = pl.read_parquet(saved_path)
-                read_time = time.time() - read_start
-                
-                # Verify data integrity
-                data_integrity_ok = len(loaded_data) == len(dataset)
-                
-                # Calculate metrics
-                data_size_mb = dataset.estimated_size("mb")
-                file_size_mb = saved_path.stat().st_size / 1024 / 1024
-                compression_ratio = data_size_mb / file_size_mb
-                write_speed = data_size_mb / write_time
-                read_speed = file_size_mb / read_time
-                
-                return {
-                    'dataset_id': dataset_id,
-                    'data_type': data_type,
-                    'write_time': write_time,
-                    'read_time': read_time,
-                    'total_time': write_time + read_time,
-                    'data_size_mb': data_size_mb,
-                    'file_size_mb': file_size_mb,
-                    'compression_ratio': compression_ratio,
-                    'write_speed_mb_s': write_speed,
-                    'read_speed_mb_s': read_speed,
-                    'data_integrity_ok': data_integrity_ok,
-                    'records_processed': len(dataset),
-                    'success': True
-                }
-        
-        # Execute concurrent storage operations
-        storage_start = time.time()
-        
-        with ThreadPoolExecutor(max_workers=num_concurrent_ops) as executor:
-            futures = [executor.submit(concurrent_storage_operation, dataset_info) for dataset_info in storage_datasets]
-            storage_results = []
-            
-            for future in concurrent.futures.as_completed(futures, timeout=300):
-                try:
-                    result = future.result()
-                    storage_results.append(result)
-                except Exception as e:
-                    logger.error(f"Storage operation failed: {e}")
-                    storage_results.append({'success': False, 'error': str(e)})
-        
-        storage_total_time = time.time() - storage_start
-        
-        # Analyze concurrent storage performance
-        successful_ops = [r for r in storage_results if r.get('success', False)]
-        failed_ops = [r for r in storage_results if not r.get('success', False)]
-        
-        success_rate = len(successful_ops) / num_concurrent_ops
-        total_data_processed = sum(r['data_size_mb'] for r in successful_ops)
-        avg_write_speed = np.mean([r['write_speed_mb_s'] for r in successful_ops])
-        avg_read_speed = np.mean([r['read_speed_mb_s'] for r in successful_ops])
-        avg_compression_ratio = np.mean([r['compression_ratio'] for r in successful_ops])
-        storage_throughput = total_data_processed / storage_total_time
-        
-        # Concurrent storage validation
-        assert len(failed_ops) == 0, f"All {num_concurrent_ops} storage operations should succeed"
-        assert success_rate >= 0.95, f"Storage success rate {success_rate:.1%} should be ≥95%"
-        assert storage_total_time < 180, f"Concurrent storage took {storage_total_time:.1f}s, expected <180s"
-        assert avg_write_speed > 20, f"Average write speed {avg_write_speed:.1f}MB/s should be >20MB/s"
-        assert avg_read_speed > 50, f"Average read speed {avg_read_speed:.1f}MB/s should be >50MB/s"
-        assert all(r['data_integrity_ok'] for r in successful_ops), "Data integrity should be preserved"
-        
-        logger.info(f"Concurrent storage: {num_concurrent_ops} operations, {storage_total_time:.1f}s, "
-                   f"{avg_write_speed:.1f}MB/s write, {avg_read_speed:.1f}MB/s read")
-        
-        return {
-            'total_operations': num_concurrent_ops,
-            'success_rate': success_rate,
-            'total_time': storage_total_time,
-            'average_write_speed_mb_s': avg_write_speed,
-            'average_read_speed_mb_s': avg_read_speed,
-            'average_compression_ratio': avg_compression_ratio,
-            'storage_throughput_mb_s': storage_throughput,
-            'data_integrity_preserved': all(r['data_integrity_ok'] for r in successful_ops)
-        }
-    
-    def test_resource_contention_handling(self, data_generator, concurrent_processors, operation_manager):
-        """Test resource contention and lock performance."""
-        logger.info("Testing resource contention handling")
-        
-        # Create shared resource access scenario
-        memory_optimizer = concurrent_processors['memory_optimizer']
-        shared_datasets = [
-            data_generator.generate_large_scale_health_data(50000) for _ in range(10)
-        ]
-        
-        # Shared resource for contention testing
-        shared_resource_lock = threading.Lock()
-        shared_counter = {'value': 0}
+    def test_resource_contention(self):
+        """Test performance under resource contention."""
+        num_threads = 8
+        data_size = 2000
         contention_results = []
         
-        def contended_operation(operation_id: int):
-            """Operation that creates resource contention."""
-            operation_name = f"contention_op_{operation_id}"
+        # Test with shared resource (file I/O)
+        def file_io_task(thread_id):
+            """Task that performs file I/O."""
+            data = self._create_test_dataframe(data_size)
+            filename = f"tests/performance/temp/contention_test_{thread_id}.csv"
             
-            with operation_manager.monitor_operation(operation_name):
-                dataset = shared_datasets[operation_id % len(shared_datasets)]
+            start_time = time.time()
+            data.to_csv(filename, index=False)
+            read_data = pd.read_csv(filename)
+            execution_time = time.time() - start_time
+            
+            # Clean up
+            import os
+            if os.path.exists(filename):
+                os.remove(filename)
+            
+            return {
+                'thread_id': thread_id,
+                'execution_time': execution_time,
+                'records_processed': len(read_data)
+            }
+        
+        # Test memory-intensive task
+        def memory_intensive_task(thread_id):
+            """Task that uses significant memory."""
+            start_time = time.time()
+            
+            # Create multiple datasets
+            datasets = []
+            for i in range(5):
+                data = self._create_test_dataframe(data_size)
+                processed = self._process_dataframe(data)
+                datasets.append(processed)
+            
+            execution_time = time.time() - start_time
+            
+            # Clean up
+            del datasets
+            
+            return {
+                'thread_id': thread_id,
+                'execution_time': execution_time,
+                'task_type': 'memory_intensive'
+            }
+        
+        # Test file I/O contention
+        with self.profiler.profile_operation("file_io_contention"):
+            with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                futures = [executor.submit(file_io_task, i) for i in range(num_threads)]
+                io_results = [future.result() for future in concurrent.futures.as_completed(futures)]
+        
+        # Test memory contention
+        with self.profiler.profile_operation("memory_contention"):
+            with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                futures = [executor.submit(memory_intensive_task, i) for i in range(num_threads)]
+                memory_results = [future.result() for future in concurrent.futures.as_completed(futures)]
+        
+        # Analyse contention impact
+        io_times = [r['execution_time'] for r in io_results]
+        memory_times = [r['execution_time'] for r in memory_results]
+        
+        io_variance = np.var(io_times)
+        memory_variance = np.var(memory_times)
+        
+        # Contention assertions
+        assert io_variance < 2.0, f"High I/O contention variance: {io_variance:.2f}"
+        assert memory_variance < 5.0, f"High memory contention variance: {memory_variance:.2f}"
+        
+        logger.info("Resource contention test completed",
+                   io_results=io_results,
+                   memory_results=memory_results,
+                   io_variance=io_variance,
+                   memory_variance=memory_variance)
+    
+    def test_async_operations_performance(self):
+        """Test asynchronous operations performance."""
+        num_tasks = 10
+        data_size = 1000
+        
+        async def async_data_processing(task_id):
+            """Asynchronous data processing task."""
+            start_time = time.time()
+            
+            # Simulate I/O bound operation
+            await asyncio.sleep(0.1)  # Simulate network/disk I/O
+            
+            # CPU bound operation
+            data = self._create_test_dataframe(data_size)
+            processed = self._process_dataframe(data)
+            
+            execution_time = time.time() - start_time
+            
+            return {
+                'task_id': task_id,
+                'execution_time': execution_time,
+                'records_processed': len(processed)
+            }
+        
+        async def run_async_tasks():
+            """Run multiple async tasks."""
+            tasks = [async_data_processing(i) for i in range(num_tasks)]
+            return await asyncio.gather(*tasks)
+        
+        # Test async performance
+        with self.profiler.profile_operation("async_operations"):
+            start_time = time.time()
+            results = asyncio.run(run_async_tasks())
+            total_time = time.time() - start_time
+        
+        # Compare with synchronous execution
+        with self.profiler.profile_operation("sync_operations"):
+            sync_start_time = time.time()
+            sync_results = []
+            for i in range(num_tasks):
+                # Simulate synchronous equivalent
+                time.sleep(0.1)  # Simulate I/O
+                data = self._create_test_dataframe(data_size)
+                processed = self._process_dataframe(data)
+                sync_results.append({
+                    'task_id': i,
+                    'records_processed': len(processed)
+                })
+            sync_total_time = time.time() - sync_start_time
+        
+        # Performance comparison
+        async_efficiency = sync_total_time / total_time
+        
+        # Async performance assertions
+        assert len(results) == num_tasks, f"Lost async tasks: expected {num_tasks}, got {len(results)}"
+        assert async_efficiency > 1.5, f"Async efficiency too low: {async_efficiency:.2f}x"
+        assert total_time < sync_total_time, "Async should be faster than sync for I/O bound tasks"
+        
+        logger.info("Async operations performance test completed",
+                   async_time=total_time,
+                   sync_time=sync_total_time,
+                   efficiency=async_efficiency,
+                   async_results=results)
+    
+    def test_thread_safety(self):
+        """Test thread safety of operations."""
+        num_threads = 8
+        iterations_per_thread = 100
+        shared_counter = {'value': 0}
+        counter_lock = threading.Lock()
+        
+        def thread_safe_operation(thread_id):
+            """Thread-safe operation that modifies shared state."""
+            local_results = []
+            
+            for i in range(iterations_per_thread):
+                # Create some data
+                data = self._create_small_dataframe(100)
                 
-                # Simulate contended resource access
-                with shared_resource_lock:
+                # Thread-safe counter increment
+                with counter_lock:
                     shared_counter['value'] += 1
                     current_count = shared_counter['value']
-                    time.sleep(0.01)  # Simulate brief locked operation
                 
-                # Perform actual processing (non-contended)
-                optimized_data = memory_optimizer.optimize_data_types(dataset, data_category="health")
-                
-                # Another contended access
-                with shared_resource_lock:
-                    shared_counter['value'] += len(optimized_data)
-                    final_count = shared_counter['value']
-                
-                return {
-                    'operation_id': operation_id,
-                    'start_count': current_count,
-                    'final_count': final_count,
-                    'records_processed': len(optimized_data),
-                    'success': True
-                }
-        
-        # Test resource contention with varying thread counts
-        thread_counts = [2, 4, 8, 16]
-        contention_test_results = []
-        
-        for thread_count in thread_counts:
-            shared_counter['value'] = 0  # Reset counter
+                local_results.append({
+                    'thread_id': thread_id,
+                    'iteration': i,
+                    'counter_value': current_count,
+                    'data_size': len(data)
+                })
             
-            contention_start = time.time()
-            
-            with ThreadPoolExecutor(max_workers=thread_count) as executor:
-                futures = [executor.submit(contended_operation, i) for i in range(thread_count * 2)]
-                results = []
-                
-                for future in concurrent.futures.as_completed(futures, timeout=120):
-                    try:
-                        result = future.result()
-                        results.append(result)
-                    except Exception as e:
-                        logger.error(f"Contended operation failed: {e}")
-                        results.append({'success': False, 'error': str(e)})
-            
-            contention_time = time.time() - contention_start
-            
-            # Analyze contention results
-            successful_ops = [r for r in results if r.get('success', False)]
-            success_rate = len(successful_ops) / len(results)
-            total_records = sum(r['records_processed'] for r in successful_ops)
-            contention_throughput = total_records / contention_time
-            
-            contention_test_results.append({
-                'thread_count': thread_count,
-                'total_time': contention_time,
-                'success_rate': success_rate,
-                'throughput': contention_throughput,
-                'operations_completed': len(successful_ops),
-                'contention_handled_well': success_rate >= 0.95 and contention_time < 60
-            })
+            return local_results
         
-        # Resource contention validation
-        avg_success_rate = np.mean([r['success_rate'] for r in contention_test_results])
-        contention_handling_effective = all(r['contention_handled_well'] for r in contention_test_results)
+        # Run thread-safe operations
+        with self.profiler.profile_operation("thread_safety_test"):
+            with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                futures = [executor.submit(thread_safe_operation, i) for i in range(num_threads)]
+                all_results = [result for future in concurrent.futures.as_completed(futures) 
+                             for result in future.result()]
         
-        assert avg_success_rate >= 0.95, f"Average success rate {avg_success_rate:.1%} should be ≥95%"
-        assert contention_handling_effective, "Should handle resource contention effectively at all thread counts"
-        assert shared_counter['value'] > 0, "Shared resource should have been accessed"
+        # Verify thread safety
+        expected_count = num_threads * iterations_per_thread
+        final_count = shared_counter['value']
         
-        logger.info(f"Resource contention: {avg_success_rate:.1%} avg success rate, "
-                   f"effective handling: {contention_handling_effective}")
+        assert final_count == expected_count, f"Thread safety violation: expected {expected_count}, got {final_count}"
+        assert len(all_results) == expected_count, f"Lost results: expected {expected_count}, got {len(all_results)}"
         
-        return {
-            'average_success_rate': avg_success_rate,
-            'contention_handling_effective': contention_handling_effective,
-            'thread_test_results': contention_test_results,
-            'final_shared_counter': shared_counter['value']
-        }
+        # Check for race conditions in counter values
+        counter_values = [r['counter_value'] for r in all_results]
+        unique_values = set(counter_values)
+        
+        assert len(unique_values) == len(counter_values), "Duplicate counter values indicate race condition"
+        
+        logger.info("Thread safety test completed",
+                   expected_count=expected_count,
+                   final_count=final_count,
+                   results_count=len(all_results))
     
-    def test_cross_component_concurrent_integration(self, data_generator, concurrent_processors, operation_manager):
-        """Test concurrent integration across all platform components."""
-        logger.info("Testing cross-component concurrent integration")
+    def test_deadlock_detection(self):
+        """Test for potential deadlocks in concurrent operations."""
+        num_threads = 4
+        lock1 = threading.Lock()
+        lock2 = threading.Lock()
         
-        # Define integrated workflow scenarios
-        workflow_scenarios = [
-            'seifa_analysis_workflow',
-            'health_risk_assessment_workflow',
-            'geographic_analytics_workflow',
-            'comprehensive_integration_workflow'
-        ]
-        
-        def execute_integrated_workflow(scenario_name: str, scenario_id: int):
-            """Execute integrated workflow scenario."""
-            workflow_name = f"{scenario_name}_{scenario_id}"
-            
-            with operation_manager.monitor_operation(workflow_name):
-                if 'seifa' in scenario_name:
-                    # SEIFA-focused workflow
-                    seifa_data = data_generator.generate_large_scale_seifa_data()
-                    seifa_processor = concurrent_processors['seifa_processor']
-                    memory_optimizer = concurrent_processors['memory_optimizer']
-                    
-                    processed_seifa = seifa_processor._validate_seifa_data(seifa_data)
-                    optimized_seifa = memory_optimizer.optimize_data_types(processed_seifa, data_category="seifa")
-                    
-                    result_data = optimized_seifa
-                    workflow_type = "seifa"
-                
-                elif 'health_risk' in scenario_name:
-                    # Health risk assessment workflow
-                    health_data = data_generator.generate_large_scale_health_data(75000)
-                    health_processor = concurrent_processors['health_processor']
-                    risk_calculator = concurrent_processors['risk_calculator']
-                    
-                    validated_health = health_processor._validate_health_data(health_data)
-                    aggregated_health = health_processor._aggregate_by_sa2(validated_health)
-                    
-                    result_data = aggregated_health
-                    workflow_type = "health"
-                
-                elif 'geographic' in scenario_name:
-                    # Geographic analytics workflow
-                    boundary_data = data_generator.generate_large_scale_boundary_data()
-                    boundary_processor = concurrent_processors['boundary_processor']
-                    
-                    validated_boundaries = boundary_processor._validate_boundary_data(boundary_data)
-                    enhanced_boundaries = boundary_processor._calculate_population_density(validated_boundaries)
-                    
-                    result_data = enhanced_boundaries
-                    workflow_type = "geographic"
-                
+        def potential_deadlock_task(thread_id, reverse_order=False):
+            """Task that could potentially cause deadlock."""
+            try:
+                if reverse_order:
+                    # Acquire locks in reverse order to create potential deadlock
+                    with lock2:
+                        time.sleep(0.01)  # Small delay to increase deadlock chance
+                        with lock1:
+                            data = self._create_small_dataframe(50)
+                            time.sleep(0.01)
+                            return len(data)
                 else:
-                    # Comprehensive integration workflow
-                    seifa_data = data_generator.generate_large_scale_seifa_data()
-                    health_data = data_generator.generate_large_scale_health_data(50000)
-                    
-                    seifa_processor = concurrent_processors['seifa_processor']
-                    health_processor = concurrent_processors['health_processor']
-                    memory_optimizer = concurrent_processors['memory_optimizer']
-                    
-                    # Integrated processing
-                    processed_seifa = seifa_processor._validate_seifa_data(seifa_data)
-                    validated_health = health_processor._validate_health_data(health_data)
-                    
-                    optimized_seifa = memory_optimizer.optimize_data_types(processed_seifa, data_category="seifa")
-                    aggregated_health = health_processor._aggregate_by_sa2(validated_health)
-                    
-                    # Integration
-                    integrated_data = optimized_seifa.join(
-                        aggregated_health, left_on="sa2_code_2021", right_on="sa2_code", how="left"
-                    )
-                    
-                    result_data = integrated_data
-                    workflow_type = "integrated"
-                
-                return {
-                    'scenario_name': scenario_name,
-                    'scenario_id': scenario_id,
-                    'workflow_type': workflow_type,
-                    'records_processed': len(result_data),
-                    'columns_count': len(result_data.columns),
-                    'success': True
-                }
+                    # Normal lock order
+                    with lock1:
+                        time.sleep(0.01)
+                        with lock2:
+                            data = self._create_small_dataframe(50)
+                            time.sleep(0.01)
+                            return len(data)
+            except Exception as e:
+                logger.error(f"Thread {thread_id} failed", error=str(e))
+                raise
         
-        # Execute workflows concurrently
-        num_concurrent_workflows = 16
-        workflow_tasks = []
-        
-        for i in range(num_concurrent_workflows):
-            scenario = workflow_scenarios[i % len(workflow_scenarios)]
-            workflow_tasks.append((scenario, i))
-        
-        integration_start = time.time()
-        
-        with ThreadPoolExecutor(max_workers=num_concurrent_workflows) as executor:
-            futures = [
-                executor.submit(execute_integrated_workflow, scenario, scenario_id)
-                for scenario, scenario_id in workflow_tasks
-            ]
+        # Test with timeout to detect deadlocks
+        with self.profiler.profile_operation("deadlock_detection"):
+            start_time = time.time()
             
-            integration_results = []
-            for future in concurrent.futures.as_completed(futures, timeout=480):
+            with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                # Submit tasks with different lock orders
+                futures = []
+                for i in range(num_threads):
+                    reverse = i % 2 == 1  # Alternate lock order
+                    future = executor.submit(potential_deadlock_task, i, reverse)
+                    futures.append(future)
+                
+                # Wait for completion with timeout
                 try:
-                    result = future.result()
-                    integration_results.append(result)
-                except Exception as e:
-                    logger.error(f"Integrated workflow failed: {e}")
-                    integration_results.append({'success': False, 'error': str(e)})
+                    results = []
+                    for future in concurrent.futures.as_completed(futures, timeout=10.0):
+                        results.append(future.result())
+                    
+                    execution_time = time.time() - start_time
+                    
+                    # Deadlock assertions
+                    assert len(results) == num_threads, f"Deadlock detected: only {len(results)}/{num_threads} completed"
+                    assert execution_time < 5.0, f"Execution too slow, possible deadlock: {execution_time:.2f}s"
+                    
+                except concurrent.futures.TimeoutError:
+                    pytest.fail("Deadlock detected: operations timed out")
         
-        integration_total_time = time.time() - integration_start
+        logger.info("Deadlock detection test completed", execution_time=execution_time)
+    
+    def test_resource_tracking_under_load(self):
+        """Test resource tracking accuracy under concurrent load."""
+        num_operations = 10
+        operation_results = []
         
-        # Analyze cross-component integration performance
-        successful_workflows = [r for r in integration_results if r.get('success', False)]
-        failed_workflows = [r for r in integration_results if not r.get('success', False)]
+        def tracked_operation(operation_id):
+            """Operation with resource tracking."""
+            self.resource_tracker.start_operation_tracking(
+                f"concurrent_op_{operation_id}", 
+                "concurrent_test_operation"
+            )
+            
+            try:
+                # Perform resource-intensive operation
+                data = self._create_test_dataframe(2000)
+                processed = self._process_dataframe(data)
+                
+                # Simulate additional resource usage
+                temp_data = [self._create_small_dataframe(100) for _ in range(10)]
+                
+                return len(processed)
+                
+            finally:
+                summary = self.resource_tracker.stop_operation_tracking(f"concurrent_op_{operation_id}")
+                operation_results.append(summary)
         
-        success_rate = len(successful_workflows) / num_concurrent_workflows
-        total_records_processed = sum(r['records_processed'] for r in successful_workflows)
-        integration_throughput = total_records_processed / integration_total_time
+        # Run concurrent tracked operations
+        with self.profiler.profile_operation("resource_tracking_load"):
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = [executor.submit(tracked_operation, i) for i in range(num_operations)]
+                processing_results = [future.result() for future in concurrent.futures.as_completed(futures)]
         
-        # Workflow type distribution
-        workflow_types = {}
-        for result in successful_workflows:
-            wf_type = result['workflow_type']
-            workflow_types[wf_type] = workflow_types.get(wf_type, 0) + 1
+        # Verify resource tracking
+        assert len(operation_results) == num_operations, f"Tracking failed: {len(operation_results)}/{num_operations}"
         
-        # Cross-component integration validation
-        assert len(failed_workflows) == 0, f"All {num_concurrent_workflows} workflows should succeed"
-        assert success_rate >= 0.95, f"Integration success rate {success_rate:.1%} should be ≥95%"
-        assert integration_total_time < 360, f"Integration took {integration_total_time:.1f}s, expected <360s"
-        assert integration_throughput > 2000, f"Integration throughput {integration_throughput:.0f} records/s should be >2000"
-        assert len(workflow_types) >= 3, "Should successfully execute multiple workflow types"
+        # Check resource tracking accuracy
+        for result in operation_results:
+            assert 'memory_growth_mb' in result, "Memory tracking missing"
+            assert 'duration_seconds' in result, "Duration tracking missing"
+            assert 'resource_efficiency' in result, "Efficiency calculation missing"
+            
+            # Reasonable bounds checks
+            assert result['duration_seconds'] > 0, "Invalid duration"
+            assert 0 <= result['resource_efficiency'] <= 100, "Invalid efficiency score"
         
-        logger.info(f"Cross-component integration: {num_concurrent_workflows} workflows, "
-                   f"{integration_total_time:.1f}s, {success_rate:.1%} success rate")
+        logger.info("Resource tracking under load test completed",
+                   tracked_operations=len(operation_results),
+                   processing_results=len(processing_results))
+    
+    @pytest.mark.slow
+    def test_long_running_concurrent_operations(self):
+        """Test performance of long-running concurrent operations."""
+        duration_seconds = 30  # Run for 30 seconds
+        num_workers = 4
         
-        return {
-            'total_workflows': num_concurrent_workflows,
-            'success_rate': success_rate,
-            'total_time': integration_total_time,
-            'integration_throughput': integration_throughput,
-            'workflow_type_distribution': workflow_types,
-            'total_records_processed': total_records_processed,
-            'cross_component_integration_successful': True
-        }
+        def long_running_task(worker_id):
+            """Long-running task that processes data continuously."""
+            start_time = time.time()
+            iterations = 0
+            total_records = 0
+            
+            while time.time() - start_time < duration_seconds:
+                data = self._create_test_dataframe(1000)
+                processed = self._process_dataframe(data)
+                
+                iterations += 1
+                total_records += len(processed)
+                
+                # Small delay to prevent overwhelming the system
+                time.sleep(0.1)
+            
+            execution_time = time.time() - start_time
+            
+            return {
+                'worker_id': worker_id,
+                'iterations': iterations,
+                'total_records': total_records,
+                'execution_time': execution_time,
+                'throughput': total_records / execution_time
+            }
+        
+        # Run long-running concurrent operations
+        with self.profiler.profile_operation("long_running_concurrent"):
+            with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                futures = [executor.submit(long_running_task, i) for i in range(num_workers)]
+                results = [future.result() for future in concurrent.futures.as_completed(futures)]
+        
+        # Analyse long-running performance
+        total_iterations = sum(r['iterations'] for r in results)
+        total_records = sum(r['total_records'] for r in results)
+        avg_throughput = sum(r['throughput'] for r in results) / len(results)
+        
+        # Long-running performance assertions
+        assert len(results) == num_workers, f"Worker failure: {len(results)}/{num_workers} completed"
+        assert total_iterations > 0, "No iterations completed"
+        assert avg_throughput > 10, f"Throughput too low: {avg_throughput:.2f} records/s"
+        
+        # Check performance consistency
+        throughputs = [r['throughput'] for r in results]
+        throughput_variance = np.var(throughputs)
+        throughput_cv = np.std(throughputs) / np.mean(throughputs)
+        
+        assert throughput_cv < 0.5, f"High throughput variance: {throughput_cv:.2f}"
+        
+        logger.info("Long-running concurrent operations test completed",
+                   total_iterations=total_iterations,
+                   total_records=total_records,
+                   avg_throughput=avg_throughput,
+                   throughput_variance=throughput_variance)
+    
+    # Helper methods
+    def _create_test_dataframe(self, size: int) -> pd.DataFrame:
+        """Create test DataFrame."""
+        return pd.DataFrame({
+            'id': range(size),
+            'value': np.random.random(size),
+            'category': np.random.choice(['A', 'B', 'C'], size),
+            'timestamp': pd.date_range('2023-01-01', periods=size, freq='1H')
+        })
+    
+    def _create_small_dataframe(self, size: int) -> pd.DataFrame:
+        """Create small test DataFrame for quick operations."""
+        return pd.DataFrame({
+            'id': range(size),
+            'value': np.random.random(size)
+        })
+    
+    def _process_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Process DataFrame with typical operations."""
+        result = df.copy()
+        result['value_squared'] = result['value'] ** 2
+        result['category_encoded'] = pd.Categorical(result.get('category', 'A')).codes
+        return result
+    
+    @staticmethod
+    def _process_dataframe_static(df: pd.DataFrame) -> pd.DataFrame:
+        """Static method for process pool executor."""
+        result = df.copy()
+        result['value_squared'] = result['value'] ** 2
+        if 'category' in result.columns:
+            result['category_encoded'] = pd.Categorical(result['category']).codes
+        return result
+    
+    def _split_dataframe(self, df: pd.DataFrame, num_chunks: int) -> List[pd.DataFrame]:
+        """Split DataFrame into chunks."""
+        chunk_size = len(df) // num_chunks
+        chunks = []
+        
+        for i in range(num_chunks):
+            start_idx = i * chunk_size
+            if i == num_chunks - 1:  # Last chunk gets remaining rows
+                end_idx = len(df)
+            else:
+                end_idx = (i + 1) * chunk_size
+            
+            chunks.append(df.iloc[start_idx:end_idx].copy())
+        
+        return chunks
+    
+    def _analyse_parallel_scaling(self, results: List[Dict[str, Any]], test_type: str):
+        """Analyse parallel scaling efficiency."""
+        if len(results) < 2:
+            return
+        
+        # Calculate scaling efficiency
+        baseline = results[0]  # Single worker performance
+        
+        for result in results[1:]:
+            pool_size = result['pool_size']
+            speedup = baseline['execution_time'] / result['execution_time']
+            efficiency = speedup / pool_size
+            
+            result['speedup'] = speedup
+            result['efficiency'] = efficiency
+            
+            # Efficiency should be reasonable (above 50% for thread pools)
+            min_efficiency = 0.3 if test_type == "process_pool" else 0.5
+            assert efficiency > min_efficiency, f"Poor {test_type} efficiency: {efficiency:.2f} for {pool_size} workers"
+        
+        logger.info(f"{test_type} scaling analysis completed", 
+                   scaling_results=results)

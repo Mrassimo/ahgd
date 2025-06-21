@@ -1,0 +1,366 @@
+# Schema Migration Configuration for AHGD
+# Controls migration processes, rollback procedures, and data transformation settings
+
+migration_settings:
+  # General migration settings
+  enable_migrations: true
+  auto_detect_version: true
+  strict_version_checking: true
+  require_explicit_confirmation: true
+  
+  # Safety settings
+  backup_before_migration: true
+  validate_before_migration: true
+  validate_after_migration: true
+  rollback_on_validation_failure: true
+  
+  # Performance settings
+  batch_size: 1000
+  max_memory_usage_mb: 512
+  migration_timeout_minutes: 30
+  enable_progress_tracking: true
+  
+  # Parallel processing
+  enable_parallel_migration: true
+  max_worker_threads: 4
+  chunk_size: 100
+
+backup_settings:
+  # Backup configuration
+  enable_backup: true
+  backup_location: "backups/schema_migrations"
+  backup_format: "json"  # json, pickle, parquet
+  compress_backups: true
+  
+  # Backup retention
+  retention_days: 90
+  max_backup_size_gb: 10
+  auto_cleanup_old_backups: true
+  
+  # Backup verification
+  verify_backup_integrity: true
+  test_restore_process: false
+
+migration_strategies:
+  # Strategy definitions
+  strategies:
+    conservative:
+      description: "Safe migrations with extensive validation"
+      backup_required: true
+      validation_level: "strict"
+      rollback_enabled: true
+      parallel_processing: false
+      
+    standard:
+      description: "Balanced approach with good safety measures"
+      backup_required: true
+      validation_level: "normal"
+      rollback_enabled: true
+      parallel_processing: true
+      
+    aggressive:
+      description: "Fast migrations with minimal validation"
+      backup_required: false
+      validation_level: "basic"
+      rollback_enabled: false
+      parallel_processing: true
+      
+    development:
+      description: "Development environment with relaxed constraints"
+      backup_required: false
+      validation_level: "basic"
+      rollback_enabled: true
+      parallel_processing: true
+  
+  # Default strategy by environment
+  default_strategy:
+    production: "conservative"
+    staging: "standard"
+    development: "development"
+    testing: "aggressive"
+
+rollback_settings:
+  # Rollback configuration
+  enable_rollback: true
+  automatic_rollback_triggers:
+    - validation_failure
+    - migration_timeout
+    - data_corruption_detected
+    - user_cancellation
+  
+  # Rollback limits
+  max_rollback_attempts: 3
+  rollback_timeout_minutes: 15
+  preserve_rollback_logs: true
+  
+  # Rollback validation
+  validate_rollback_data: true
+  compare_with_backup: true
+  verify_schema_consistency: true
+
+data_transformation:
+  # Field mapping rules
+  field_mapping:
+    preserve_unknown_fields: false
+    case_sensitive_mapping: true
+    allow_partial_mapping: false
+    
+  # Data type conversions
+  type_conversions:
+    string_to_int: "strict"  # strict, permissive, skip
+    string_to_float: "strict"
+    date_parsing: "iso_format"
+    boolean_conversion: "strict"
+    
+  # Value transformations
+  value_transformations:
+    trim_whitespace: true
+    normalize_case: false
+    handle_null_values: "preserve"  # preserve, convert, reject
+    
+  # Validation during transformation
+  validate_transformations: true
+  stop_on_transformation_error: true
+  log_transformation_warnings: true
+
+error_handling:
+  # Error response strategies
+  error_strategies:
+    validation_error:
+      action: "stop"  # stop, skip, log_and_continue
+      max_errors: 10
+      error_threshold_percent: 5.0
+      
+    transformation_error:
+      action: "log_and_continue"
+      max_errors: 100
+      error_threshold_percent: 10.0
+      
+    migration_error:
+      action: "rollback"
+      retry_attempts: 2
+      retry_delay_seconds: 5
+  
+  # Error reporting
+  detailed_error_messages: true
+  include_error_context: true
+  save_error_reports: true
+  error_report_format: "json"
+
+logging:
+  # Migration logging
+  log_level: "INFO"
+  log_file: "logs/schema_migrations.log"
+  log_rotation: true
+  max_log_size_mb: 50
+  
+  # Log content
+  log_migration_start: true
+  log_migration_progress: true
+  log_migration_completion: true
+  log_rollback_operations: true
+  log_validation_results: true
+  
+  # Performance logging
+  log_timing_information: true
+  log_memory_usage: true
+  log_throughput_metrics: true
+
+monitoring:
+  # Migration monitoring
+  enable_monitoring: true
+  progress_update_interval_seconds: 30
+  memory_check_interval_seconds: 60
+  
+  # Alerts
+  enable_alerts: false
+  alert_on_long_migrations: true
+  long_migration_threshold_minutes: 10
+  alert_on_high_error_rate: true
+  error_rate_threshold_percent: 5.0
+  
+  # Metrics collection
+  collect_performance_metrics: true
+  metrics_retention_days: 30
+
+# Schema-specific migration configurations
+schema_migrations:
+  # Geographic schemas
+  SA2Coordinates:
+    migration_strategy: "conservative"
+    validation_level: "strict"
+    backup_required: true
+    custom_validators:
+      - validate_coordinate_precision
+      - check_boundary_topology
+    
+  SA2GeometryValidation:
+    migration_strategy: "standard"
+    validation_level: "strict"
+    backup_required: true
+    
+  SA2BoundaryRelationship:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: true
+  
+  # Health schemas
+  HealthIndicator:
+    migration_strategy: "conservative"
+    validation_level: "strict"
+    backup_required: true
+    custom_validators:
+      - validate_clinical_ranges
+      - check_statistical_significance
+    
+  MortalityData:
+    migration_strategy: "conservative"
+    validation_level: "strict"
+    backup_required: true
+    custom_validators:
+      - validate_icd10_codes
+      - check_age_consistency
+  
+  # SEIFA schemas
+  SEIFAScore:
+    migration_strategy: "conservative"
+    validation_level: "strict"
+    backup_required: true
+    custom_validators:
+      - validate_seifa_calculations
+      - check_ranking_consistency
+  
+  # Census schemas
+  CensusDemographics:
+    migration_strategy: "standard"
+    validation_level: "strict"
+    backup_required: true
+    custom_validators:
+      - validate_population_totals
+      - check_age_group_consistency
+    
+  CensusEducation:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: true
+    
+  CensusEmployment:
+    migration_strategy: "standard"
+    validation_level: "normal" 
+    backup_required: true
+    custom_validators:
+      - validate_labour_force_totals
+      - check_unemployment_rates
+    
+  CensusHousing:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: true
+  
+  # Mortality schemas
+  MortalityRecord:
+    migration_strategy: "conservative"
+    validation_level: "strict"
+    backup_required: true
+    custom_validators:
+      - validate_death_certificates
+      - check_geographic_consistency
+    
+  MortalityStatistics:
+    migration_strategy: "standard"
+    validation_level: "strict"
+    backup_required: true
+    
+  MortalityTrend:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: false
+  
+  # Environmental schemas
+  WeatherObservation:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: false
+    custom_validators:
+      - validate_weather_ranges
+      - check_observation_quality
+    
+  ClimateStatistics:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: true
+    
+  EnvironmentalHealthIndex:
+    migration_strategy: "standard"
+    validation_level: "normal"
+    backup_required: false
+
+# Version-specific migration rules
+version_migrations:
+  "1.0.0_to_1.1.0":
+    migration_file: "002_enhanced_validation.py"
+    description: "Add enhanced validation fields and quality metrics"
+    estimated_duration_minutes: 5
+    breaking_changes: false
+    data_backup_required: false
+    
+    transformations:
+      - add_field: "data_quality_score"
+        default_value: 85.0
+      - add_field: "validation_timestamp"
+        default_value: "current_timestamp"
+      - add_field: "source_reliability"
+        default_value: "medium"
+    
+    validation_rules:
+      - validate_quality_score_range
+      - check_timestamp_format
+  
+  "1.1.0_to_2.0.0":
+    migration_file: "003_new_schema_types.py"
+    description: "Introduce new schema types and Pydantic v2 migration"
+    estimated_duration_minutes: 15
+    breaking_changes: true
+    data_backup_required: true
+    
+    transformations:
+      - update_validators: "pydantic_v2_syntax"
+      - add_schemas: ["census", "mortality", "environmental"]
+      - enhance_base_schema: "thread_safety"
+    
+    validation_rules:
+      - validate_pydantic_v2_compatibility
+      - check_new_schema_requirements
+      - verify_thread_safety
+  
+  "1.0.0_to_2.0.0":
+    migration_files: ["002_enhanced_validation.py", "003_new_schema_types.py"]
+    description: "Complete migration from initial to current version"
+    estimated_duration_minutes: 20
+    breaking_changes: true
+    data_backup_required: true
+    
+    multi_step_migration: true
+    intermediate_validation: true
+    rollback_checkpoints: true
+
+# Testing configuration
+testing:
+  # Migration testing
+  test_migrations: true
+  test_data_location: "tests/fixtures/migration_data"
+  test_rollbacks: true
+  
+  # Test scenarios
+  test_scenarios:
+    - empty_dataset
+    - small_dataset
+    - large_dataset
+    - malformed_data
+    - edge_cases
+    - concurrent_access
+  
+  # Performance testing
+  performance_tests: true
+  benchmark_against_baseline: true
+  memory_leak_detection: true

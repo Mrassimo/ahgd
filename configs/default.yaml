@@ -1,0 +1,530 @@
+# AHGD Default Configuration
+# Base configuration that applies to all environments
+# Environment-specific files override these defaults
+
+# =============================================================================
+# APPLICATION METADATA
+# =============================================================================
+
+app:
+  name: "Australian Health Geographic Data (AHGD)"
+  version: "1.0.0"
+  description: "Comprehensive Australian health and geographic data processing pipeline"
+  author: "AHGD Team"
+  license: "MIT"
+  
+  # Application settings
+  timezone: "Australia/Sydney"
+  locale: "en_AU"
+  date_format: "%Y-%m-%d"
+  datetime_format: "%Y-%m-%d %H:%M:%S"
+
+# =============================================================================
+# CORE SYSTEM CONFIGURATION
+# =============================================================================
+
+system:
+  # Process settings
+  max_workers: 4
+  worker_timeout: 3600  # 1 hour
+  graceful_shutdown_timeout: 30
+  
+  # Memory management
+  memory:
+    limit_gb: 8
+    warning_threshold: 0.8
+    cleanup_interval: 300  # 5 minutes
+    gc_threshold: 1024  # MB
+  
+  # Temporary file management
+  temp:
+    dir: "./temp"
+    cleanup_on_startup: true
+    max_age_hours: 24
+    max_size_gb: 5
+
+# =============================================================================
+# DATA PROCESSING CONFIGURATION
+# =============================================================================
+
+data_processing:
+  # Pipeline settings
+  pipeline:
+    stages: ["extract", "transform", "validate", "load"]
+    parallel_stages: false
+    stage_timeout: 1800  # 30 minutes
+    continue_on_error: false
+    max_retries: 3
+    retry_delay: 60  # seconds
+  
+  # Data paths
+  paths:
+    raw: "./data_raw"
+    processed: "./data_processed"
+    cache: "./cache"
+    temp: "./temp"
+    archive: "./archive"
+    logs: "./logs"
+    configs: "./configs"
+    schemas: "./schemas"
+  
+  # Processing settings
+  processing:
+    chunk_size: 10000
+    batch_size: 1000
+    memory_limit_per_worker: 2048  # MB
+    max_file_size_gb: 10
+    compression: "gzip"
+    format_preference: ["parquet", "csv", "json"]
+  
+  # Caching
+  cache:
+    enabled: true
+    type: "file"  # file, redis, memory
+    ttl: 3600  # 1 hour
+    max_size_gb: 5
+    compression: true
+    
+  # Geographic processing
+  geographic:
+    default_crs: "EPSG:4326"  # WGS84
+    australian_crs: "EPSG:3577"  # Australian Albers
+    spatial_index: "rtree"
+    simplify_tolerance: 0.001
+    buffer_distance: 1000  # meters
+    
+  # Data validation
+  validation:
+    strict_mode: true
+    null_threshold: 0.1  # 10% nulls allowed
+    duplicate_threshold: 0.05  # 5% duplicates allowed
+    outlier_detection: true
+    schema_validation: true
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+database:
+  # Connection settings
+  connection:
+    pool_size: 10
+    max_overflow: 20
+    pool_timeout: 30
+    pool_recycle: 3600
+    pool_pre_ping: true
+    echo: false
+  
+  # Query settings
+  query:
+    timeout: 300  # 5 minutes
+    fetch_size: 1000
+    batch_size: 500
+    
+  # Backup settings
+  backup:
+    enabled: true
+    interval: "daily"
+    retention_days: 30
+    compression: true
+    location: "./backups"
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+
+api:
+  # Server settings
+  server:
+    host: "0.0.0.0"
+    port: 8000
+    workers: 4
+    timeout: 300
+    keep_alive: 2
+    max_requests: 1000
+    max_requests_jitter: 50
+  
+  # Security
+  security:
+    cors:
+      enabled: true
+      origins: []
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+      headers: ["*"]
+      credentials: false
+    
+    rate_limiting:
+      enabled: true
+      per_minute: 60
+      burst: 100
+      
+    authentication:
+      enabled: false
+      type: "jwt"  # jwt, api_key, oauth
+      secret_key: "${secret:api_secret_key}"
+      token_expiry_hours: 24
+  
+  # Request/Response
+  request:
+    max_size: "10MB"
+    timeout: 60
+    
+  response:
+    compression: true
+    cache_control: "no-cache"
+    
+  # Documentation
+  docs:
+    enabled: true
+    title: "AHGD API"
+    description: "Australian Health Geographic Data API"
+    version: "1.0.0"
+    url: "/docs"
+    redoc_url: "/redoc"
+
+# =============================================================================
+# EXTERNAL SERVICES CONFIGURATION
+# =============================================================================
+
+external_services:
+  # Australian Bureau of Statistics
+  abs:
+    base_url: "https://api.data.abs.gov.au"
+    timeout: 30
+    rate_limit: 1.0  # requests per second
+    retry_attempts: 3
+    retry_delay: 5
+    
+  # Australian Institute of Health and Welfare
+  aihw:
+    base_url: "https://www.aihw.gov.au/reports-data"
+    timeout: 30
+    rate_limit: 0.5
+    retry_attempts: 3
+    retry_delay: 10
+    
+  # Bureau of Meteorology
+  bom:
+    base_url: "http://www.bom.gov.au/catalogue/data-feeds"
+    timeout: 30
+    rate_limit: 0.5
+    retry_attempts: 3
+    retry_delay: 10
+    
+  # OpenStreetMap
+  osm:
+    base_url: "https://overpass-api.de/api/interpreter"
+    timeout: 60
+    rate_limit: 0.2  # Conservative rate limiting
+    retry_attempts: 2
+    retry_delay: 30
+
+# =============================================================================
+# MONITORING CONFIGURATION
+# =============================================================================
+
+monitoring:
+  # Health checks
+  health_checks:
+    enabled: true
+    interval: 300  # 5 minutes
+    timeout: 30
+    
+    checks:
+      database:
+        enabled: true
+        query: "SELECT 1"
+        timeout: 10
+        
+      file_system:
+        enabled: true
+        paths: ["./data_raw", "./data_processed", "./logs"]
+        
+      external_services:
+        enabled: false
+        urls: []
+        
+      memory:
+        enabled: true
+        threshold: 90  # percent
+        
+      disk:
+        enabled: true
+        threshold: 85  # percent
+  
+  # Metrics collection
+  metrics:
+    enabled: true
+    collection_interval: 60  # seconds
+    retention_hours: 168  # 1 week
+    
+    system:
+      enabled: true
+      cpu: true
+      memory: true
+      disk: true
+      network: true
+      
+    application:
+      enabled: true
+      requests: true
+      processing_time: true
+      error_rate: true
+      throughput: true
+  
+  # Alerting
+  alerts:
+    enabled: true
+    
+    thresholds:
+      cpu_usage: 80
+      memory_usage: 85
+      disk_usage: 90
+      error_rate: 10  # errors per hour
+      response_time: 5000  # milliseconds
+    
+    notifications:
+      email:
+        enabled: false
+        smtp_server: "localhost"
+        smtp_port: 587
+        use_tls: true
+        from: "ahgd-alerts@example.com"
+        to: []
+        
+      webhook:
+        enabled: false
+        url: ""
+        headers: {}
+        
+      slack:
+        enabled: false
+        webhook_url: ""
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+
+logging:
+  # Integration with dedicated logging system
+  use_dedicated_config: true
+  config_file: "logging_config.yaml"
+  
+  # Fallback logging settings
+  fallback:
+    level: "INFO"
+    format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    handlers: ["console", "file"]
+    
+    console:
+      enabled: true
+      level: "INFO"
+      
+    file:
+      enabled: true
+      path: "./logs/ahgd.log"
+      level: "DEBUG"
+      max_size: "50MB"
+      backup_count: 5
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+
+security:
+  # Data encryption
+  encryption:
+    enabled: true
+    algorithm: "AES-256-GCM"
+    key_rotation_days: 90
+    
+  # Sensitive data handling
+  sensitive_data:
+    mask_in_logs: true
+    patterns:
+      - "password"
+      - "secret"
+      - "token"
+      - "key"
+      - "credential"
+    
+  # Audit logging
+  audit:
+    enabled: true
+    log_file: "./logs/audit.log"
+    events:
+      - "authentication"
+      - "authorization"
+      - "data_access"
+      - "configuration_change"
+      - "system_admin"
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+
+features:
+  # Core features
+  data_processing: true
+  api_server: true
+  web_interface: true
+  
+  # Advanced features
+  machine_learning: false
+  real_time_processing: false
+  advanced_analytics: true
+  
+  # Integrations
+  cloud_storage: false
+  message_queue: false
+  search_engine: false
+  
+  # Experimental features
+  experimental: false
+  beta_features: false
+
+# =============================================================================
+# PERFORMANCE TUNING
+# =============================================================================
+
+performance:
+  # Database optimization
+  database:
+    connection_pooling: true
+    query_caching: true
+    index_optimization: true
+    
+  # Application optimization
+  application:
+    lazy_loading: true
+    response_caching: true
+    compression: true
+    minification: true
+    
+  # Resource optimization
+  resources:
+    cpu_affinity: false
+    memory_mapping: true
+    io_optimization: true
+    
+  # Profiling
+  profiling:
+    enabled: false
+    output_dir: "./logs/profiles"
+    sample_rate: 0.01
+
+# =============================================================================
+# INTEGRATION SETTINGS
+# =============================================================================
+
+integrations:
+  # Message queues
+  message_queue:
+    enabled: false
+    type: "redis"  # redis, rabbitmq, kafka
+    host: "localhost"
+    port: 6379
+    
+  # Search engines
+  search_engine:
+    enabled: false
+    type: "elasticsearch"
+    host: "localhost"
+    port: 9200
+    
+  # Cloud storage
+  cloud_storage:
+    enabled: false
+    provider: "aws"  # aws, azure, gcp
+    bucket: "ahgd-data"
+    
+  # Observability
+  observability:
+    tracing:
+      enabled: false
+      provider: "opentelemetry"
+      endpoint: "http://localhost:4317"
+      
+    metrics:
+      enabled: false
+      provider: "prometheus"
+      port: 9090
+      
+    logging:
+      enabled: false
+      provider: "elasticsearch"
+      host: "localhost"
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+
+dev_tools:
+  # Code quality
+  linting:
+    enabled: true
+    tools: ["flake8", "pylint", "mypy"]
+    
+  formatting:
+    enabled: true
+    tools: ["black", "isort"]
+    
+  testing:
+    enabled: true
+    coverage_threshold: 80
+    
+  # Documentation
+  documentation:
+    auto_generate: true
+    format: "sphinx"
+    
+  # Debugging
+  debugging:
+    enabled: false
+    profiler: "cProfile"
+    memory_profiler: false
+
+# =============================================================================
+# COMPLIANCE AND GOVERNANCE
+# =============================================================================
+
+compliance:
+  # Data governance
+  data_governance:
+    retention_policy: "7_years"
+    classification: "internal"
+    anonymization: true
+    
+  # Privacy
+  privacy:
+    gdpr_compliance: true
+    data_minimization: true
+    consent_management: true
+    
+  # Audit
+  audit:
+    trail_enabled: true
+    retention_years: 7
+    tamper_protection: true
+
+# =============================================================================
+# METADATA AND SCHEMAS
+# =============================================================================
+
+metadata:
+  # Schema management
+  schemas:
+    validation_enabled: true
+    evolution_enabled: true
+    compatibility_check: true
+    
+  # Data lineage
+  lineage:
+    tracking_enabled: true
+    visualization: false
+    
+  # Data catalog
+  catalog:
+    enabled: true
+    auto_discovery: true
+    documentation: true

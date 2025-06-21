@@ -1,0 +1,38 @@
+AHGD Data Version: 1.0.0
+
+Format: MAJOR.MINOR.PATCH
+
+MAJOR version changes when:
+- Incompatible changes to data structure or schema
+- Removal of existing data fields
+- Complete reorganization of data
+
+MINOR version changes when:
+- New data sources added
+- New fields added to existing datasets
+- Backwards-compatible enhancements
+
+PATCH version changes when:
+- Bug fixes in data processing
+- Data quality improvements
+- Minor corrections or updates
+
+Current Version Details:
+=======================
+Version: 1.0.0
+Date: 2025-06-20
+Author: AHGD Data Team
+
+Changes:
+- Initial data structure established
+- Base datasets configured:
+  * data_raw/: Raw data storage
+  * data_processed/: Processed data storage
+
+Data Sources:
+- [List your initial data sources here]
+
+Notes:
+- All data is tracked using DVC
+- See CHANGELOG_DATA.md for detailed change history
+- See data_manifest.json for current data inventory

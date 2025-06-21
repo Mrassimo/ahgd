@@ -1,35 +1,83 @@
 """
-Performance monitoring and optimization package for Australian Health Analytics Dashboard.
+Performance monitoring, benchmarking and optimisation suite for AHGD.
 
-This package provides comprehensive performance monitoring, caching, and optimization
-features for production deployment.
-
-Components:
-- Advanced caching with Redis compatibility
-- Performance metrics collection
-- Database query optimization
-- Lazy loading and pagination
-- Production deployment features
-- Health monitoring and alerting
+This package provides comprehensive performance monitoring capabilities including:
+- Memory and CPU profiling
+- I/O performance monitoring
+- Database query performance tracking
+- Real-time system monitoring
+- Performance benchmarking and regression testing
+- Optimisation recommendations
 """
 
-from .cache import CacheManager, CacheConfig
-from .monitoring import PerformanceMonitor, MetricsCollector
-from .optimization import QueryOptimizer, DataLoader
-from .health import HealthChecker, HealthStatus
-from .alerts import AlertManager, AlertConfig
+__version__ = "0.1.0"
+
+from .profiler import (
+    MemoryProfiler,
+    CPUProfiler,
+    IOProfiler,
+    QueryProfiler,
+    PerformanceProfiler,
+    profile_memory,
+    profile_cpu,
+    profile_io,
+    profile_query
+)
+
+from .benchmarks import (
+    ETLBenchmarkSuite,
+    DataProcessingBenchmarks,
+    ValidationBenchmarks,
+    LoadingBenchmarks,
+    RegressionTestFramework
+)
+
+from .monitoring import (
+    SystemMonitor,
+    PerformanceMonitor,
+    ResourceTracker,
+    AlertManager,
+    PerformanceReporter
+)
+
+from .optimisation import (
+    PerformanceAnalyzer,
+    BottleneckDetector,
+    OptimisationRecommender,
+    MemoryOptimiser,
+    QueryOptimiser
+)
 
 __all__ = [
-    'CacheManager',
-    'CacheConfig',
-    'PerformanceMonitor',
-    'MetricsCollector',
-    'QueryOptimizer',
-    'DataLoader',
-    'HealthChecker',
-    'HealthStatus',
-    'AlertManager',
-    'AlertConfig'
+    # Profiling
+    "MemoryProfiler",
+    "CPUProfiler", 
+    "IOProfiler",
+    "QueryProfiler",
+    "PerformanceProfiler",
+    "profile_memory",
+    "profile_cpu",
+    "profile_io",
+    "profile_query",
+    
+    # Benchmarking
+    "ETLBenchmarkSuite",
+    "DataProcessingBenchmarks",
+    "ValidationBenchmarks",
+    "LoadingBenchmarks",
+    "RegressionTestFramework",
+    
+    # Monitoring
+    "SystemMonitor",
+    "PerformanceMonitor",
+    "ResourceTracker",
+    "AlertManager",
+    "PerformanceReporter",
+    
+    # Optimisation
+    "PerformanceAnalyzer",
+    "BottleneckDetector",
+    "OptimisationRecommender",
+    "MemoryOptimiser",
+    "QueryOptimiser"
 ]
-
-__version__ = "1.0.0"

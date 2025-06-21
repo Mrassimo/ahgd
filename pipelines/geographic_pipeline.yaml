@@ -1,0 +1,352 @@
+# Geographic Data Pipeline Configuration
+# Processes Australian geographic boundaries and spatial datasets
+# including SA boundaries, postcodes, and geographic reference data
+
+pipeline:
+  name: "geographic_pipeline"
+  description: "Extract, transform, and validate Australian geographic datasets"
+  version: "1.0.0"
+
+orchestration:
+  execution_mode: "sequential"  # Geographic data has dependencies
+  max_workers: 2
+  timeout: "PT3H"  # 3 hours
+  enable_checkpoints: true
+  checkpoint_retention_days: 14
+
+stages:
+  # Extract ABS Statistical Area boundaries
+  - name: "extract_sa_boundaries"
+    type: "extractor"
+    class: "src.extractors.abs.StatisticalAreaExtractor"
+    config:
+      boundary_types: ["SA1", "SA2", "SA3", "SA4", "STE"]
+      year: 2021
+      format: "shapefile"
+      include_attributes: true
+      coordinate_system: "GDA2020"
+      simplification: "none"  # Full resolution for primary extract
+    prerequisites: []
+    timeout: "PT45M"
+    retry_attempts: 2
+    resource_requirements:
+      cpu: 1.0
+      memory: 4096  # Geographic data is memory intensive
+      disk: 8192    # Large shapefiles
+      network: 500  # Large downloads
+    validation_rules:
+      required_fields: ["SA2_CODE21", "SA2_NAME21", "geometry"]
+      geometry_validation: true
+      coordinate_system_check: "GDA2020"
+    tags:
+      data_source: "abs"
+      category: "boundaries"
+      resolution: "full"
+
+  # Extract postcode boundaries
+  - name: "extract_postcode_boundaries"
+    type: "extractor"
+    class: "src.extractors.abs.PostcodeExtractor"
+    config:
+      year: 2021
+      include_delivery_areas: true
+      format: "shapefile"
+      coordinate_system: "GDA2020"
+    prerequisites: []
+    timeout: "PT30M"
+    retry_attempts: 2
+    resource_requirements:
+      cpu: 1.0
+      memory: 2048
+      disk: 4096
+      network: 200
+    validation_rules:
+      required_fields: ["POSTCODE", "geometry"]
+      geometry_validation: true
+    tags:
+      data_source: "abs"
+      category: "postcodes"
+
+  # Extract geographic reference data
+  - name: "extract_geo_reference"
+    type: "extractor"
+    class: "src.extractors.abs.GeographicReferenceExtractor"
+    config:
+      reference_types:
+        - "locality_boundaries"
+        - "electoral_boundaries"
+        - "lga_boundaries"
+      year: 2021
+      format: "shapefile"
+    prerequisites: []
+    timeout: "PT20M"
+    retry_attempts: 2
+    resource_requirements:
+      cpu: 1.0
+      memory: 3072
+      disk: 2048
+    validation_rules:
+      geometry_validation: true
+    tags:
+      data_source: "abs"
+      category: "reference"
+
+  # Transform SA boundaries for different uses
+  - name: "transform_sa_boundaries"
+    type: "transformer"
+    class: "src.transformers.geographic.BoundaryTransformer"
+    config:
+      operations:
+        - name: "simplify_for_web"
+          simplification_tolerance: 0.001
+          output_suffix: "_simplified"
+        - name: "create_centroids"
+          output_type: "point"
+          output_suffix: "_centroids"
+        - name: "calculate_areas"
+          area_units: "square_km"
+        - name: "validate_topology"
+          repair_invalid: true
+      output_formats: ["geojson", "shapefile", "parquet"]
+      coordinate_systems: ["GDA2020", "WGS84"]
+    prerequisites: ["extract_sa_boundaries"]
+    timeout: "PT60M"
+    resource_requirements:
+      cpu: 3.0  # Geometric operations are CPU intensive
+      memory: 8192
+      disk: 4096
+    validation_rules:
+      topology_validation: true
+      area_validation: true
+      geometry_types: ["Polygon", "MultiPolygon"]
+    tags:
+      operation: "geometric_processing"
+
+  # Transform postcode data
+  - name: "transform_postcode_data"
+    type: "transformer"
+    class: "src.transformers.geographic.PostcodeTransformer"
+    config:
+      operations:
+        - name: "create_sa2_mapping"
+          method: "area_weighted"
+          threshold: 0.1
+        - name: "generate_hierarchies"
+          include_state: true
+          include_region: true
+        - name: "calculate_demographics"
+          population_data: "census_2021"
+      output_formats: ["csv", "json", "parquet"]
+    prerequisites: ["extract_postcode_boundaries", "transform_sa_boundaries"]
+    timeout: "PT30M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 4096
+    validation_rules:
+      mapping_validation: true
+      coverage_check: 0.98
+    tags:
+      operation: "spatial_join"
+
+  # Create geographic lookup tables
+  - name: "create_geo_lookups"
+    type: "transformer"
+    class: "src.transformers.geographic.GeographicLookupCreator"
+    config:
+      lookup_types:
+        - name: "sa2_to_postcode"
+          method: "dominant_overlap"
+          min_overlap: 0.1
+        - name: "postcode_to_sa2"
+          method: "area_weighted"
+          include_weights: true
+        - name: "sa2_hierarchy"
+          levels: ["SA1", "SA2", "SA3", "SA4", "STE"]
+        - name: "geographic_concordance"
+          source_year: 2021
+          target_years: [2016, 2011]
+      output_format: "csv"
+      include_metadata: true
+    prerequisites: ["transform_sa_boundaries", "transform_postcode_data"]
+    timeout: "PT20M"
+    resource_requirements:
+      cpu: 1.5
+      memory: 3072
+    validation_rules:
+      completeness_threshold: 0.95
+      logical_consistency: true
+    tags:
+      operation: "lookup_creation"
+
+  # Validate geographic data integrity
+  - name: "validate_geographic_data"
+    type: "validator"
+    class: "src.validators.geographic.GeographicDataValidator"
+    config:
+      validation_types:
+        - "topology_validation"
+        - "coordinate_system_validation"
+        - "attribute_validation"
+        - "coverage_validation"
+        - "hierarchy_validation"
+      tolerance_settings:
+        coordinate_precision: 6  # decimal places
+        area_tolerance: 0.01     # 1% tolerance
+        topology_tolerance: 0.001
+      reference_datasets:
+        - name: "abs_official_boundaries"
+          path: "reference/abs_boundaries_2021.shp"
+          validation_type: "geometric_comparison"
+    prerequisites: 
+      - "transform_sa_boundaries"
+      - "transform_postcode_data"
+      - "create_geo_lookups"
+    timeout: "PT45M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 6144
+    validation_rules:
+      topology_validity: 0.999
+      attribute_completeness: 0.98
+    tags:
+      operation: "quality_assurance"
+
+  # Load to spatial database
+  - name: "load_spatial_database"
+    type: "loader"
+    class: "src.loaders.spatial.PostGISLoader"
+    config:
+      database_connection:
+        host: "${SPATIAL_DB_HOST}"
+        database: "geographic_data"
+        schema: "boundaries_2021"
+      tables:
+        sa_boundaries: "sa_boundaries"
+        postcode_boundaries: "postcode_boundaries"
+        geographic_lookups: "geographic_lookups"
+        centroids: "area_centroids"
+      spatial_indexes: true
+      clustering_strategy: "spatial"
+      partition_strategy: "state"
+    prerequisites: ["validate_geographic_data"]
+    timeout: "PT60M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 8192
+      disk: 16384
+    validation_rules:
+      post_load_checks:
+        - "record_count_validation"
+        - "spatial_index_validation"
+        - "geometry_validation"
+    tags:
+      operation: "spatial_database_load"
+
+  # Export optimised web formats
+  - name: "export_web_geographic"
+    type: "loader"
+    class: "src.loaders.web.GeographicWebExporter"
+    config:
+      export_formats:
+        - format: "geojson"
+          simplification_levels: ["high", "medium", "low"]
+          compression: true
+        - format: "topojson"
+          quantisation: 1e4
+          compression: true
+        - format: "vector_tiles"
+          zoom_levels: [0, 5, 10, 15]
+          buffer: 64
+      optimisations:
+        coordinate_precision: 5
+        property_filtering: true
+        geometry_simplification: true
+      output_structure:
+        by_level: true
+        by_state: true
+        combined: true
+    prerequisites: ["load_spatial_database"]
+    timeout: "PT90M"
+    resource_requirements:
+      cpu: 4.0
+      memory: 12288
+      disk: 8192
+    tags:
+      operation: "web_optimisation"
+
+  # Create geographic metadata
+  - name: "create_geo_metadata"
+    type: "transformer"
+    class: "src.transformers.metadata.GeographicMetadataCreator"
+    config:
+      metadata_types:
+        - "spatial_extent"
+        - "attribute_statistics"
+        - "data_lineage"
+        - "quality_metrics"
+        - "coordinate_systems"
+      output_formats: ["json", "xml", "yaml"]
+      include_previews: true
+      thumbnail_size: "256x256"
+    prerequisites: ["export_web_geographic"]
+    timeout: "PT15M"
+    resource_requirements:
+      cpu: 1.0
+      memory: 2048
+    tags:
+      operation: "metadata_creation"
+
+# Resource limits
+resource_limits:
+  max_cpu_cores: 8
+  max_memory_mb: 32768  # Geographic processing needs more memory
+  max_disk_gb: 100      # Large spatial files
+  max_network_mbps: 1000
+
+# Monitoring configuration
+monitoring:
+  enable_metrics: true
+  enable_alerts: true
+  alert_thresholds:
+    stage_timeout_minutes: 120  # Longer timeouts for spatial processing
+    memory_usage_percent: 90
+    disk_usage_percent: 85
+    error_rate_percent: 2
+  metric_retention_days: 30
+  alert_recipients:
+    - "gis-team@example.com"
+    - "data-team@example.com"
+
+# Quality gates
+quality_gates:
+  - stage: "validate_geographic_data"
+    threshold: 0.98
+    action: "stop_on_failure"
+  - stage: "load_spatial_database"
+    threshold: 0.99
+    action: "alert_and_continue"
+
+# Spatial-specific configuration
+spatial_config:
+  default_coordinate_system: "EPSG:7844"  # GDA2020
+  web_coordinate_system: "EPSG:4326"      # WGS84
+  precision_tolerance: 0.001
+  area_units: "square_kilometres"
+  distance_units: "kilometres"
+
+# Data retention
+data_retention:
+  raw_data_days: 30
+  processed_data_days: 365
+  metadata_permanent: true
+  web_exports_days: 90
+
+# Schedule
+schedule:
+  frequency: "monthly"
+  day_of_month: 1
+  time: "01:00"
+  timezone: "Australia/Sydney"
+  dependencies:
+    - pipeline: "census_pipeline"
+      stage: "load_census_warehouse"

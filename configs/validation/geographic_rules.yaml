@@ -1,0 +1,344 @@
+# Geographic Validation Rules Configuration
+# Geographic and spatial validation settings for Australian health geography data
+
+version: "1.0"
+schema_version: "2024-01"
+
+# Australian geographic coordinate system settings
+coordinate_systems:
+  gda2020:
+    description: "Geocentric Datum of Australia 2020"
+    epsg_code: 7844
+    datum: "GDA2020"
+    ellipsoid: "GRS 1980"
+    prime_meridian: "Greenwich"
+    
+  gda94:
+    description: "Geocentric Datum of Australia 1994 (legacy)"
+    epsg_code: 4283
+    datum: "GDA94"
+    ellipsoid: "GRS 1980"
+    prime_meridian: "Greenwich"
+    
+  mga_zones:
+    description: "Map Grid of Australia zones"
+    zones:
+      - zone: 49
+        epsg_code: 7849
+        central_meridian: 111.0
+        coverage: "WA western"
+      - zone: 50
+        epsg_code: 7850
+        central_meridian: 117.0
+        coverage: "WA central and eastern"
+      - zone: 51
+        epsg_code: 7851
+        central_meridian: 123.0
+        coverage: "NT western, SA western"
+      - zone: 52
+        epsg_code: 7852
+        central_meridian: 129.0
+        coverage: "NT eastern, SA central"
+      - zone: 53
+        epsg_code: 7853
+        central_meridian: 135.0
+        coverage: "SA eastern, VIC western"
+      - zone: 54
+        epsg_code: 7854
+        central_meridian: 141.0
+        coverage: "VIC central, NSW western"
+      - zone: 55
+        epsg_code: 7855
+        central_meridian: 147.0
+        coverage: "NSW central, VIC eastern"
+      - zone: 56
+        epsg_code: 7856
+        central_meridian: 153.0
+        coverage: "NSW eastern, QLD southern"
+
+# Australian geographic boundaries
+geographic_boundaries:
+  australia_extent:
+    description: "Continental Australia and territories"
+    latitude_bounds:
+      min: -54.777  # Macquarie Island (southernmost Australian territory)
+      max: -9.142   # Boigu Island, Torres Strait (northernmost)
+    longitude_bounds:
+      min: 72.246   # Heard Island (westernmost Australian territory)
+      max: 167.998  # Norfolk Island (easternmost)
+      
+  continental_australia:
+    description: "Australian mainland bounds (excluding external territories)"
+    latitude_bounds:
+      min: -43.739  # South East Cape, Tasmania
+      max: -10.685  # Cape York, Queensland
+    longitude_bounds:
+      min: 113.155  # Steep Point, Western Australia
+      max: 153.639  # Cape Byron, New South Wales
+
+  state_territory_bounds:
+    NSW:
+      latitude_bounds: {min: -37.505, max: -28.157}
+      longitude_bounds: {min: 140.999, max: 153.639}
+    VIC:
+      latitude_bounds: {min: -39.200, max: -33.981}
+      longitude_bounds: {min: 140.961, max: 149.977}
+    QLD:
+      latitude_bounds: {min: -29.180, max: -10.685}
+      longitude_bounds: {min: 137.994, max: 153.552}
+    WA:
+      latitude_bounds: {min: -35.135, max: -13.689}
+      longitude_bounds: {min: 113.155, max: 129.002}
+    SA:
+      latitude_bounds: {min: -38.062, max: -25.996}
+      longitude_bounds: {min: 129.002, max: 141.003}
+    TAS:
+      latitude_bounds: {min: -43.739, max: -39.573}
+      longitude_bounds: {min: 143.784, max: 148.480}
+    NT:
+      latitude_bounds: {min: -26.000, max: -10.962}
+      longitude_bounds: {min: 129.002, max: 138.001}
+    ACT:
+      latitude_bounds: {min: -35.921, max: -35.124}
+      longitude_bounds: {min: 148.763, max: 149.399}
+
+# SA2 (Statistical Area Level 2) validation rules
+sa2_validation:
+  code_format:
+    pattern: "^[1-8][0-9]{8}$"
+    description: "SA2 codes must be 9 digits starting with state code"
+    severity: "error"
+    
+  state_prefix_mapping:
+    "1": "NSW"
+    "2": "VIC"
+    "3": "QLD"
+    "4": "SA"
+    "5": "WA"
+    "6": "TAS"
+    "7": "NT" 
+    "8": "ACT"
+    
+  population_density_ranges:
+    very_low: {min: 0.0, max: 0.1}      # Very remote areas
+    low: {min: 0.1, max: 1.0}           # Remote areas
+    medium: {min: 1.0, max: 10.0}       # Regional areas
+    high: {min: 10.0, max: 100.0}       # Suburban areas
+    very_high: {min: 100.0, max: 50000.0} # Urban areas
+    
+  area_size_ranges:
+    very_small: {min: 0.1, max: 1.0}    # Inner city areas
+    small: {min: 1.0, max: 10.0}        # Urban areas
+    medium: {min: 10.0, max: 100.0}     # Suburban areas
+    large: {min: 100.0, max: 1000.0}    # Regional areas
+    very_large: {min: 1000.0, max: 50000.0} # Remote areas
+
+# Postcode validation
+postcode_validation:
+  format_rules:
+    pattern: "^[0-9]{4}$"
+    description: "Australian postcodes are 4-digit numbers"
+    severity: "error"
+    
+  state_postcode_ranges:
+    NSW: {min: 1000, max: 2599, additional: [2619, 2620, 2640, 2641]}
+    ACT: {min: 2600, max: 2618, additional: [2900, 2901, 2902, 2903, 2904, 2905, 2906, 2911, 2912, 2913, 2914]}
+    VIC: {min: 3000, max: 3999, additional: [8000, 8001]}
+    QLD: {min: 4000, max: 4999, additional: [9000, 9001]}
+    SA: {min: 5000, max: 5999}
+    WA: {min: 6000, max: 6999}
+    TAS: {min: 7000, max: 7999}
+    NT: {min: 800, max: 999}
+
+# Spatial topology validation
+topology_validation:
+  geometry_checks:
+    valid_geometries:
+      description: "Check for valid polygon geometries"
+      enabled: true
+      severity: "error"
+      checks:
+        - "no_self_intersection"
+        - "valid_rings"
+        - "minimum_area_threshold"
+        - "coordinate_precision"
+        
+    minimum_area_threshold: 0.0001      # Minimum area in sq km
+    coordinate_precision: 0.000001      # 6 decimal places
+    
+  adjacency_validation:
+    check_sa2_adjacency: true
+    tolerance_metres: 100               # 100m tolerance for boundary matching
+    severity: "warning"
+    
+  containment_validation:
+    sa2_within_sa3: 
+      enabled: true
+      severity: "error"
+    sa3_within_sa4:
+      enabled: true  
+      severity: "error"
+    sa4_within_state:
+      enabled: true
+      severity: "error"
+
+# Coordinate validation rules
+coordinate_validation:
+  decimal_degrees:
+    latitude_validation:
+      min_value: -54.78     # Include all Australian territories
+      max_value: -9.14
+      precision_digits: 6    # Required decimal places
+      severity: "error"
+      
+    longitude_validation:
+      min_value: 72.24      # Include all Australian territories  
+      max_value: 168.0
+      precision_digits: 6
+      severity: "error"
+      
+  coordinate_quality:
+    null_island_check:
+      description: "Check for coordinates at (0,0) - Null Island"
+      enabled: true
+      severity: "error"
+      
+    duplicate_coordinates:
+      description: "Check for duplicate coordinate pairs"
+      enabled: true
+      tolerance_metres: 10
+      severity: "warning"
+      
+    precision_validation:
+      description: "Validate coordinate precision is appropriate"
+      min_precision_metres: 100    # Minimum precision required
+      severity: "info"
+
+# Distance and area calculations
+spatial_calculations:
+  distance_validation:
+    centroid_distance_checks:
+      description: "Validate distances between SA2 centroids"
+      min_distance_km: 0.1
+      max_distance_km: 4000    # Across Australia
+      severity: "info"
+      
+  area_validation:
+    area_calculation_method: "geodesic"  # More accurate for large areas
+    area_units: "square_kilometres"
+    
+    plausibility_checks:
+      population_density_check:
+        description: "Check population density is plausible"
+        max_density_per_sqkm: 50000
+        min_density_per_sqkm: 0.0
+        severity: "warning"
+
+# Geographic reference data
+reference_datasets:
+  abs_asgs_2021:
+    description: "Australian Statistical Geography Standard 2021"
+    source: "Australian Bureau of Statistics"
+    url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3"
+    refresh_frequency: "annual"
+    validation_scope: ["sa2_codes", "boundaries", "hierarchies"]
+    
+  australia_post_postcodes:
+    description: "Australia Post Postcode Database"
+    source: "Australia Post"
+    refresh_frequency: "monthly"
+    validation_scope: ["postcode_ranges", "postcode_locality_mapping"]
+    
+  gnaf_addresses:
+    description: "Geocoded National Address File"
+    source: "PSMA Australia"
+    refresh_frequency: "quarterly"
+    validation_scope: ["address_geocoding", "postcode_validation"]
+
+# Coverage validation
+coverage_validation:
+  completeness_checks:
+    sa2_coverage:
+      description: "Check SA2 coverage completeness"
+      expected_sa2_count: 2310  # Approximate number of SA2s in Australia
+      tolerance: 0.05           # 5% tolerance
+      severity: "warning"
+      
+    state_coverage:
+      description: "Check all states/territories are represented"
+      required_states: ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "NT", "ACT"]
+      severity: "error"
+      
+  population_coverage:
+    description: "Check population coverage vs ABS totals"
+    reference_total_population: 25700000  # Approximate Australian population
+    tolerance: 0.10                       # 10% tolerance
+    severity: "warning"
+
+# Spatial relationship validation
+spatial_relationships:
+  hierarchy_validation:
+    sa2_sa3_relationship:
+      description: "Validate SA2 to SA3 hierarchy"
+      check_method: "code_prefix"
+      severity: "error"
+      
+    sa3_sa4_relationship:
+      description: "Validate SA3 to SA4 hierarchy"
+      check_method: "code_prefix"
+      severity: "error"
+      
+  cross_boundary_validation:
+    interstate_boundary_check:
+      description: "Check for SA2s crossing state boundaries"
+      enabled: true
+      severity: "error"
+      
+# Performance settings for geographic validation
+performance:
+  spatial_indexing:
+    enable_rtree_index: true
+    enable_geohash_index: true
+    
+  geometry_simplification:
+    simplify_for_validation: true
+    simplification_tolerance: 0.001  # 1m tolerance
+    
+  parallel_processing:
+    enable_parallel_spatial_ops: true
+    max_workers: 4
+    chunk_size: 500
+    
+  caching:
+    cache_spatial_calculations: true
+    cache_ttl_hours: 24
+    cache_boundary_queries: true
+
+# Custom geographic validators
+custom_validators:
+  indigenous_lands_validator:
+    description: "Validate indigenous land classifications"
+    function: "validate_indigenous_land_areas"
+    parameters:
+      indigenous_area_threshold: 0.1
+      
+  coastal_area_validator:
+    description: "Validate coastal area classifications"
+    function: "validate_coastal_area_flags"
+    parameters:
+      coastal_distance_threshold_km: 5.0
+      
+  urban_rural_validator:
+    description: "Validate urban/rural area classifications"
+    function: "validate_urban_rural_classification"
+    parameters:
+      population_density_urban_threshold: 1.0
+      
+  island_territory_validator:
+    description: "Validate island and territory data"
+    function: "validate_island_territories"
+    parameters:
+      include_external_territories: true
+      check_norfolk_island: true
+      check_christmas_island: true
+      check_cocos_islands: true

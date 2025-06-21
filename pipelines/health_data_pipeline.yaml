@@ -1,0 +1,271 @@
+# Health Data Pipeline Configuration
+# Processes health-related datasets including AIHW mortality data,
+# PBS pharmaceutical data, and PHIDU health indicators
+
+pipeline:
+  name: "health_data_pipeline"
+  description: "Extract, transform, and validate Australian health datasets"
+  version: "1.0.0"
+  
+orchestration:
+  execution_mode: "parallel"
+  max_workers: 4
+  timeout: "PT2H"  # 2 hours
+  enable_checkpoints: true
+  checkpoint_retention_days: 7
+
+stages:
+  # Extract AIHW mortality data
+  - name: "extract_aihw_mortality"
+    type: "extractor"
+    class: "src.extractors.aihw.AIHWMortalityExtractor"
+    config:
+      source_url: "https://www.aihw.gov.au/reports/life-expectancy-death/deaths-in-australia/data"
+      data_types: ["grim_book", "mortality_tables"]
+      output_format: "parquet"
+      chunk_size: 10000
+    prerequisites: []
+    timeout: "PT30M"
+    retry_attempts: 3
+    retry_delay: "PT30S"
+    resource_requirements:
+      cpu: 1.0
+      memory: 2048  # MB
+      disk: 1024    # MB
+    validation_rules:
+      required_columns: ["year", "state", "age_group", "deaths"]
+      min_records: 1000
+    tags:
+      data_source: "aihw"
+      category: "mortality"
+
+  # Extract PBS pharmaceutical data
+  - name: "extract_pbs_data"
+    type: "extractor"
+    class: "src.extractors.pbs.PBSExtractor"
+    config:
+      source_type: "api"
+      endpoint: "https://www.pbs.gov.au/info/statistics/expenditure-prescriptions"
+      data_categories: ["expenditure", "prescriptions"]
+      filter_years: [2020, 2021, 2022, 2023, 2024]
+    prerequisites: []
+    timeout: "PT45M"
+    retry_attempts: 3
+    resource_requirements:
+      cpu: 1.5
+      memory: 3072
+      network: 100  # Mbps
+    validation_rules:
+      required_columns: ["date", "drug_code", "prescriptions", "expenditure"]
+      data_types:
+        prescriptions: "integer"
+        expenditure: "float"
+    tags:
+      data_source: "pbs"
+      category: "pharmaceutical"
+
+  # Extract PHIDU health indicators
+  - name: "extract_phidu_data"
+    type: "extractor"
+    class: "src.extractors.phidu.PHIDUExtractor"
+    config:
+      source_files:
+        - "health_indicators_sa2_2021.xlsx"
+        - "chronic_conditions_sa2_2021.xlsx"
+      geographic_level: "SA2"
+      indicators:
+        - "diabetes_prevalence"
+        - "heart_disease_prevalence"
+        - "mental_health_indicators"
+        - "preventable_hospitalisations"
+    prerequisites: []
+    timeout: "PT20M"
+    retry_attempts: 2
+    resource_requirements:
+      cpu: 1.0
+      memory: 1536
+      disk: 512
+    validation_rules:
+      required_columns: ["sa2_code_2021", "indicator_name", "value"]
+      geographic_validation: true
+    tags:
+      data_source: "phidu"
+      category: "health_indicators"
+
+  # Transform mortality data
+  - name: "transform_mortality_data"
+    type: "transformer"
+    class: "src.transformers.health.MortalityTransformer"
+    config:
+      standardise_age_groups: true
+      calculate_rates: true
+      reference_population: "aus_2021"
+      output_granularity: "sa2"
+    prerequisites: ["extract_aihw_mortality"]
+    timeout: "PT15M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 4096
+    validation_rules:
+      output_schema: "schemas/health/mortality_schema.json"
+      quality_checks:
+        - "no_negative_rates"
+        - "valid_age_groups"
+        - "complete_geographic_coverage"
+    tags:
+      operation: "standardisation"
+
+  # Transform pharmaceutical data
+  - name: "transform_pbs_data"
+    type: "transformer"
+    class: "src.transformers.health.PharmaceuticalTransformer"
+    config:
+      aggregate_level: "sa2"
+      calculate_per_capita: true
+      drug_classification: "atc_codes"
+      temporal_aggregation: "monthly"
+    prerequisites: ["extract_pbs_data"]
+    timeout: "PT20M"
+    resource_requirements:
+      cpu: 1.5
+      memory: 3072
+    validation_rules:
+      output_schema: "schemas/health/pharmaceutical_schema.json"
+      business_rules:
+        - "positive_expenditure"
+        - "valid_drug_codes"
+    tags:
+      operation: "aggregation"
+
+  # Transform health indicators
+  - name: "transform_phidu_data"
+    type: "transformer"
+    class: "src.transformers.health.HealthIndicatorTransformer"
+    config:
+      normalise_indicators: true
+      impute_missing: "geographic_median"
+      outlier_detection: "iqr"
+      outlier_treatment: "cap"
+    prerequisites: ["extract_phidu_data"]
+    timeout: "PT10M"
+    resource_requirements:
+      cpu: 1.0
+      memory: 2048
+    validation_rules:
+      output_schema: "schemas/health/health_indicators_schema.json"
+      quality_thresholds:
+        completeness: 0.95
+        validity: 0.98
+    tags:
+      operation: "normalisation"
+
+  # Validate integrated health data
+  - name: "validate_health_data"
+    type: "validator"
+    class: "src.validators.health.ComprehensiveHealthValidator"
+    config:
+      validation_types:
+        - "schema_validation"
+        - "referential_integrity"
+        - "statistical_validation"
+        - "geographic_consistency"
+      quality_metrics:
+        - "completeness"
+        - "accuracy"
+        - "consistency"
+        - "timeliness"
+    prerequisites: 
+      - "transform_mortality_data"
+      - "transform_pbs_data"
+      - "transform_phidu_data"
+    timeout: "PT25M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 4096
+    validation_rules:
+      quality_thresholds:
+        overall_quality: 0.95
+        critical_fields: 0.99
+    tags:
+      operation: "quality_assurance"
+
+  # Load to data warehouse
+  - name: "load_health_warehouse"
+    type: "loader"
+    class: "src.loaders.warehouse.HealthDataWarehouseLoader"
+    config:
+      target_database: "health_analytics"
+      tables:
+        mortality: "fact_mortality"
+        pharmaceutical: "fact_pharmaceutical_usage"
+        health_indicators: "fact_health_indicators"
+      partition_strategy: "year_month"
+      compression: "snappy"
+      update_strategy: "upsert"
+    prerequisites: ["validate_health_data"]
+    timeout: "PT30M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 6144
+      disk: 2048
+    validation_rules:
+      post_load_checks:
+        - "record_count_validation"
+        - "referential_integrity"
+    tags:
+      operation: "data_warehouse_load"
+
+  # Export for web platform
+  - name: "export_web_data"
+    type: "loader"
+    class: "src.loaders.web.HealthWebExporter"
+    config:
+      export_formats: ["json", "csv", "geojson"]
+      compression: true
+      web_optimisation: true
+      include_metadata: true
+      geographic_simplification: "medium"
+    prerequisites: ["load_health_warehouse"]
+    timeout: "PT15M"
+    resource_requirements:
+      cpu: 1.5
+      memory: 3072
+      disk: 1024
+    tags:
+      operation: "web_export"
+
+# Resource limits for the entire pipeline
+resource_limits:
+  max_cpu_cores: 8
+  max_memory_mb: 16384
+  max_disk_gb: 50
+  max_network_mbps: 1000
+
+# Monitoring configuration
+monitoring:
+  enable_metrics: true
+  enable_alerts: true
+  alert_thresholds:
+    stage_timeout_minutes: 60
+    memory_usage_percent: 85
+    error_rate_percent: 5
+  metric_retention_days: 30
+  alert_recipients:
+    - "data-team@example.com"
+    - "ops-team@example.com"
+
+# Quality gates
+quality_gates:
+  - stage: "validate_health_data"
+    threshold: 0.95
+    action: "stop_on_failure"
+  - stage: "load_health_warehouse"
+    threshold: 0.99
+    action: "alert_and_continue"
+
+# Schedule (optional)
+schedule:
+  frequency: "weekly"
+  day_of_week: "sunday"
+  time: "02:00"
+  timezone: "Australia/Sydney"

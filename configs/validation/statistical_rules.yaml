@@ -1,0 +1,331 @@
+# Statistical Validation Rules Configuration
+# Statistical methods and parameters for data quality assessment
+
+version: "1.0"
+schema_version: "2024-01"
+
+# Outlier detection methods and parameters
+outlier_detection:
+  iqr_method:
+    description: "Interquartile Range (IQR) outlier detection"
+    enabled: true
+    parameters:
+      multiplier: 1.5         # Standard IQR multiplier
+      strict_multiplier: 3.0  # For critical data
+    applicable_columns:
+      - column: "total_population"
+        multiplier: 2.0       # More lenient for population data
+        severity: "info"
+      - column: "median_household_income_weekly"
+        multiplier: 1.5
+        severity: "warning"
+      - column: "unemployment_rate"
+        multiplier: 1.5
+        severity: "info"
+      - column: "population_density"
+        multiplier: 2.5       # Population density varies widely
+        severity: "info"
+
+  z_score_method:
+    description: "Z-score based outlier detection"
+    enabled: true
+    parameters:
+      threshold: 3.0          # Standard 3-sigma rule
+      strict_threshold: 2.5   # For critical validation
+    applicable_columns:
+      - column: "median_age"
+        threshold: 2.5
+        severity: "warning"
+      - column: "seifa_irsad_score"
+        threshold: 3.0
+        severity: "info"
+      - column: "medicare_services_per_capita"
+        threshold: 2.0
+        severity: "warning"
+
+  isolation_forest:
+    description: "Isolation Forest multivariate outlier detection"
+    enabled: true
+    parameters:
+      contamination: 0.05     # Expect 5% outliers
+      n_estimators: 100
+      max_samples: "auto"
+      random_state: 42
+    feature_groups:
+      demographic_features:
+        columns:
+          - "total_population"
+          - "median_age"
+          - "population_density"
+        contamination: 0.03
+        severity: "info"
+      
+      health_features:
+        columns:
+          - "mortality_rate"
+          - "hospitalisation_rate"
+          - "medicare_services_per_capita"
+        contamination: 0.05
+        severity: "warning"
+      
+      economic_features:
+        columns:
+          - "median_household_income_weekly"
+          - "unemployment_rate"
+          - "seifa_disadvantage_score"
+        contamination: 0.04
+        severity: "info"
+
+  modified_z_score:
+    description: "Modified Z-score using median absolute deviation"
+    enabled: true
+    parameters:
+      threshold: 3.5          # Standard threshold for modified Z-score
+    applicable_columns:
+      - column: "geographic_area_sqkm"
+        threshold: 4.0        # Geographic area varies extremely
+        severity: "info"
+      - column: "population_change_5_year"
+        threshold: 3.0
+        severity: "warning"
+
+# Distribution analysis and validation
+distribution_analysis:
+  normality_tests:
+    shapiro_wilk:
+      enabled: true
+      alpha: 0.05             # Significance level
+      sample_size_limit: 5000 # Shapiro-Wilk limited to 5000 samples
+      applicable_columns:
+        - "median_age"
+        - "median_household_income_weekly"
+    
+    kolmogorov_smirnov:
+      enabled: true
+      alpha: 0.05
+      applicable_columns:
+        - "unemployment_rate"
+        - "population_density"
+    
+    anderson_darling:
+      enabled: true
+      alpha: 0.05
+      applicable_columns:
+        - "seifa_scores"
+
+  expected_distributions:
+    population_data:
+      columns: ["total_population", "usual_resident_population"]
+      expected_distribution: "log_normal"
+      parameters:
+        mu: 8.5               # Log of median population
+        sigma: 1.2            # Log standard deviation
+      tolerance: 0.1
+      
+    age_data:
+      columns: ["median_age"]
+      expected_distribution: "normal"
+      parameters:
+        mean: 38.0            # Australian median age approx 38
+        std: 8.0
+      tolerance: 0.15
+      
+    income_data:
+      columns: ["median_household_income_weekly"]
+      expected_distribution: "log_normal"
+      parameters:
+        mu: 7.3               # Log of median income
+        sigma: 0.4
+      tolerance: 0.2
+
+# Correlation analysis
+correlation_analysis:
+  pearson_correlation:
+    enabled: true
+    expected_correlations:
+      - variables: ["median_age", "mortality_rate"]
+        expected_correlation: 0.6
+        tolerance: 0.2
+        severity: "warning"
+        description: "Older areas should have higher mortality rates"
+      
+      - variables: ["seifa_disadvantage_score", "unemployment_rate"]
+        expected_correlation: 0.7
+        tolerance: 0.15
+        severity: "warning"
+        description: "Disadvantaged areas should have higher unemployment"
+      
+      - variables: ["population_density", "median_household_income_weekly"]
+        expected_correlation: 0.3
+        tolerance: 0.3
+        severity: "info"
+        description: "Weak positive correlation between density and income"
+      
+      - variables: ["medicare_services_per_capita", "median_age"]
+        expected_correlation: 0.5
+        tolerance: 0.2
+        severity: "info"
+        description: "Older populations use more Medicare services"
+
+  spearman_correlation:
+    enabled: true
+    minimum_correlation_threshold: 0.1
+    applicable_to_ordinal_data: true
+
+# Time series analysis (for longitudinal data)
+time_series_analysis:
+  trend_analysis:
+    enabled: true
+    methods:
+      - linear_trend
+      - seasonal_decomposition
+    
+    population_trends:
+      columns: ["total_population"]
+      expected_trend: "increasing"
+      max_annual_change: 0.05  # 5% maximum annual change
+      min_data_points: 5
+      
+    health_trends:
+      columns: ["mortality_rate", "hospitalisation_rate"]
+      detect_anomalous_changes: true
+      change_point_detection: true
+      min_data_points: 3
+
+  seasonality_detection:
+    enabled: false            # Not applicable to most annual datasets
+    applicable_columns: []
+
+# Statistical significance testing
+significance_testing:
+  t_tests:
+    enabled: true
+    alpha: 0.05
+    comparisons:
+      - name: "urban_vs_rural_income"
+        grouping_column: "area_type"
+        groups: ["urban", "rural"]
+        test_column: "median_household_income_weekly"
+        expected_difference: "urban_higher"
+        
+      - name: "state_mortality_differences"
+        grouping_column: "state_code"
+        test_column: "mortality_rate"
+        test_type: "anova"
+
+  chi_square_tests:
+    enabled: true
+    alpha: 0.05
+    contingency_tables:
+      - name: "seifa_health_outcomes"
+        row_variable: "seifa_quintile"
+        column_variable: "high_mortality_flag"
+        expected_association: true
+
+# Data quality metrics calculation
+quality_metrics:
+  completeness_calculation:
+    method: "percentage_non_null"
+    weights_by_importance:
+      critical: 1.0
+      high: 0.8
+      medium: 0.6
+      low: 0.4
+
+  validity_calculation:
+    method: "percentage_valid_values"
+    include_rule_weights: true
+
+  consistency_calculation:
+    method: "cross_field_validation"
+    relationship_rules_weight: 0.7
+    temporal_consistency_weight: 0.3
+
+# Advanced statistical methods
+advanced_methods:
+  principal_component_analysis:
+    enabled: false            # Enable for dimensionality analysis
+    n_components: "auto"
+    variance_threshold: 0.95
+    
+  cluster_analysis:
+    enabled: true
+    methods: ["kmeans", "hierarchical"]
+    features:
+      - "total_population"
+      - "median_age"
+      - "median_household_income_weekly"
+      - "seifa_disadvantage_score"
+    k_range: [3, 8]           # Number of clusters to try
+    use_for_anomaly_detection: true
+
+  regression_analysis:
+    enabled: true
+    models:
+      - name: "population_health_model"
+        dependent_variable: "mortality_rate"
+        independent_variables:
+          - "median_age"
+          - "seifa_disadvantage_score"
+          - "population_density"
+        model_type: "linear"
+        r_squared_threshold: 0.5
+        
+      - name: "income_prediction_model"
+        dependent_variable: "median_household_income_weekly"
+        independent_variables:
+          - "education_level_bachelor_plus"
+          - "unemployment_rate"
+          - "population_density"
+        model_type: "multiple_linear"
+        r_squared_threshold: 0.6
+
+# Performance and sampling settings
+performance:
+  sampling:
+    enable_sampling_for_large_datasets: true
+    sample_size_threshold: 10000
+    sample_method: "stratified"
+    stratification_column: "state_code"
+    minimum_sample_size: 1000
+    
+  parallel_processing:
+    enable_parallel: true
+    max_workers: 4
+    chunk_size: 1000
+    
+  caching:
+    cache_statistical_calculations: true
+    cache_ttl_minutes: 120
+    cache_key_includes_data_hash: true
+
+# Reporting and alerting thresholds
+alerting:
+  outlier_thresholds:
+    info_threshold: 0.05      # 5% outliers = info alert
+    warning_threshold: 0.10   # 10% outliers = warning
+    error_threshold: 0.20     # 20% outliers = error
+    
+  distribution_deviation_thresholds:
+    warning_threshold: 0.15   # 15% deviation from expected
+    error_threshold: 0.30     # 30% deviation = error
+    
+  correlation_deviation_thresholds:
+    warning_threshold: 0.20   # 20% deviation from expected correlation
+    error_threshold: 0.40     # 40% deviation = error
+
+# Custom statistical validators
+custom_validators:
+  australian_health_patterns:
+    function: "validate_australian_health_patterns"
+    description: "Validate patterns specific to Australian health data"
+    parameters:
+      indigenous_health_gap_threshold: 0.15
+      remote_area_service_ratio: 0.6
+      
+  demographic_plausibility:
+    function: "validate_demographic_plausibility"  
+    description: "Check demographic data for plausibility"
+    parameters:
+      age_pyramid_shape_check: true
+      migration_pattern_validation: true

@@ -1,37 +1,9 @@
 """
-Australian Health Analytics Dashboard - Configuration Package
+Australian Health Geography Data (AHGD) Package
 
-This package provides centralised configuration management for the AHGD project.
+This package provides tools for extracting, transforming, validating,
+and loading Australian health geography data.
 """
 
-from .config import (
-    Config,
-    DatabaseConfig,
-    DataSourceConfig,
-    DashboardConfig,
-    ProcessingConfig,
-    LoggingConfig,
-    Environment,
-    get_config,
-    get_global_config,
-    get_project_root,
-    setup_logging,
-    reset_global_config
-)
-
-__all__ = [
-    'Config',
-    'DatabaseConfig',
-    'DataSourceConfig', 
-    'DashboardConfig',
-    'ProcessingConfig',
-    'LoggingConfig',
-    'Environment',
-    'get_config',
-    'get_global_config',
-    'get_project_root',
-    'setup_logging',
-    'reset_global_config'
-]
-
-__version__ = '1.0.0'
+__version__ = "0.1.0"
+__author__ = "AHGD Development Team"

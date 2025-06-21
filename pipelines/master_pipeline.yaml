@@ -1,0 +1,413 @@
+# Master Pipeline Configuration
+# Orchestrates execution of all AHGD data pipelines with dependency management
+# and comprehensive monitoring across the entire data ecosystem
+
+pipeline:
+  name: "ahgd_master_pipeline"
+  description: "Master orchestration of Australian Health and Geographic Data pipelines"
+  version: "2.0.0"
+
+orchestration:
+  execution_mode: "hybrid"  # Uses both parallel and sequential execution
+  max_workers: 8
+  timeout: "PT8H"  # 8 hours for complete data refresh
+  enable_checkpoints: true
+  checkpoint_retention_days: 30
+  enable_cross_pipeline_recovery: true
+
+# Pipeline definitions with dependencies
+pipelines:
+  - name: "geographic_pipeline"
+    class: "src.pipelines.GeographicPipeline"
+    config_file: "pipelines/geographic_pipeline.yaml"
+    dependencies: []
+    priority: 10  # Highest priority - foundational data
+    retry_policy:
+      max_attempts: 2
+      backoff_strategy: "exponential"
+      base_delay: "PT10M"
+    resource_requirements:
+      cpu: 4.0
+      memory: 16384
+      disk: 50000
+    timeout: "PT3H"
+    tags:
+      category: "foundational"
+      criticality: "high"
+
+  - name: "census_pipeline"
+    class: "src.pipelines.CensusPipeline"
+    config_file: "pipelines/census_pipeline.yaml"
+    dependencies: []  # Independent of other pipelines
+    priority: 9
+    retry_policy:
+      max_attempts: 2
+      backoff_strategy: "exponential"
+      base_delay: "PT15M"
+    resource_requirements:
+      cpu: 6.0
+      memory: 24576
+      disk: 100000
+    timeout: "PT4H"
+    tags:
+      category: "demographics"
+      criticality: "high"
+
+  - name: "health_data_pipeline"
+    class: "src.pipelines.HealthDataPipeline"
+    config_file: "pipelines/health_data_pipeline.yaml"
+    dependencies: ["geographic_pipeline"]  # Needs geographic boundaries
+    priority: 8
+    retry_policy:
+      max_attempts: 3
+      backoff_strategy: "linear"
+      base_delay: "PT5M"
+    resource_requirements:
+      cpu: 4.0
+      memory: 12288
+      disk: 30000
+    timeout: "PT2H"
+    tags:
+      category: "health"
+      criticality: "high"
+
+  - name: "integration_pipeline"
+    class: "src.pipelines.IntegrationPipeline"
+    dependencies: 
+      - "geographic_pipeline"
+      - "census_pipeline"
+      - "health_data_pipeline"
+    priority: 5
+    stages:
+      # Cross-dataset integration and analysis
+      - name: "integrate_all_datasets"
+        type: "transformer"
+        class: "src.transformers.integration.MasterDataIntegrator"
+        config:
+          integration_level: "SA2"
+          join_strategies:
+            geographic: "spatial_join"
+            temporal: "nearest_neighbour"
+            categorical: "exact_match"
+          quality_weighting: true
+          conflict_resolution: "data_quality_priority"
+          derived_indicators:
+            - "health_geographic_index"
+            - "socioeconomic_health_correlation"
+            - "accessibility_health_outcomes"
+            - "demographic_health_risk"
+        timeout: "PT60M"
+        resource_requirements:
+          cpu: 6.0
+          memory: 20480
+
+      - name: "create_master_dataset"
+        type: "transformer"
+        class: "src.transformers.integration.MasterDatasetCreator"
+        config:
+          output_granularities: ["SA1", "SA2", "SA3", "SA4", "STE"]
+          include_time_series: true
+          metadata_enrichment: true
+          data_lineage_tracking: true
+        prerequisites: ["integrate_all_datasets"]
+        timeout: "PT45M"
+
+      - name: "validate_integrated_data"
+        type: "validator"
+        class: "src.validators.integration.IntegratedDataValidator"
+        config:
+          validation_types:
+            - "cross_dataset_consistency"
+            - "referential_integrity"
+            - "business_rule_validation"
+            - "statistical_coherence"
+          quality_thresholds:
+            overall_completeness: 0.95
+            cross_dataset_alignment: 0.98
+            logical_consistency: 0.99
+        prerequisites: ["create_master_dataset"]
+        timeout: "PT30M"
+
+      - name: "load_master_warehouse"
+        type: "loader"
+        class: "src.loaders.warehouse.MasterDataWarehouseLoader"
+        config:
+          target_database: "ahgd_master"
+          schema: "integrated_v2"
+          tables:
+            master_dataset: "fact_master_indicators"
+            geographic_health: "fact_geographic_health"
+            temporal_trends: "fact_temporal_trends"
+          materialized_views:
+            - "view_sa2_summary"
+            - "view_health_rankings"
+            - "view_demographic_health"
+          performance_optimization: true
+        prerequisites: ["validate_integrated_data"]
+        timeout: "PT90M"
+
+    timeout: "PT4H"
+    tags:
+      category: "integration"
+      criticality: "medium"
+
+  - name: "analytics_pipeline"
+    class: "src.pipelines.AnalyticsPipeline"
+    dependencies: ["integration_pipeline"]
+    priority: 3
+    stages:
+      # Advanced analytics and machine learning
+      - name: "health_risk_modeling"
+        type: "transformer"
+        class: "src.transformers.analytics.HealthRiskModeler"
+        config:
+          models:
+            - name: "diabetes_risk"
+              type: "random_forest"
+              features: ["age", "bmi", "seifa", "accessibility"]
+            - name: "cardiovascular_risk"
+              type: "gradient_boosting"
+              features: ["demographics", "lifestyle", "environmental"]
+          cross_validation: true
+          feature_importance: true
+        timeout: "PT120M"
+
+      - name: "clustering_analysis"
+        type: "transformer"
+        class: "src.transformers.analytics.GeographicClustering"
+        config:
+          clustering_methods: ["kmeans", "hierarchical", "dbscan"]
+          feature_sets:
+            - "demographic_profile"
+            - "health_outcomes"
+            - "socioeconomic_status"
+          optimal_clusters: "silhouette_analysis"
+        timeout: "PT60M"
+
+      - name: "trend_analysis"
+        type: "transformer"
+        class: "src.transformers.analytics.TrendAnalyzer"
+        config:
+          time_series_methods: ["arima", "prophet", "exponential_smoothing"]
+          forecast_horizon: "12_months"
+          seasonal_decomposition: true
+        timeout: "PT45M"
+
+    timeout: "PT6H"
+    tags:
+      category: "analytics"
+      criticality: "medium"
+
+  - name: "export_pipeline"
+    class: "src.pipelines.ExportPipeline"
+    dependencies: ["analytics_pipeline"]
+    priority: 1
+    stages:
+      # Web platform exports
+      - name: "export_web_platform"
+        type: "loader"
+        class: "src.loaders.web.ComprehensiveWebExporter"
+        config:
+          export_targets:
+            - target: "public_api"
+              formats: ["json", "geojson", "csv"]
+              access_level: "public"
+              rate_limiting: true
+            - target: "research_portal"
+              formats: ["parquet", "hdf5", "netcdf"]
+              access_level: "registered"
+              metadata_rich: true
+            - target: "dashboard_backend"
+              formats: ["json", "binary"]
+              access_level: "internal"
+              real_time: true
+          optimisations:
+            caching_strategy: "cdn"
+            compression: "adaptive"
+            api_versioning: true
+        timeout: "PT90M"
+
+      # Data portal exports
+      - name: "export_data_portal"
+        type: "loader"
+        class: "src.loaders.portal.DataPortalExporter"
+        config:
+          portal_config:
+            metadata_standard: "dcat_ap"
+            data_catalog: "ckan"
+            spatial_preview: true
+            download_formats: ["csv", "geojson", "shp", "xlsx"]
+          documentation:
+            auto_generate: true
+            include_lineage: true
+            api_documentation: true
+        prerequisites: ["export_web_platform"]
+        timeout: "PT60M"
+
+    timeout: "PT3H"
+    tags:
+      category: "export"
+      criticality: "low"
+
+# Global resource management
+resource_management:
+  total_limits:
+    max_cpu_cores: 16
+    max_memory_gb: 128
+    max_disk_gb: 1000
+    max_network_mbps: 2000
+  allocation_strategy: "priority_weighted"
+  resource_monitoring: true
+  auto_scaling: true
+  resource_alerts:
+    cpu_threshold: 90
+    memory_threshold: 85
+    disk_threshold: 80
+
+# Master monitoring configuration
+monitoring:
+  enable_comprehensive_monitoring: true
+  dashboard_integration: true
+  real_time_metrics: true
+  
+  system_monitoring:
+    resource_usage: true
+    performance_metrics: true
+    error_tracking: true
+    dependency_health: true
+  
+  pipeline_monitoring:
+    execution_progress: true
+    stage_performance: true
+    data_quality_metrics: true
+    lineage_tracking: true
+  
+  alerting:
+    channels: ["email", "slack", "webhook"]
+    escalation_policies: true
+    alert_suppression: true
+    
+  retention:
+    metrics_days: 90
+    logs_days: 60
+    alerts_days: 30
+
+# Quality assurance framework
+quality_framework:
+  global_quality_gates:
+    - name: "data_completeness"
+      threshold: 0.95
+      scope: "all_pipelines"
+      action: "alert"
+    
+    - name: "processing_success_rate"
+      threshold: 0.98
+      scope: "critical_pipelines"
+      action: "stop_on_failure"
+    
+    - name: "cross_dataset_consistency"
+      threshold: 0.96
+      scope: "integration_pipeline"
+      action: "alert_and_continue"
+  
+  data_lineage:
+    track_all_transformations: true
+    version_control: true
+    audit_trail: true
+    impact_analysis: true
+
+# Scheduling and automation
+scheduling:
+  master_schedule:
+    frequency: "weekly"
+    day_of_week: "sunday"
+    time: "01:00"
+    timezone: "Australia/Sydney"
+  
+  pipeline_schedules:
+    geographic_pipeline:
+      frequency: "monthly"
+      day_of_month: 1
+    
+    census_pipeline:
+      frequency: "quarterly"
+      month: [3, 6, 9, 12]
+    
+    health_data_pipeline:
+      frequency: "weekly"
+      day_of_week: "wednesday"
+  
+  trigger_conditions:
+    data_availability: true
+    dependency_completion: true
+    resource_availability: true
+    manual_trigger: true
+
+# Disaster recovery and backup
+disaster_recovery:
+  backup_strategy:
+    frequency: "daily"
+    retention_days: 90
+    backup_types: ["full", "incremental", "differential"]
+    storage_locations: ["local", "cloud", "offsite"]
+  
+  recovery_procedures:
+    automatic_recovery: true
+    recovery_point_objective: "PT4H"
+    recovery_time_objective: "PT2H"
+    
+  testing:
+    recovery_testing_frequency: "monthly"
+    backup_validation: true
+
+# Security and compliance
+security:
+  data_encryption:
+    at_rest: true
+    in_transit: true
+    key_management: "external"
+  
+  access_control:
+    authentication: "oauth2"
+    authorisation: "rbac"
+    audit_logging: true
+  
+  compliance:
+    privacy_protection: true
+    data_retention_policies: true
+    anonymisation: true
+    consent_management: true
+
+# Performance optimisation
+performance:
+  caching:
+    enable_result_caching: true
+    cache_ttl: "PT24H"
+    cache_invalidation: "smart"
+  
+  parallel_processing:
+    auto_parallelisation: true
+    resource_aware_scheduling: true
+    load_balancing: true
+  
+  storage_optimisation:
+    compression: "adaptive"
+    partitioning: "intelligent"
+    indexing: "automated"
+
+# Notification and reporting
+notifications:
+  completion_reports:
+    recipients: ["data-team@example.com", "management@example.com"]
+    format: "detailed"
+    include_metrics: true
+  
+  failure_alerts:
+    immediate_notification: true
+    escalation_chain: ["on-call", "team-lead", "manager"]
+    include_diagnostics: true
+  
+  scheduled_reports:
+    frequency: "weekly"
+    content: ["pipeline_health", "data_quality", "performance_trends"]
+    delivery: ["email", "dashboard", "api"]

@@ -1,0 +1,451 @@
+# Census Data Pipeline Configuration
+# Processes Australian Bureau of Statistics Census data
+# including population, demographics, housing, and socioeconomic indicators
+
+pipeline:
+  name: "census_pipeline"
+  description: "Extract, transform, and validate Australian Census 2021 data"
+  version: "1.0.0"
+
+orchestration:
+  execution_mode: "parallel"
+  max_workers: 6
+  timeout: "PT4H"  # 4 hours - Census data is extensive
+  enable_checkpoints: true
+  checkpoint_retention_days: 14
+
+stages:
+  # Extract population and demographics
+  - name: "extract_population_demographics"
+    type: "extractor"
+    class: "src.extractors.abs.CensusExtractor"
+    config:
+      census_year: 2021
+      tables:
+        - "G01"  # Selected Person Characteristics
+        - "G02"  # Selected Medians and Averages
+        - "G17A" # Total Personal Income
+        - "G18"  # Individual Income
+      geographic_levels: ["SA1", "SA2", "SA3", "SA4", "STE"]
+      data_packs: ["Basic Community Profile", "Place of Enumeration Profile"]
+      format: "csv"
+      encoding: "utf-8"
+    prerequisites: []
+    timeout: "PT60M"
+    retry_attempts: 3
+    resource_requirements:
+      cpu: 2.0
+      memory: 8192  # Census data is large
+      disk: 16384
+      network: 1000
+    validation_rules:
+      required_columns: ["SA2_CODE_2021", "Tot_P_P", "Age_0_4_yr_P"]
+      min_records: 50000
+      data_types:
+        Tot_P_P: "integer"
+        Median_age_persons: "float"
+    tags:
+      data_source: "abs_census"
+      category: "demographics"
+      year: 2021
+
+  # Extract housing data
+  - name: "extract_housing_data"
+    type: "extractor"
+    class: "src.extractors.abs.CensusExtractor"
+    config:
+      census_year: 2021
+      tables:
+        - "G25"  # Tenure Type and Landlord Type
+        - "G26"  # Number of Bedrooms
+        - "G28"  # Dwelling Structure
+        - "G31"  # Housing Costs
+        - "G33"  # Mortgage Repayments
+      geographic_levels: ["SA1", "SA2", "SA3", "SA4"]
+      data_packs: ["Basic Community Profile"]
+    prerequisites: []
+    timeout: "PT45M"
+    retry_attempts: 3
+    resource_requirements:
+      cpu: 1.5
+      memory: 6144
+      disk: 8192
+    validation_rules:
+      required_columns: ["SA2_CODE_2021", "Total_dwell", "O_OR_house"]
+      housing_validation: true
+    tags:
+      data_source: "abs_census"
+      category: "housing"
+
+  # Extract employment and education
+  - name: "extract_employment_education"
+    type: "extractor"
+    class: "src.extractors.abs.CensusExtractor"
+    config:
+      census_year: 2021
+      tables:
+        - "G37"  # Occupation
+        - "G38"  # Industry of Employment
+        - "G40"  # Non-School Qualification
+        - "G41"  # Highest Year of School Completed
+        - "G43"  # Labour Force Status
+      geographic_levels: ["SA2", "SA3", "SA4"]
+      data_packs: ["Place of Work Profile", "Working Population Profile"]
+    prerequisites: []
+    timeout: "PT50M"
+    retry_attempts: 3
+    resource_requirements:
+      cpu: 2.0
+      memory: 6144
+      disk: 10240
+    validation_rules:
+      required_columns: ["SA2_CODE_2021", "Employed_Total", "Unemployed_Total"]
+      employment_validation: true
+    tags:
+      data_source: "abs_census"
+      category: "employment_education"
+
+  # Extract SEIFA disadvantage indices
+  - name: "extract_seifa_data"
+    type: "extractor"
+    class: "src.extractors.abs.SEIFAExtractor"
+    config:
+      seifa_year: 2021
+      indices:
+        - "IRSAD"  # Index of Relative Socio-economic Advantage and Disadvantage
+        - "IRSD"   # Index of Relative Socio-economic Disadvantage
+        - "IER"    # Index of Education and Occupation
+        - "IEO"    # Index of Economic Resources
+      geographic_levels: ["SA1", "SA2", "SA3", "SA4", "STE", "LGA", "POA"]
+      include_rankings: true
+      include_deciles: true
+    prerequisites: []
+    timeout: "PT20M"
+    retry_attempts: 2
+    resource_requirements:
+      cpu: 1.0
+      memory: 2048
+      disk: 1024
+    validation_rules:
+      required_columns: ["SA2_CODE_2021", "IRSAD_score", "IRSD_score"]
+      score_ranges:
+        IRSAD_score: [600, 1400]
+        IRSD_score: [600, 1400]
+    tags:
+      data_source: "abs_seifa"
+      category: "socioeconomic"
+
+  # Transform demographic data
+  - name: "transform_demographics"
+    type: "transformer"
+    class: "src.transformers.census.DemographicTransformer"
+    config:
+      operations:
+        - name: "standardise_age_groups"
+          age_group_system: "5_year_groups"
+          include_broad_groups: true
+        - name: "calculate_ratios"
+          ratios:
+            - "dependency_ratio"
+            - "sex_ratio"
+            - "child_ratio"
+            - "elderly_ratio"
+        - name: "derive_indicators"
+          indicators:
+            - "population_density"
+            - "median_age_deviation"
+            - "diversity_index"
+      geographic_hierarchy: true
+      impute_missing: "geographic_median"
+    prerequisites: ["extract_population_demographics"]
+    timeout: "PT30M"
+    resource_requirements:
+      cpu: 3.0
+      memory: 8192
+    validation_rules:
+      output_schema: "schemas/census/demographics_schema.json"
+      ratio_validation: true
+    tags:
+      operation: "demographic_processing"
+
+  # Transform housing data
+  - name: "transform_housing"
+    type: "transformer"
+    class: "src.transformers.census.HousingTransformer"
+    config:
+      operations:
+        - name: "standardise_tenure_types"
+          classification: "abs_standard"
+        - name: "calculate_housing_stress"
+          income_threshold: 0.3
+          cost_types: ["rent", "mortgage"]
+        - name: "housing_affordability_index"
+          base_year: 2021
+          inflation_adjust: true
+        - name: "dwelling_characteristics"
+          include_overcrowding: true
+          rooms_per_person_threshold: 1.0
+      impute_missing: "category_mode"
+    prerequisites: ["extract_housing_data"]
+    timeout: "PT25M"
+    resource_requirements:
+      cpu: 2.0
+      memory: 6144
+    validation_rules:
+      output_schema: "schemas/census/housing_schema.json"
+      affordability_validation: true
+    tags:
+      operation: "housing_processing"
+
+  # Transform employment data
+  - name: "transform_employment"
+    type: "transformer"
+    class: "src.transformers.census.EmploymentTransformer"
+    config:
+      operations:
+        - name: "standardise_occupations"
+          classification: "ANZSCO_2021"
+          skill_levels: true
+        - name: "standardise_industries"
+          classification: "ANZSIC_2006"
+          sector_grouping: true
+        - name: "calculate_employment_indicators"
+          indicators:
+            - "unemployment_rate"
+            - "participation_rate"
+            - "employment_self_sufficiency"
+            - "industry_diversity_index"
+        - name: "education_employment_alignment"
+          qualification_mapping: true
+      geographic_aggregation: "employment_weighted"
+    prerequisites: ["extract_employment_education"]
+    timeout: "PT35M"
+    resource_requirements:
+      cpu: 2.5
+      memory: 6144
+    validation_rules:
+      output_schema: "schemas/census/employment_schema.json"
+      rate_validation: true
+    tags:
+      operation: "employment_processing"
+
+  # Transform SEIFA data
+  - name: "transform_seifa"
+    type: "transformer"
+    class: "src.transformers.census.SEIFATransformer"
+    config:
+      operations:
+        - name: "standardise_scores"
+          normalisation: "z_score"
+          reference_population: "australia"
+        - name: "create_composite_indices"
+          weights:
+            economic: 0.4
+            education: 0.3
+            housing: 0.2
+            accessibility: 0.1
+        - name: "generate_rankings"
+          ranking_levels: ["national", "state", "regional"]
+          percentile_groups: [10, 25, 50, 75, 90]
+      geographic_concordance: true
+    prerequisites: ["extract_seifa_data"]
+    timeout: "PT15M"
+    resource_requirements:
+      cpu: 1.5
+      memory: 3072
+    validation_rules:
+      output_schema: "schemas/census/seifa_schema.json"
+      distribution_validation: true
+    tags:
+      operation: "socioeconomic_processing"
+
+  # Integrate census datasets
+  - name: "integrate_census_data"
+    type: "transformer"
+    class: "src.transformers.census.CensusIntegrator"
+    config:
+      integration_level: "SA2"
+      join_strategy: "geographic_code"
+      data_sources:
+        - demographics
+        - housing
+        - employment
+        - seifa
+      derived_indicators:
+        - "livability_index"
+        - "economic_opportunity_index"
+        - "social_cohesion_index"
+        - "housing_market_pressure"
+      quality_weights: true
+      missing_data_strategy: "multiple_imputation"
+    prerequisites:
+      - "transform_demographics"
+      - "transform_housing"
+      - "transform_employment"
+      - "transform_seifa"
+    timeout: "PT45M"
+    resource_requirements:
+      cpu: 4.0
+      memory: 12288
+    validation_rules:
+      integration_quality: 0.95
+      completeness_threshold: 0.90
+    tags:
+      operation: "data_integration"
+
+  # Validate integrated census data
+  - name: "validate_census_data"
+    type: "validator"
+    class: "src.validators.census.CensusDataValidator"
+    config:
+      validation_types:
+        - "schema_validation"
+        - "statistical_validation"
+        - "temporal_consistency"
+        - "geographic_consistency"
+        - "cross_table_validation"
+      quality_checks:
+        - name: "population_totals"
+          tolerance: 0.01
+        - name: "age_distribution"
+          reference: "abs_official_totals"
+        - name: "employment_rates"
+          logical_bounds: [0, 1]
+        - name: "housing_occupancy"
+          consistency_check: true
+      reference_data:
+        abs_totals: "reference/abs_census_totals_2021.csv"
+        previous_census: "reference/census_2016_comparison.csv"
+    prerequisites: ["integrate_census_data"]
+    timeout: "PT60M"
+    resource_requirements:
+      cpu: 3.0
+      memory: 10240
+    validation_rules:
+      overall_quality: 0.98
+      critical_indicators: 0.995
+    tags:
+      operation: "quality_assurance"
+
+  # Load to census data warehouse
+  - name: "load_census_warehouse"
+    type: "loader"
+    class: "src.loaders.warehouse.CensusDataWarehouseLoader"
+    config:
+      target_database: "census_analytics"
+      schema: "census_2021"
+      tables:
+        demographics: "fact_demographics"
+        housing: "fact_housing"
+        employment: "fact_employment"
+        seifa: "fact_seifa"
+        integrated: "fact_census_integrated"
+      dimensions:
+        - "dim_geography"
+        - "dim_time"
+        - "dim_demographics"
+      partition_strategy: "geographic_level"
+      compression: "lz4"
+      indexing_strategy: "geographic_clustered"
+    prerequisites: ["validate_census_data"]
+    timeout: "PT90M"
+    resource_requirements:
+      cpu: 4.0
+      memory: 16384
+      disk: 32768
+    validation_rules:
+      post_load_checks:
+        - "record_count_validation"
+        - "referential_integrity"
+        - "performance_validation"
+    tags:
+      operation: "data_warehouse_load"
+
+  # Export census web data
+  - name: "export_census_web"
+    type: "loader"
+    class: "src.loaders.web.CensusWebExporter"
+    config:
+      export_levels: ["SA2", "SA3", "SA4", "STE"]
+      export_formats:
+        - format: "json"
+          compression: true
+          nested_structure: true
+        - format: "csv"
+          flattened: true
+        - format: "parquet"
+          partitioned: true
+      aggregation_levels:
+        - "summary_statistics"
+        - "detailed_indicators"
+        - "time_series_comparison"
+      web_optimisation:
+        max_file_size_mb: 10
+        lazy_loading: true
+        api_endpoint_generation: true
+    prerequisites: ["load_census_warehouse"]
+    timeout: "PT60M"
+    resource_requirements:
+      cpu: 3.0
+      memory: 8192
+      disk: 16384
+    tags:
+      operation: "web_export"
+
+# Resource limits
+resource_limits:
+  max_cpu_cores: 12
+  max_memory_mb: 49152  # Census data requires substantial memory
+  max_disk_gb: 200      # Large census datasets
+  max_network_mbps: 1000
+
+# Monitoring configuration
+monitoring:
+  enable_metrics: true
+  enable_alerts: true
+  alert_thresholds:
+    stage_timeout_minutes: 180  # Longer timeouts for large datasets
+    memory_usage_percent: 85
+    disk_usage_percent: 80
+    error_rate_percent: 1
+  metric_retention_days: 60
+  alert_recipients:
+    - "census-team@example.com"
+    - "data-team@example.com"
+
+# Quality gates
+quality_gates:
+  - stage: "validate_census_data"
+    threshold: 0.98
+    action: "stop_on_failure"
+  - stage: "integrate_census_data"
+    threshold: 0.95
+    action: "alert_and_continue"
+  - stage: "load_census_warehouse"
+    threshold: 0.99
+    action: "stop_on_failure"
+
+# Census-specific configuration
+census_config:
+  base_year: 2021
+  comparison_years: [2016, 2011]
+  geographic_concordance: true
+  privacy_protection: true
+  cell_suppression_threshold: 3
+  random_adjustment: true
+
+# Data lineage tracking
+lineage:
+  track_transformations: true
+  preserve_source_links: true
+  version_control: true
+  audit_trail: true
+
+# Schedule
+schedule:
+  frequency: "quarterly"
+  month: [3, 6, 9, 12]
+  day: 15
+  time: "00:00"
+  timezone: "Australia/Sydney"
+  dependencies: []  # Primary data source

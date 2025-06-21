@@ -1,0 +1,349 @@
+# AHGD Development Configuration
+# This file contains development-specific settings and overrides
+# Generated: 2025-06-20
+
+# =============================================================================
+# APPLICATION SETTINGS
+# =============================================================================
+
+app:
+  name: "AHGD"
+  version: "0.1.0"
+  environment: "development"
+  debug: true
+  hot_reload: true
+  
+  # Development server settings
+  server:
+    host: "localhost"
+    port: 8000
+    workers: 1
+    reload: true
+    log_level: "debug"
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+database:
+  # Development database (SQLite)
+  url: "sqlite:///./data_processed/ahgd_dev.db"
+  echo: true  # Log all SQL queries in development
+  
+  # Connection pool settings for development
+  pool:
+    pool_size: 2
+    max_overflow: 5
+    pool_timeout: 30
+    pool_recycle: 3600
+
+  # Test database
+  test_url: "sqlite:///./tests/test_ahgd.db"
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # File logging
+  file:
+    enabled: true
+    path: "./logs/ahgd_dev.log"
+    max_size: "10MB"
+    backup_count: 3
+    rotation: true
+  
+  # Console logging
+  console:
+    enabled: true
+    colored: true
+    
+  # Structured logging for development
+  structured:
+    enabled: true
+    format: "json"
+    
+  # Logger levels for different components
+  loggers:
+    "src.extractors": "DEBUG"
+    "src.transformers": "DEBUG"
+    "src.loaders": "DEBUG"
+    "src.validators": "DEBUG"
+    "sqlalchemy.engine": "INFO"  # Reduce SQL noise
+    "urllib3": "WARNING"
+
+# =============================================================================
+# DATA PROCESSING SETTINGS
+# =============================================================================
+
+data_processing:
+  # Development-optimized settings
+  max_workers: 2  # Reduced for development
+  chunk_size: 1000  # Smaller chunks for faster feedback
+  memory_limit_gb: 4  # Conservative limit for development
+  
+  # Paths
+  paths:
+    raw: "./data_raw"
+    processed: "./data_processed" 
+    logs: "./logs"
+    cache: "./cache"
+    temp: "./temp"
+    schemas: "./schemas"
+    configs: "./configs"
+  
+  # Caching settings
+  cache:
+    enabled: true
+    type: "file"  # file, redis, memory
+    ttl: 1800  # 30 minutes for development
+    max_size_gb: 1
+    
+  # Geographic processing
+  geographic:
+    default_crs: "EPSG:4326"
+    australian_crs: "EPSG:3577"
+    spatial_index: "rtree"
+    simplify_tolerance: 0.001
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+
+testing:
+  # Pytest configuration
+  pytest:
+    workers: "auto"
+    timeout: 300  # 5 minutes
+    markers:
+      - "unit: Unit tests"
+      - "integration: Integration tests"
+      - "slow: Slow running tests"
+      - "external: Tests requiring external services"
+    
+  # Coverage settings
+  coverage:
+    min_percentage: 70  # Relaxed for development
+    source_dirs: ["src"]
+    omit_patterns:
+      - "*/tests/*"
+      - "*/test_*"
+      - "*/conftest.py"
+      
+  # Test data settings
+  test_data:
+    generate_fixtures: true
+    fixture_size: "small"  # small, medium, large
+    use_real_data: false
+
+# =============================================================================
+# DEVELOPMENT TOOLS
+# =============================================================================
+
+dev_tools:
+  # Code formatting
+  black:
+    line_length: 88
+    target_versions: ["py38", "py39", "py310", "py311"]
+    
+  # Import sorting
+  isort:
+    profile: "black"
+    line_length: 88
+    multi_line_output: 3
+    
+  # Type checking
+  mypy:
+    python_version: "3.11"
+    strict: true
+    ignore_missing_imports: true
+    
+  # Linting
+  flake8:
+    max_line_length: 88
+    ignore: ["E203", "W503"]
+    
+  # Pre-commit hooks
+  pre_commit:
+    enabled: true
+    hooks:
+      - "black"
+      - "isort" 
+      - "flake8"
+      - "mypy"
+      - "pytest"
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+
+api:
+  # Development API settings
+  cors:
+    enabled: true
+    origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+      - "http://127.0.0.1:3000"
+      - "http://127.0.0.1:8080"
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    headers: ["*"]
+    
+  # Rate limiting (relaxed for development)
+  rate_limit:
+    enabled: false  # Disabled in development
+    per_minute: 120
+    burst: 20
+    
+  # Request/Response settings
+  request:
+    max_size: "10MB"
+    timeout: 60
+    
+  # OpenAPI documentation
+  docs:
+    enabled: true
+    url: "/docs"
+    redoc_url: "/redoc"
+
+# =============================================================================
+# EXTERNAL SERVICES (DEVELOPMENT MOCKS)
+# =============================================================================
+
+external_services:
+  # Development service settings
+  abs:
+    mock: true  # Use mock data in development
+    base_url: "https://api.data.abs.gov.au"
+    timeout: 30
+    
+  aihw:
+    mock: true
+    base_url: "https://www.aihw.gov.au/reports-data"
+    timeout: 30
+    
+  bom:
+    mock: true
+    base_url: "http://www.bom.gov.au/catalogue/data-feeds"
+    timeout: 30
+    
+  osm:
+    mock: false  # OSM can be used directly
+    base_url: "https://overpass-api.de/api/interpreter"
+    rate_limit: 0.5  # Conservative rate limiting
+
+# =============================================================================
+# MONITORING & PROFILING
+# =============================================================================
+
+monitoring:
+  # Development monitoring
+  enabled: true
+  
+  # Health checks
+  health_check:
+    enabled: true
+    interval: 60  # seconds
+    endpoint: "/health"
+    
+  # Metrics collection
+  metrics:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+    
+  # Performance profiling
+  profiling:
+    enabled: true  # Enable in development
+    output_dir: "./logs/profiles"
+    
+    # Profilers
+    memory:
+      enabled: true
+      interval: 10  # seconds
+      
+    cpu:
+      enabled: true
+      sample_rate: 0.01
+      
+    io:
+      enabled: true
+
+# =============================================================================
+# FEATURE FLAGS
+# =============================================================================
+
+features:
+  # Development feature flags
+  experimental_features: true
+  ml_predictions: false  # Disabled for faster development
+  advanced_analytics: true
+  real_time_processing: false
+  
+  # Data source toggles
+  data_sources:
+    abs: true
+    aihw: true
+    bom: true
+    osm: true
+    
+  # UI features
+  ui:
+    debug_toolbar: true
+    hot_reload: true
+    source_maps: true
+
+# =============================================================================
+# PIPELINE CONFIGURATION
+# =============================================================================
+
+pipeline:
+  # Development pipeline settings
+  stages:
+    extract:
+      parallel: false  # Sequential for easier debugging
+      timeout: 300
+      retry_attempts: 2
+      
+    transform:
+      parallel: false
+      timeout: 600
+      batch_size: 500
+      
+    load:
+      parallel: false
+      timeout: 300
+      batch_size: 1000
+      
+    validate:
+      enabled: true
+      strict_mode: false  # Relaxed validation in development
+      
+  # Error handling
+  error_handling:
+    continue_on_error: true
+    max_errors: 5
+    error_log_level: "WARNING"
+
+# =============================================================================
+# DOCUMENTATION SETTINGS
+# =============================================================================
+
+documentation:
+  # Auto-generation settings
+  auto_generate: true
+  
+  # Sphinx configuration
+  sphinx:
+    source_dir: "./docs/source"
+    build_dir: "./docs/build"
+    auto_reload: true
+    
+  # API documentation
+  api_docs:
+    enabled: true
+    include_schemas: true
+    include_examples: true

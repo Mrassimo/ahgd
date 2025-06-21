@@ -1,0 +1,239 @@
+logging:
+  level: DEBUG
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  disable_existing_loggers: false
+
+database:
+  type: sqlite
+  path: ":memory:"
+  connection_pool:
+    min_connections: 1
+    max_connections: 5
+    timeout: 30
+
+extractors:
+  csv_extractor:
+    batch_size: 100
+    max_retries: 3
+    retry_delay: 0.1
+    retry_backoff: 1.5
+    checkpoint_interval: 500
+    encoding: utf-8
+    delimiter: ","
+    quote_char: '"'
+    
+  json_extractor:
+    batch_size: 200
+    max_retries: 3
+    retry_delay: 0.1
+    
+  excel_extractor:
+    batch_size: 150
+    max_retries: 3
+    retry_delay: 0.1
+    header_row: 0
+
+transformers:
+  sa2_transformer:
+    batch_size: 200
+    output_format: csv
+    max_retries: 3
+    retry_delay: 0.1
+    standardise_sa2_codes: true
+    round_decimal_places: 2
+    
+  health_transformer:
+    batch_size: 150
+    output_format: json
+    max_retries: 3
+    validate_health_ranges: true
+    
+  census_transformer:
+    batch_size: 250
+    output_format: parquet
+    max_retries: 3
+    validate_population_totals: true
+
+validators:
+  schema_validator:
+    required_columns:
+      - sa2_code
+      - value
+      - year
+    column_types:
+      sa2_code: string
+      value: float
+      year: integer
+    optional_columns:
+      - indicator_type
+      - data_source
+      - confidence_interval
+    business_rules:
+      - id: year_range_check
+        type: range_check
+        column: year
+        min: 2000
+        max: 2030
+      - id: sa2_code_format_check
+        type: pattern_match
+        column: sa2_code
+        pattern: "^[0-9]{9}$"
+      - id: value_positive_check
+        type: range_check
+        column: value
+        min: 0
+    statistical_rules:
+      outlier_detection:
+        - column: value
+          method: iqr
+          threshold: 2.0
+      distribution_checks:
+        - column: value
+          distribution: normal
+          p_value_threshold: 0.05
+      correlation_checks:
+        - column1: value
+          column2: year
+          expected_correlation: 0.0
+          tolerance: 0.3
+    
+  health_validator:
+    required_columns:
+      - sa2_code
+      - indicator_type
+      - indicator_value
+      - year
+    column_types:
+      sa2_code: string
+      indicator_type: string
+      indicator_value: float
+      year: integer
+      confidence_interval: float
+    business_rules:
+      - id: mortality_rate_range
+        type: range_check
+        column: indicator_value
+        min: 0
+        max: 50
+        applies_when:
+          indicator_type: mortality_rate
+      - id: life_expectancy_range
+        type: range_check
+        column: indicator_value
+        min: 60
+        max: 100
+        applies_when:
+          indicator_type: life_expectancy
+      - id: confidence_interval_range
+        type: range_check
+        column: confidence_interval
+        min: 0
+        max: 1
+        
+  census_validator:
+    required_columns:
+      - sa2_code
+      - total_population
+      - median_age
+      - year
+    column_types:
+      sa2_code: string
+      total_population: integer
+      median_age: float
+      median_income: integer
+      unemployment_rate: float
+      year: integer
+    business_rules:
+      - id: population_positive
+        type: range_check
+        column: total_population
+        min: 0
+      - id: age_reasonable
+        type: range_check
+        column: median_age
+        min: 15
+        max: 70
+      - id: unemployment_reasonable
+        type: range_check
+        column: unemployment_rate
+        min: 0
+        max: 30
+
+loaders:
+  sqlite_loader:
+    database_path: ":memory:"
+    table_name: test_data
+    batch_size: 1000
+    max_retries: 3
+    retry_delay: 0.1
+    create_table_if_not_exists: true
+    validate_on_load: true
+    
+  csv_loader:
+    output_directory: "./test_output"
+    batch_size: 2000
+    max_retries: 3
+    encoding: utf-8
+    delimiter: ","
+    quote_char: '"'
+    header: true
+    
+  json_loader:
+    output_directory: "./test_output"
+    batch_size: 1500
+    max_retries: 3
+    encoding: utf-8
+    indent: 2
+    ensure_ascii: false
+    
+  parquet_loader:
+    output_directory: "./test_output"
+    batch_size: 5000
+    max_retries: 3
+    compression: snappy
+    schema_validation: true
+
+geographic:
+  sa2_column: sa2_code
+  latitude_column: latitude
+  longitude_column: longitude
+  state_column: state
+  valid_states:
+    - NSW
+    - VIC
+    - QLD
+    - SA
+    - WA
+    - TAS
+    - NT
+    - ACT
+  coordinate_validation:
+    australia_bounds:
+      min_latitude: -44.0
+      max_latitude: -10.0
+      min_longitude: 112.0
+      max_longitude: 154.0
+
+performance:
+  monitoring:
+    enabled: true
+    collect_metrics: true
+    metrics_interval: 10
+    slow_operation_threshold: 5.0
+    memory_threshold_mb: 1000
+  caching:
+    enabled: true
+    max_cache_size: 1000
+    cache_ttl: 3600
+  parallel_processing:
+    enabled: false  # Disabled for testing
+    max_workers: 2
+    chunk_size: 100
+
+testing:
+  fixtures_directory: "./tests/fixtures"
+  temp_directory: "./tests/temp"
+  mock_external_apis: true
+  disable_network_calls: true
+  fast_mode: true
+  verbose_output: false

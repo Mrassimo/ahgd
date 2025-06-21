@@ -1,54 +1,167 @@
-# 🏥 Australian Health Data Marketplace
+# Australian Health Geography Data (AHGD) Repository
 
-**Access premium Australian health datasets with comprehensive quality assurance**
+## Overview
 
-[![Data Quality 95%+](https://img.shields.io/badge/data%20quality-95%25+-brightgreen.svg)](https://massimoraso.github.io/AHGD/)
-[![Datasets Available](https://img.shields.io/badge/datasets-6-blue.svg)](https://massimoraso.github.io/AHGD/)
-[![Records 886K+](https://img.shields.io/badge/records-886K%2B-orange.svg)](https://massimoraso.github.io/AHGD/)
-[![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+The Australian Health Geography Data (AHGD) repository is a production-grade, public dataset that combines Australian health, environmental, and socio-economic indicators at the Statistical Area Level 2 (SA2) level. This repository provides robust data integrity, versioning, and scalability for researchers, policymakers, and healthcare professionals.
 
-## 🌐 Data Marketplace
+## Project Structure
 
-**[Browse & Download Datasets →](https://massimoraso.github.io/AHGD/)**
-
-6 premium Australian government datasets with 886K+ records:
-- **SEIFA 2021** - Socio-economic disadvantage indices (2,293 areas)
-- **SA2 Boundaries** - Geographic boundaries with spatial data (2,454 areas) 
-- **PBS Health Data** - Pharmaceutical prescription records (492K records)
-- **AIHW Mortality** - Mortality statistics 2019-2023 (15,855 records)
-- **AIHW GRIM** - Historical mortality data 1907-2023 (373K records)
-- **PHIDU Health Areas** - Primary health area data (338 areas)
-
-All datasets include comprehensive schema documentation and quality assurance.
-
-## 📊 Quick Access
-
-```bash
-# Clone repository
-git clone https://github.com/massimoraso/AHGD.git
-
-# Install dependencies  
-uv sync
-
-# Launch dashboard
-uv run health-analytics dashboard
+```
+/ahgd/
+├── src/                    # Main source code
+│   ├── extractors/         # Data source-specific extractors
+│   ├── transformers/       # Data transformation modules
+│   ├── validators/         # Data validation framework
+│   ├── loaders/           # Data loading utilities
+│   └── utils/             # Common utilities
+├── tests/                  # Testing framework
+│   ├── unit/              # Unit tests
+│   ├── integration/       # Integration tests
+│   └── fixtures/          # Test data and fixtures
+├── configs/               # Configuration files
+├── schemas/               # Data schemas and validation rules
+├── pipelines/             # Orchestration scripts
+├── data_raw/              # Raw data storage
+├── data_processed/        # Processed data outputs
+├── logs/                  # Application logs
+└── docs/                  # Documentation
 ```
 
-## 📁 Data Downloads
+## Features
 
-Direct download links:
-- [SEIFA Data (CSV)](https://massimoraso.github.io/AHGD/data/web_exports/seifa_2021_sa2.csv)
-- [Health Data (CSV)](https://massimoraso.github.io/AHGD/data/web_exports/pbs_current_processed.csv)
-- [Mortality Data (CSV)](https://massimoraso.github.io/AHGD/data/web_exports/aihw_mort_table1.csv)
-- [Geographic Boundaries (GeoJSON)](https://massimoraso.github.io/AHGD/data/web_exports/sa2_boundaries_simplified.geojson)
+- **Comprehensive Data Integration**: Combines health, environmental, and socio-economic data
+- **SA2 Level Granularity**: Provides detailed geographic coverage across Australia
+- **Robust Data Pipeline**: ETL framework with validation and quality assurance
+- **Version Control**: Built-in data versioning and change tracking
+- **Production Ready**: Designed for scalability and reliability
+- **Open Source**: Freely available for research and analysis
 
-## 🔗 Resources
+## Data Sources
 
-- **[Data Marketplace](https://massimoraso.github.io/AHGD/)** - Browse and download datasets
-- **[API Documentation](https://massimoraso.github.io/AHGD/api/)** - Programmatic access
-- **[Schema Browser](https://massimoraso.github.io/AHGD/data/web_exports/data_catalog.json)** - Complete data catalog
-- **[GitHub Repository](https://github.com/massimoraso/AHGD)** - Source code and documentation
+The AHGD repository integrates data from multiple authoritative Australian sources:
+
+- Australian Institute of Health and Welfare (AIHW)
+- Australian Bureau of Statistics (ABS)
+- Bureau of Meteorology (BOM)
+- Other government and research institutions
+
+## Key Principles
+
+### Data Integrity Measures
+1. **Immutable Data Pipeline**: Version control all transformations
+2. **Reproducibility**: All processes are deterministic
+3. **Audit Trail**: Complete logging of all data modifications
+4. **Validation Gates**: No data proceeds without passing quality checks
+5. **Rollback Capability**: Ability to revert to previous versions
+
+### Architecture Principles
+1. **Modularity**: Each component independently testable
+2. **Scalability**: Designed for 10x data volume growth
+3. **Maintainability**: Clear separation of concerns
+4. **Extensibility**: Easy addition of new data sources
+5. **Performance**: Optimised for both processing and query speed
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.8+
+- Git
+- Virtual environment tool (venv, conda, or poetry)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-org/ahgd.git
+cd ahgd
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -e .
+```
+
+### Quick Start
+
+```python
+from src.extractors import DataExtractor
+from src.transformers import DataTransformer
+from src.validators import DataValidator
+
+# Extract data
+extractor = DataExtractor()
+raw_data = extractor.extract_aihw_data()
+
+# Transform data
+transformer = DataTransformer()
+processed_data = transformer.transform(raw_data)
+
+# Validate data
+validator = DataValidator()
+validator.validate(processed_data)
+```
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+python -m pytest tests/
+
+# Run unit tests only
+python -m pytest tests/unit/
+
+# Run integration tests
+python -m pytest tests/integration/
+```
+
+### Code Quality
+
+The project follows strict code quality standards:
+
+- PEP 8 style guide
+- Type hints for all functions
+- Comprehensive docstrings
+- 90%+ test coverage
+
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](docs/CONTRIBUTING.md) for details on:
+
+- Code of conduct
+- Development workflow
+- Pull request process
+- Testing requirements
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Contact
+
+For questions, issues, or collaboration opportunities:
+
+- **Project Lead**: [Your Name]
+- **Email**: contact@ahgd-project.org
+- **Issues**: [GitHub Issues](https://github.com/your-org/ahgd/issues)
+
+## Acknowledgments
+
+- Australian Institute of Health and Welfare (AIHW)
+- Australian Bureau of Statistics (ABS)
+- Research contributors and data providers
+- Open source community
 
 ---
 
-**Australian Health Data Analytics Platform** | Open source health data for research and public benefit
+**Version**: 0.1.0  
+**Last Updated**: $(date +%Y-%m-%d)  
+**Status**: Development Phase

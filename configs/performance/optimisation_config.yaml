@@ -1,0 +1,519 @@
+# AHGD Performance Optimisation Configuration
+# Configuration for performance analysis and optimisation recommendations
+
+# General optimisation settings
+optimisation:
+  enabled: true
+  analysis_depth: "comprehensive"  # basic, standard, comprehensive
+  recommendation_priority: "impact"  # impact, effort, balanced
+  auto_apply_safe_optimisations: false
+  
+  # Analysis scope
+  scope:
+    code_analysis: true
+    configuration_analysis: true
+    architecture_analysis: true
+    resource_usage_analysis: true
+    
+  # Output settings
+  output:
+    generate_reports: true
+    save_recommendations: true
+    create_implementation_guides: true
+    include_code_examples: true
+
+# Performance Analysis
+performance_analysis:
+  enabled: true
+  
+  # Data sources
+  data_sources:
+    profiling_data: true
+    monitoring_data: true
+    benchmark_results: true
+    historical_performance: true
+    
+  # Analysis types
+  analysis_types:
+    statistical_analysis: true
+    trend_analysis: true
+    anomaly_detection: true
+    bottleneck_identification: true
+    regression_analysis: true
+    
+  # Analysis parameters
+  parameters:
+    minimum_data_points: 10
+    confidence_level: 0.95
+    outlier_threshold: 3.0  # standard deviations
+    trend_significance: 0.05
+
+# Bottleneck Detection
+bottleneck_detection:
+  enabled: true
+  
+  # Detection thresholds
+  thresholds:
+    # System resource thresholds
+    cpu_high: 80.0
+    cpu_critical: 95.0
+    memory_high: 80.0
+    memory_critical: 95.0
+    disk_high: 85.0
+    disk_critical: 95.0
+    
+    # Application performance thresholds
+    slow_operation: 30.0  # seconds
+    very_slow_operation: 120.0  # seconds
+    high_memory_growth: 100.0  # MB
+    high_variability: 50.0  # coefficient of variation %
+    
+  # Detection algorithms
+  algorithms:
+    statistical_outliers: true
+    threshold_based: true
+    trend_based: true
+    pattern_matching: true
+    
+  # Bottleneck categorisation
+  categories:
+    cpu_bottlenecks:
+      - algorithm_inefficiency
+      - lack_of_parallelisation
+      - excessive_computation
+      - poor_caching
+      
+    memory_bottlenecks:
+      - memory_leaks
+      - inefficient_data_structures
+      - lack_of_streaming
+      - excessive_object_creation
+      
+    io_bottlenecks:
+      - slow_disk_operations
+      - network_latency
+      - inefficient_file_formats
+      - lack_of_buffering
+      
+    database_bottlenecks:
+      - missing_indexes
+      - inefficient_queries
+      - poor_connection_management
+      - excessive_data_transfer
+
+# Optimisation Recommendations
+recommendations:
+  enabled: true
+  
+  # Recommendation categories
+  categories:
+    algorithm_optimisation:
+      enabled: true
+      priority: "high"
+      
+    data_structure_optimisation:
+      enabled: true
+      priority: "medium"
+      
+    memory_optimisation:
+      enabled: true
+      priority: "high"
+      
+    cpu_optimisation:
+      enabled: true
+      priority: "high"
+      
+    io_optimisation:
+      enabled: true
+      priority: "medium"
+      
+    database_optimisation:
+      enabled: true
+      priority: "high"
+      
+    configuration_optimisation:
+      enabled: true
+      priority: "medium"
+      
+    architecture_optimisation:
+      enabled: true
+      priority: "low"
+      
+  # Recommendation rules
+  rules:
+    # CPU optimisation rules
+    cpu_optimisation:
+      high_cpu_usage:
+        condition: "cpu_percent > 80"
+        recommendations:
+          - "Implement parallel processing"
+          - "Use vectorised operations"
+          - "Optimise algorithm complexity"
+          - "Add result caching"
+        effort: "moderate"
+        impact: 70.0
+        
+      inefficient_loops:
+        condition: "nested_loops_detected"
+        recommendations:
+          - "Replace nested loops with vectorised operations"
+          - "Use NumPy for numerical computations"
+          - "Consider using list comprehensions"
+        effort: "minimal"
+        impact: 50.0
+        
+    # Memory optimisation rules
+    memory_optimisation:
+      high_memory_usage:
+        condition: "memory_usage_mb > 1000"
+        recommendations:
+          - "Implement streaming processing"
+          - "Use generators instead of lists"
+          - "Implement memory pooling"
+          - "Optimise data types"
+        effort: "moderate"
+        impact: 75.0
+        
+      memory_leaks:
+        condition: "memory_growth_mb > 100"
+        recommendations:
+          - "Check for circular references"
+          - "Implement proper cleanup"
+          - "Use context managers"
+          - "Profile memory allocation"
+        effort: "significant"
+        impact: 85.0
+        
+    # I/O optimisation rules
+    io_optimisation:
+      slow_file_operations:
+        condition: "io_duration > 5.0"
+        recommendations:
+          - "Use buffered I/O operations"
+          - "Implement asynchronous I/O"
+          - "Use more efficient file formats"
+          - "Add compression"
+        effort: "moderate"
+        impact: 60.0
+        
+    # Database optimisation rules
+    database_optimisation:
+      slow_queries:
+        condition: "query_duration > 1.0"
+        recommendations:
+          - "Add database indexes"
+          - "Optimise query structure"
+          - "Use query result caching"
+          - "Implement connection pooling"
+        effort: "moderate"
+        impact: 80.0
+
+# Memory Optimisation
+memory_optimisation:
+  enabled: true
+  
+  # Analysis settings
+  analysis:
+    detect_leaks: true
+    analyse_allocation_patterns: true
+    suggest_data_structures: true
+    recommend_streaming: true
+    
+  # Optimisation strategies
+  strategies:
+    object_pooling:
+      enabled: true
+      applicable_to: ["frequently_created_objects"]
+      estimated_savings: 30.0  # percent
+      
+    streaming_processing:
+      enabled: true
+      applicable_to: ["large_datasets"]
+      estimated_savings: 70.0  # percent
+      
+    data_type_optimisation:
+      enabled: true
+      applicable_to: ["numerical_data"]
+      estimated_savings: 25.0  # percent
+      
+    lazy_loading:
+      enabled: true
+      applicable_to: ["optional_data"]
+      estimated_savings: 40.0  # percent
+      
+  # Memory patterns
+  patterns:
+    efficient_patterns:
+      - "Use generators for large sequences"
+      - "Implement lazy evaluation"
+      - "Use appropriate data types"
+      - "Implement memory pooling"
+      
+    inefficient_patterns:
+      - "Loading entire datasets into memory"
+      - "Creating unnecessary object copies"
+      - "Using inefficient data structures"
+      - "Not releasing resources properly"
+
+# Query Optimisation
+query_optimisation:
+  enabled: true
+  
+  # Analysis settings
+  analysis:
+    detect_slow_queries: true
+    analyse_query_patterns: true
+    recommend_indexes: true
+    suggest_query_rewriting: true
+    
+  # Optimisation strategies
+  strategies:
+    indexing:
+      enabled: true
+      auto_recommend: true
+      impact_estimation: true
+      
+    query_rewriting:
+      enabled: true
+      pattern_matching: true
+      
+    result_caching:
+      enabled: true
+      cache_strategy_recommendation: true
+      
+    connection_optimisation:
+      enabled: true
+      pooling_recommendations: true
+      
+  # Query patterns
+  patterns:
+    efficient_patterns:
+      - "Use appropriate WHERE clauses"
+      - "Limit result sets with LIMIT"
+      - "Use EXISTS instead of IN for subqueries"
+      - "Use JOINs instead of subqueries where possible"
+      
+    inefficient_patterns:
+      - "SELECT * without WHERE clause"
+      - "N+1 query problems"
+      - "Unnecessary ORDER BY operations"
+      - "Missing indexes on JOIN columns"
+
+# Code Optimisation
+code_optimisation:
+  enabled: true
+  
+  # Static analysis
+  static_analysis:
+    enabled: false  # Requires additional setup
+    tools: ["pylint", "bandit", "mypy"]
+    
+  # Pattern detection
+  pattern_detection:
+    inefficient_loops: true
+    unnecessary_computations: true
+    poor_exception_handling: true
+    inefficient_string_operations: true
+    
+  # Suggestions
+  suggestions:
+    algorithm_improvements: true
+    data_structure_recommendations: true
+    caching_opportunities: true
+    parallelisation_opportunities: true
+
+# Configuration Optimisation
+configuration_optimisation:
+  enabled: true
+  
+  # System configuration
+  system_config:
+    python_optimisations: true
+    garbage_collection_tuning: true
+    thread_pool_sizing: true
+    
+  # Application configuration
+  app_config:
+    database_connections: true
+    caching_settings: true
+    logging_levels: true
+    batch_sizes: true
+    
+  # Environment optimisation
+  environment:
+    resource_allocation: true
+    performance_flags: true
+    dependency_optimisation: true
+
+# Automated Optimisation
+automated_optimisation:
+  enabled: false  # Disabled by default for safety
+  
+  # Safe optimisations (can be auto-applied)
+  safe_optimisations:
+    - "Update configuration values"
+    - "Enable performance flags"
+    - "Optimise logging levels"
+    
+  # Validation before applying
+  validation:
+    run_tests: true
+    performance_benchmarks: true
+    rollback_on_failure: true
+    
+  # Monitoring after optimisation
+  post_optimisation_monitoring:
+    duration_hours: 24
+    performance_validation: true
+    regression_detection: true
+
+# Impact Assessment
+impact_assessment:
+  enabled: true
+  
+  # Assessment methods
+  methods:
+    theoretical_analysis: true
+    benchmark_comparison: true
+    simulation: false
+    
+  # Impact metrics
+  metrics:
+    performance_improvement: true
+    resource_savings: true
+    implementation_effort: true
+    risk_assessment: true
+    
+  # Impact categorisation
+  categories:
+    high_impact: "> 50% improvement"
+    medium_impact: "20-50% improvement"
+    low_impact: "< 20% improvement"
+
+# Implementation Guidance
+implementation_guidance:
+  enabled: true
+  
+  # Implementation priorities
+  priorities:
+    critical: "Immediate implementation required"
+    high: "Implement within 1 week"
+    medium: "Implement within 1 month"
+    low: "Implement when resources available"
+    
+  # Implementation phases
+  phases:
+    phase_1:
+      - "Quick wins (low effort, high impact)"
+      - "Critical performance issues"
+      
+    phase_2:
+      - "Medium effort optimisations"
+      - "Infrastructure improvements"
+      
+    phase_3:
+      - "Long-term architectural changes"
+      - "Advanced optimisations"
+      
+  # Implementation tracking
+  tracking:
+    create_tasks: false
+    progress_monitoring: true
+    success_validation: true
+
+# Reporting
+reporting:
+  enabled: true
+  
+  # Report types
+  types:
+    analysis_report: true
+    recommendation_report: true
+    implementation_guide: true
+    progress_report: true
+    
+  # Report formats
+  formats:
+    json: true
+    html: true
+    pdf: false
+    markdown: true
+    
+  # Report content
+  content:
+    executive_summary: true
+    detailed_analysis: true
+    prioritised_recommendations: true
+    implementation_roadmap: true
+    cost_benefit_analysis: true
+    
+  # Report distribution
+  distribution:
+    save_to_file: true
+    email: false
+    webhook: false
+
+# Environment-specific Settings
+environments:
+  development:
+    optimisation:
+      auto_apply_safe_optimisations: true
+    recommendations:
+      priority: "effort"  # Prioritise easy wins in dev
+    automated_optimisation:
+      enabled: true
+      
+  testing:
+    optimisation:
+      analysis_depth: "standard"
+    impact_assessment:
+      methods:
+        benchmark_comparison: true
+        
+  production:
+    optimisation:
+      analysis_depth: "comprehensive"
+      auto_apply_safe_optimisations: false
+    automated_optimisation:
+      enabled: false
+    validation:
+      run_tests: true
+      performance_benchmarks: true
+
+# Integration Settings
+integration:
+  # CI/CD integration
+  ci_cd:
+    enabled: false
+    performance_gates: false
+    auto_optimisation_pr: false
+    
+  # Monitoring integration
+  monitoring:
+    enabled: true
+    real_time_analysis: false
+    
+  # Issue tracking
+  issue_tracking:
+    enabled: false
+    create_tickets: false
+    ticket_template: null
+
+# Advanced Features
+advanced:
+  # Machine learning optimisation
+  ml_optimisation:
+    enabled: false
+    model_training: false
+    prediction_accuracy: 0.8
+    
+  # A/B testing
+  ab_testing:
+    enabled: false
+    test_framework: null
+    
+  # Continuous optimisation
+  continuous:
+    enabled: false
+    optimisation_schedule: "weekly"
+    feedback_loop: true

@@ -1,806 +1,857 @@
 """
-Performance Monitoring System for Australian Health Analytics Dashboard
+Real-time performance monitoring for the AHGD ETL pipeline.
 
-Comprehensive performance monitoring including:
-- Application performance metrics
-- Database query performance tracking
-- Memory usage monitoring
-- Dashboard loading time metrics
-- User interaction analytics
-- Real-time performance visualization
+This module provides comprehensive monitoring capabilities including:
+- Real-time system resource monitoring
+- Performance alerts and thresholds
+- Historical performance tracking
+- Performance degradation detection
+- Automatic performance reporting
 """
 
-import time
+import asyncio
+import json
 import psutil
 import threading
-import logging
-import json
-import sqlite3
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Callable, Union
-from dataclasses import dataclass, field, asdict
-from contextlib import contextmanager
+import time
+import warnings
 from collections import defaultdict, deque
-from datetime import datetime, timedelta
-import functools
-import weakref
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set, Union
+import sqlite3
 
 try:
-    import streamlit as st
-    STREAMLIT_AVAILABLE = True
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    MATPLOTLIB_AVAILABLE = True
 except ImportError:
-    STREAMLIT_AVAILABLE = False
+    MATPLOTLIB_AVAILABLE = False
+    warnings.warn("matplotlib not available. Install with: pip install matplotlib")
 
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
+from ..utils.logging import get_logger
+from ..utils.interfaces import ProcessingStatus
 
-try:
-    import plotly.graph_objects as go
-    import plotly.express as px
-    PLOTLY_AVAILABLE = True
-except ImportError:
-    PLOTLY_AVAILABLE = False
-
-logger = logging.getLogger(__name__)
+logger = get_logger()
 
 
 @dataclass
-class PerformanceMetric:
-    """Individual performance metric"""
-    name: str
-    value: Union[float, int, str]
+class SystemMetrics:
+    """System resource metrics at a point in time."""
     timestamp: datetime
-    category: str
-    tags: Dict[str, str] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    cpu_percent: float
+    memory_percent: float
+    memory_available_mb: float
+    disk_usage_percent: float
+    disk_free_gb: float
+    network_bytes_sent: int
+    network_bytes_recv: int
+    process_count: int
+    load_average: List[float] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization"""
+        """Convert to dictionary."""
         return {
-            'name': self.name,
-            'value': self.value,
             'timestamp': self.timestamp.isoformat(),
-            'category': self.category,
-            'tags': self.tags,
-            'metadata': self.metadata
+            'cpu_percent': self.cpu_percent,
+            'memory_percent': self.memory_percent,
+            'memory_available_mb': self.memory_available_mb,
+            'disk_usage_percent': self.disk_usage_percent,
+            'disk_free_gb': self.disk_free_gb,
+            'network_bytes_sent': self.network_bytes_sent,
+            'network_bytes_recv': self.network_bytes_recv,
+            'process_count': self.process_count,
+            'load_average': self.load_average
         }
 
 
 @dataclass
 class PerformanceAlert:
-    """Performance alert configuration"""
+    """Performance alert configuration and state."""
+    alert_id: str
+    alert_name: str
     metric_name: str
-    threshold: float
-    operator: str  # '>', '<', '>=', '<=', '==', '!='
-    severity: str  # 'low', 'medium', 'high', 'critical'
-    message: str
-    enabled: bool = True
-    cooldown_seconds: int = 300  # 5 minutes
-    last_triggered: Optional[datetime] = None
-
-
-class MetricsCollector:
-    """Collects and stores performance metrics"""
+    threshold_value: float
+    comparison_operator: str  # 'gt', 'lt', 'eq', 'gte', 'lte'
+    is_active: bool = False
+    triggered_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    trigger_count: int = 0
+    callback: Optional[Callable] = None
     
-    def __init__(self, max_metrics: int = 10000, storage_path: Optional[Path] = None):
-        self.max_metrics = max_metrics
-        self.storage_path = storage_path
-        self.metrics: deque = deque(maxlen=max_metrics)
-        self.metrics_by_category: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self.alerts: List[PerformanceAlert] = []
-        self.alert_callbacks: List[Callable[[PerformanceAlert, PerformanceMetric], None]] = []
-        self._lock = threading.Lock()
+    def check_threshold(self, value: float) -> bool:
+        """Check if the metric value crosses the threshold."""
+        if self.comparison_operator == 'gt':
+            return value > self.threshold_value
+        elif self.comparison_operator == 'gte':
+            return value >= self.threshold_value
+        elif self.comparison_operator == 'lt':
+            return value < self.threshold_value
+        elif self.comparison_operator == 'lte':
+            return value <= self.threshold_value
+        elif self.comparison_operator == 'eq':
+            return value == self.threshold_value
+        return False
+
+
+@dataclass
+class PerformanceTrend:
+    """Performance trend analysis."""
+    metric_name: str
+    trend_direction: str  # 'increasing', 'decreasing', 'stable'
+    trend_strength: float  # 0-1, how strong the trend is
+    slope: float
+    correlation: float
+    duration_hours: float
+    data_points: int
+
+
+class SystemMonitor:
+    """
+    Real-time system resource monitoring.
+    
+    Features:
+    - CPU, memory, disk, network monitoring
+    - Historical data collection
+    - Resource usage trends
+    - System health checks
+    """
+    
+    def __init__(self, collection_interval: float = 60.0, max_history: int = 1440):
+        self.collection_interval = collection_interval
+        self.max_history = max_history  # 24 hours at 1-minute intervals
+        self.metrics_history = deque(maxlen=max_history)
+        self.is_monitoring = False
+        self.monitor_thread = None
+        self.process = psutil.Process()
         
-        # Initialize persistent storage if path provided
-        if storage_path:
+    def start_monitoring(self):
+        """Start system monitoring."""
+        if self.is_monitoring:
+            return
+        
+        self.is_monitoring = True
+        self.monitor_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitor_thread.start()
+        
+        logger.info("System monitoring started",
+                   collection_interval=self.collection_interval,
+                   max_history=self.max_history)
+    
+    def stop_monitoring(self):
+        """Stop system monitoring."""
+        self.is_monitoring = False
+        if self.monitor_thread:
+            self.monitor_thread.join(timeout=5)
+        
+        logger.info("System monitoring stopped")
+    
+    def _monitoring_loop(self):
+        """Main monitoring loop."""
+        while self.is_monitoring:
+            try:
+                metrics = self._collect_metrics()
+                self.metrics_history.append(metrics)
+                
+                # Log current system state periodically
+                if len(self.metrics_history) % 10 == 0:  # Every 10 intervals
+                    logger.debug("System metrics collected",
+                               cpu_percent=metrics.cpu_percent,
+                               memory_percent=metrics.memory_percent,
+                               disk_usage_percent=metrics.disk_usage_percent)
+                
+            except Exception as e:
+                logger.error("Error collecting system metrics", error=str(e))
+            
+            time.sleep(self.collection_interval)
+    
+    def _collect_metrics(self) -> SystemMetrics:
+        """Collect current system metrics."""
+        # CPU metrics
+        cpu_percent = psutil.cpu_percent(interval=1)
+        
+        # Memory metrics
+        memory = psutil.virtual_memory()
+        memory_percent = memory.percent
+        memory_available_mb = memory.available / 1024 / 1024
+        
+        # Disk metrics
+        disk = psutil.disk_usage('/')
+        disk_usage_percent = disk.percent
+        disk_free_gb = disk.free / 1024 / 1024 / 1024
+        
+        # Network metrics
+        network = psutil.net_io_counters()
+        network_bytes_sent = network.bytes_sent
+        network_bytes_recv = network.bytes_recv
+        
+        # Process count
+        process_count = len(psutil.pids())
+        
+        # Load average (Unix only)
+        load_average = []
+        try:
+            load_average = list(psutil.getloadavg())
+        except AttributeError:
+            pass  # Windows doesn't have getloadavg
+        
+        return SystemMetrics(
+            timestamp=datetime.now(timezone.utc),
+            cpu_percent=cpu_percent,
+            memory_percent=memory_percent,
+            memory_available_mb=memory_available_mb,
+            disk_usage_percent=disk_usage_percent,
+            disk_free_gb=disk_free_gb,
+            network_bytes_sent=network_bytes_sent,
+            network_bytes_recv=network_bytes_recv,
+            process_count=process_count,
+            load_average=load_average
+        )
+    
+    def get_current_metrics(self) -> Optional[SystemMetrics]:
+        """Get the most recent system metrics."""
+        return self.metrics_history[-1] if self.metrics_history else None
+    
+    def get_metrics_history(self, hours: float = 1.0) -> List[SystemMetrics]:
+        """Get metrics history for the specified time period."""
+        if not self.metrics_history:
+            return []
+        
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+        return [m for m in self.metrics_history if m.timestamp >= cutoff_time]
+    
+    def get_system_health(self) -> Dict[str, Any]:
+        """Get overall system health assessment."""
+        current = self.get_current_metrics()
+        if not current:
+            return {'status': 'unknown', 'reason': 'No metrics available'}
+        
+        health_issues = []
+        
+        # Check CPU usage
+        if current.cpu_percent > 90:
+            health_issues.append('CPU usage critically high')
+        elif current.cpu_percent > 70:
+            health_issues.append('CPU usage high')
+        
+        # Check memory usage
+        if current.memory_percent > 95:
+            health_issues.append('Memory usage critically high')
+        elif current.memory_percent > 80:
+            health_issues.append('Memory usage high')
+        
+        # Check disk space
+        if current.disk_usage_percent > 95:
+            health_issues.append('Disk space critically low')
+        elif current.disk_usage_percent > 85:
+            health_issues.append('Disk space low')
+        
+        # Determine overall status
+        if any('critically' in issue for issue in health_issues):
+            status = 'critical'
+        elif health_issues:
+            status = 'warning'
+        else:
+            status = 'healthy'
+        
+        return {
+            'status': status,
+            'timestamp': current.timestamp.isoformat(),
+            'issues': health_issues,
+            'metrics': current.to_dict()
+        }class PerformanceMonitor:
+    """
+    Application-level performance monitoring.
+    
+    Features:
+    - ETL operation performance tracking
+    - Custom metric collection
+    - Performance trend analysis
+    - Degradation detection
+    """
+    
+    def __init__(self, storage_file: Optional[str] = None):
+        self.storage_file = storage_file
+        self.metrics = defaultdict(list)
+        self.operation_timings = {}
+        self.custom_metrics = defaultdict(list)
+        self.is_monitoring = True
+        
+        if storage_file:
             self._init_storage()
     
     def _init_storage(self):
-        """Initialize SQLite database for persistent metrics storage"""
-        try:
-            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            with sqlite3.connect(str(self.storage_path)) as conn:
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS metrics (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL,
-                        value REAL,
-                        timestamp TEXT NOT NULL,
-                        category TEXT NOT NULL,
-                        tags TEXT,
-                        metadata TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_metrics_timestamp 
-                    ON metrics(timestamp)
-                """)
-                
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_metrics_category 
-                    ON metrics(category)
-                """)
-                
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_metrics_name 
-                    ON metrics(name)
-                """)
-                
-                conn.commit()
-                
-        except Exception as e:
-            logger.error(f"Failed to initialize metrics storage: {e}")
-            self.storage_path = None
-    
-    def add_metric(self, name: str, value: Union[float, int, str], 
-                   category: str = "general", tags: Optional[Dict[str, str]] = None,
-                   metadata: Optional[Dict[str, Any]] = None) -> PerformanceMetric:
-        """Add a performance metric"""
-        metric = PerformanceMetric(
-            name=name,
-            value=value,
-            timestamp=datetime.now(),
-            category=category,
-            tags=tags or {},
-            metadata=metadata or {}
-        )
-        
-        with self._lock:
-            self.metrics.append(metric)
-            self.metrics_by_category[category].append(metric)
-            
-            # Store in persistent storage
-            if self.storage_path:
-                self._store_metric(metric)
-            
-            # Check alerts
-            self._check_alerts(metric)
-        
-        return metric
-    
-    def _store_metric(self, metric: PerformanceMetric):
-        """Store metric in persistent storage"""
-        try:
-            with sqlite3.connect(str(self.storage_path)) as conn:
-                conn.execute("""
-                    INSERT INTO metrics (name, value, timestamp, category, tags, metadata)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    metric.name,
-                    float(metric.value) if isinstance(metric.value, (int, float)) else None,
-                    metric.timestamp.isoformat(),
-                    metric.category,
-                    json.dumps(metric.tags),
-                    json.dumps(metric.metadata)
-                ))
-                conn.commit()
-        except Exception as e:
-            logger.error(f"Failed to store metric: {e}")
-    
-    def get_metrics(self, category: Optional[str] = None, 
-                   since: Optional[datetime] = None,
-                   limit: Optional[int] = None) -> List[PerformanceMetric]:
-        """Get metrics with optional filtering"""
-        with self._lock:
-            if category:
-                metrics = list(self.metrics_by_category[category])
-            else:
-                metrics = list(self.metrics)
-            
-            if since:
-                metrics = [m for m in metrics if m.timestamp >= since]
-            
-            if limit:
-                metrics = metrics[-limit:]
-            
-            return metrics
-    
-    def get_metrics_from_storage(self, category: Optional[str] = None,
-                               since: Optional[datetime] = None,
-                               limit: Optional[int] = 1000) -> List[Dict[str, Any]]:
-        """Get metrics from persistent storage"""
-        if not self.storage_path:
-            return []
-        
-        try:
-            with sqlite3.connect(str(self.storage_path)) as conn:
-                query = "SELECT * FROM metrics WHERE 1=1"
-                params = []
-                
-                if category:
-                    query += " AND category = ?"
-                    params.append(category)
-                
-                if since:
-                    query += " AND timestamp >= ?"
-                    params.append(since.isoformat())
-                
-                query += " ORDER BY timestamp DESC"
-                
-                if limit:
-                    query += " LIMIT ?"
-                    params.append(limit)
-                
-                cursor = conn.execute(query, params)
-                rows = cursor.fetchall()
-                
-                columns = [desc[0] for desc in cursor.description]
-                return [dict(zip(columns, row)) for row in rows]
-                
-        except Exception as e:
-            logger.error(f"Failed to get metrics from storage: {e}")
-            return []
-    
-    def add_alert(self, alert: PerformanceAlert):
-        """Add performance alert"""
-        self.alerts.append(alert)
-    
-    def add_alert_callback(self, callback: Callable[[PerformanceAlert, PerformanceMetric], None]):
-        """Add callback for alert notifications"""
-        self.alert_callbacks.append(callback)
-    
-    def _check_alerts(self, metric: PerformanceMetric):
-        """Check if metric triggers any alerts"""
-        for alert in self.alerts:
-            if not alert.enabled or alert.metric_name != metric.name:
-                continue
-            
-            # Check cooldown
-            if (alert.last_triggered and 
-                datetime.now() - alert.last_triggered < timedelta(seconds=alert.cooldown_seconds)):
-                continue
-            
-            # Check threshold
-            if not isinstance(metric.value, (int, float)):
-                continue
-            
-            triggered = False
-            if alert.operator == '>' and metric.value > alert.threshold:
-                triggered = True
-            elif alert.operator == '<' and metric.value < alert.threshold:
-                triggered = True
-            elif alert.operator == '>=' and metric.value >= alert.threshold:
-                triggered = True
-            elif alert.operator == '<=' and metric.value <= alert.threshold:
-                triggered = True
-            elif alert.operator == '==' and metric.value == alert.threshold:
-                triggered = True
-            elif alert.operator == '!=' and metric.value != alert.threshold:
-                triggered = True
-            
-            if triggered:
-                alert.last_triggered = datetime.now()
-                logger.warning(f"Performance alert triggered: {alert.message}")
-                
-                # Notify callbacks
-                for callback in self.alert_callbacks:
-                    try:
-                        callback(alert, metric)
-                    except Exception as e:
-                        logger.error(f"Error in alert callback: {e}")
-    
-    def get_summary(self, since: Optional[datetime] = None) -> Dict[str, Any]:
-        """Get metrics summary"""
-        with self._lock:
-            metrics = self.get_metrics(since=since)
-            
-            if not metrics:
-                return {'total_metrics': 0}
-            
-            categories = defaultdict(int)
-            values_by_name = defaultdict(list)
-            
-            for metric in metrics:
-                categories[metric.category] += 1
-                if isinstance(metric.value, (int, float)):
-                    values_by_name[metric.name].append(metric.value)
-            
-            # Calculate statistics
-            stats = {}
-            for name, values in values_by_name.items():
-                if values:
-                    stats[name] = {
-                        'count': len(values),
-                        'min': min(values),
-                        'max': max(values),
-                        'avg': sum(values) / len(values),
-                        'latest': values[-1]
-                    }
-            
-            return {
-                'total_metrics': len(metrics),
-                'categories': dict(categories),
-                'time_range': {
-                    'start': metrics[0].timestamp.isoformat() if metrics else None,
-                    'end': metrics[-1].timestamp.isoformat() if metrics else None
-                },
-                'statistics': stats
-            }
-
-
-class SystemMetricsCollector:
-    """Collects system-level performance metrics"""
-    
-    def __init__(self, metrics_collector: MetricsCollector):
-        self.metrics_collector = metrics_collector
-        self.process = psutil.Process()
-        self.collection_active = False
-        self.collection_thread = None
-        self.collection_interval = 5  # seconds
-    
-    def start_collection(self, interval: int = 5):
-        """Start automatic system metrics collection"""
-        if self.collection_active:
+        """Initialise persistent storage for metrics."""
+        if not self.storage_file:
             return
         
-        self.collection_interval = interval
-        self.collection_active = True
-        self.collection_thread = threading.Thread(target=self._collection_worker, daemon=True)
-        self.collection_thread.start()
-        logger.info("Started system metrics collection")
-    
-    def stop_collection(self):
-        """Stop automatic system metrics collection"""
-        self.collection_active = False
-        if self.collection_thread:
-            self.collection_thread.join(timeout=2)
-        logger.info("Stopped system metrics collection")
-    
-    def _collection_worker(self):
-        """Worker thread for collecting system metrics"""
-        while self.collection_active:
-            try:
-                self.collect_current_metrics()
-                time.sleep(self.collection_interval)
-            except Exception as e:
-                logger.error(f"Error collecting system metrics: {e}")
-                time.sleep(self.collection_interval)
-    
-    def collect_current_metrics(self):
-        """Collect current system metrics"""
-        try:
-            # CPU metrics
-            cpu_percent = psutil.cpu_percent(interval=1)
-            self.metrics_collector.add_metric("cpu_usage_percent", cpu_percent, "system")
-            
-            # Memory metrics
-            memory = psutil.virtual_memory()
-            self.metrics_collector.add_metric("memory_usage_percent", memory.percent, "system")
-            self.metrics_collector.add_metric("memory_available_mb", memory.available / 1024 / 1024, "system")
-            self.metrics_collector.add_metric("memory_used_mb", memory.used / 1024 / 1024, "system")
-            
-            # Process-specific metrics
-            with self.process.oneshot():
-                proc_memory = self.process.memory_info()
-                self.metrics_collector.add_metric("process_memory_rss_mb", proc_memory.rss / 1024 / 1024, "process")
-                self.metrics_collector.add_metric("process_memory_vms_mb", proc_memory.vms / 1024 / 1024, "process")
-                
-                try:
-                    proc_cpu = self.process.cpu_percent()
-                    self.metrics_collector.add_metric("process_cpu_percent", proc_cpu, "process")
-                except:
-                    pass  # CPU percent might not be available immediately
-                
-                self.metrics_collector.add_metric("process_threads", self.process.num_threads(), "process")
-            
-            # Disk metrics
-            disk_usage = psutil.disk_usage('/')
-            self.metrics_collector.add_metric("disk_usage_percent", 
-                                             disk_usage.used / disk_usage.total * 100, "system")
-            
-        except Exception as e:
-            logger.error(f"Error collecting system metrics: {e}")
-
-
-class DatabaseMetricsCollector:
-    """Collects database performance metrics"""
-    
-    def __init__(self, metrics_collector: MetricsCollector):
-        self.metrics_collector = metrics_collector
-        self.query_times: Dict[str, List[float]] = defaultdict(list)
-        self._lock = threading.Lock()
-    
-    @contextmanager
-    def track_query(self, query_name: str, query_sql: Optional[str] = None):
-        """Context manager to track database query performance"""
-        start_time = time.time()
-        error_occurred = False
+        conn = sqlite3.connect(self.storage_file)
+        cursor = conn.cursor()
         
-        try:
-            yield
-        except Exception as e:
-            error_occurred = True
-            self.metrics_collector.add_metric(
-                f"db_query_error_{query_name}", 1, "database",
-                metadata={"error": str(e), "query": query_sql}
+        # Create tables
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS performance_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                operation_name TEXT NOT NULL,
+                metric_name TEXT NOT NULL,
+                metric_value REAL NOT NULL,
+                metadata TEXT
             )
-            raise
-        finally:
-            duration = time.time() - start_time
-            
-            with self._lock:
-                self.query_times[query_name].append(duration)
-                # Keep only last 100 query times per query
-                if len(self.query_times[query_name]) > 100:
-                    self.query_times[query_name] = self.query_times[query_name][-100:]
-            
-            # Record metrics
-            self.metrics_collector.add_metric(
-                f"db_query_duration_{query_name}", duration, "database",
-                metadata={"query": query_sql, "error": error_occurred}
-            )
-            
-            # Record aggregate metrics
-            avg_duration = sum(self.query_times[query_name]) / len(self.query_times[query_name])
-            self.metrics_collector.add_metric(
-                f"db_query_avg_duration_{query_name}", avg_duration, "database"
-            )
-    
-    def get_query_stats(self) -> Dict[str, Dict[str, float]]:
-        """Get query performance statistics"""
-        with self._lock:
-            stats = {}
-            for query_name, times in self.query_times.items():
-                if times:
-                    stats[query_name] = {
-                        'count': len(times),
-                        'avg': sum(times) / len(times),
-                        'min': min(times),
-                        'max': max(times),
-                        'recent_avg': sum(times[-10:]) / min(len(times), 10)
-                    }
-            return stats
-
-
-class StreamlitMetricsCollector:
-    """Collects Streamlit-specific performance metrics"""
-    
-    def __init__(self, metrics_collector: MetricsCollector):
-        self.metrics_collector = metrics_collector
-        self.page_load_times: Dict[str, List[float]] = defaultdict(list)
-        self.user_interactions: Dict[str, int] = defaultdict(int)
-    
-    @contextmanager
-    def track_page_load(self, page_name: str):
-        """Track page loading performance"""
-        start_time = time.time()
-        try:
-            yield
-        finally:
-            duration = time.time() - start_time
-            self.page_load_times[page_name].append(duration)
-            
-            # Keep only last 50 load times
-            if len(self.page_load_times[page_name]) > 50:
-                self.page_load_times[page_name] = self.page_load_times[page_name][-50:]
-            
-            self.metrics_collector.add_metric(
-                f"page_load_time_{page_name}", duration, "streamlit"
-            )
-            
-            # Average load time
-            avg_time = sum(self.page_load_times[page_name]) / len(self.page_load_times[page_name])
-            self.metrics_collector.add_metric(
-                f"page_avg_load_time_{page_name}", avg_time, "streamlit"
-            )
-    
-    def track_user_interaction(self, interaction_type: str, component: str = ""):
-        """Track user interactions"""
-        key = f"{interaction_type}_{component}" if component else interaction_type
-        self.user_interactions[key] += 1
+        ''')
         
-        self.metrics_collector.add_metric(
-            f"user_interaction_{key}", self.user_interactions[key], "streamlit"
-        )
-    
-    def track_session_info(self):
-        """Track Streamlit session information"""
-        if not STREAMLIT_AVAILABLE:
-            return
-        
-        try:
-            # Session state size
-            session_size = len(st.session_state.keys())
-            self.metrics_collector.add_metric("session_state_size", session_size, "streamlit")
-            
-            # Estimate session memory usage
-            session_memory = 0
-            for key, value in st.session_state.items():
-                try:
-                    session_memory += len(str(value))
-                except:
-                    pass
-            
-            self.metrics_collector.add_metric("session_memory_estimate", session_memory, "streamlit")
-            
-        except Exception as e:
-            logger.error(f"Error tracking session info: {e}")
-
-
-class PerformanceMonitor:
-    """Main performance monitoring coordinator"""
-    
-    def __init__(self, storage_path: Optional[Path] = None):
-        self.metrics_collector = MetricsCollector(storage_path=storage_path)
-        self.system_collector = SystemMetricsCollector(self.metrics_collector)
-        self.db_collector = DatabaseMetricsCollector(self.metrics_collector)
-        self.streamlit_collector = StreamlitMetricsCollector(self.metrics_collector)
-        
-        # Performance thresholds and alerts
-        self._setup_default_alerts()
-        
-        # Start automatic system monitoring
-        self.start_monitoring()
-    
-    def _setup_default_alerts(self):
-        """Setup default performance alerts"""
-        alerts = [
-            PerformanceAlert(
-                metric_name="cpu_usage_percent",
-                threshold=80.0,
-                operator=">",
-                severity="high",
-                message="High CPU usage detected"
-            ),
-            PerformanceAlert(
-                metric_name="memory_usage_percent",
-                threshold=85.0,
-                operator=">",
-                severity="high",
-                message="High memory usage detected"
-            ),
-            PerformanceAlert(
-                metric_name="process_memory_rss_mb",
-                threshold=1024.0,  # 1GB
-                operator=">",
-                severity="medium",
-                message="Application using more than 1GB memory"
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS operation_timings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                operation_name TEXT NOT NULL,
+                duration_seconds REAL NOT NULL,
+                status TEXT NOT NULL,
+                metadata TEXT
             )
+        ''')
+        
+        conn.commit()
+        conn.close()
+    
+    def record_operation_timing(self, operation_name: str, duration: float, 
+                              status: str = 'completed', metadata: Dict[str, Any] = None):
+        """Record timing for an operation."""
+        timing_record = {
+            'timestamp': datetime.now(timezone.utc),
+            'operation_name': operation_name,
+            'duration': duration,
+            'status': status,
+            'metadata': metadata or {}
+        }
+        
+        self.operation_timings[operation_name] = self.operation_timings.get(operation_name, [])
+        self.operation_timings[operation_name].append(timing_record)
+        
+        # Store in database if configured
+        if self.storage_file:
+            self._store_operation_timing(timing_record)
+        
+        logger.debug(f"Operation timing recorded: {operation_name}",
+                    duration=duration, status=status)
+    
+    def record_custom_metric(self, metric_name: str, value: float, 
+                           operation_name: str = None, metadata: Dict[str, Any] = None):
+        """Record a custom performance metric."""
+        metric_record = {
+            'timestamp': datetime.now(timezone.utc),
+            'metric_name': metric_name,
+            'value': value,
+            'operation_name': operation_name,
+            'metadata': metadata or {}
+        }
+        
+        self.custom_metrics[metric_name].append(metric_record)
+        
+        # Store in database if configured
+        if self.storage_file:
+            self._store_custom_metric(metric_record)
+        
+        logger.debug(f"Custom metric recorded: {metric_name}",
+                    value=value, operation=operation_name)
+    
+    def _store_operation_timing(self, timing_record: Dict[str, Any]):
+        """Store operation timing in database."""
+        conn = sqlite3.connect(self.storage_file)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO operation_timings (timestamp, operation_name, duration_seconds, status, metadata)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            timing_record['timestamp'].isoformat(),
+            timing_record['operation_name'],
+            timing_record['duration'],
+            timing_record['status'],
+            json.dumps(timing_record['metadata'])
+        ))
+        
+        conn.commit()
+        conn.close()
+    
+    def _store_custom_metric(self, metric_record: Dict[str, Any]):
+        """Store custom metric in database."""
+        conn = sqlite3.connect(self.storage_file)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO performance_metrics (timestamp, operation_name, metric_name, metric_value, metadata)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            metric_record['timestamp'].isoformat(),
+            metric_record.get('operation_name', ''),
+            metric_record['metric_name'],
+            metric_record['value'],
+            json.dumps(metric_record['metadata'])
+        ))
+        
+        conn.commit()
+        conn.close()
+    
+    def get_operation_statistics(self, operation_name: str, hours: float = 24.0) -> Dict[str, Any]:
+        """Get statistics for an operation over a time period."""
+        if operation_name not in self.operation_timings:
+            return {}
+        
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+        recent_timings = [
+            t for t in self.operation_timings[operation_name]
+            if t['timestamp'] >= cutoff_time
         ]
         
-        for alert in alerts:
-            self.metrics_collector.add_alert(alert)
+        if not recent_timings:
+            return {}
         
-        # Add default alert callback
-        self.metrics_collector.add_alert_callback(self._default_alert_handler)
-    
-    def _default_alert_handler(self, alert: PerformanceAlert, metric: PerformanceMetric):
-        """Default alert handler"""
-        logger.warning(f"PERFORMANCE ALERT: {alert.message} - {metric.name}: {metric.value}")
+        durations = [t['duration'] for t in recent_timings]
+        successful = [t for t in recent_timings if t['status'] == 'completed']
         
-        # If running in Streamlit, show warning
-        if STREAMLIT_AVAILABLE:
-            try:
-                st.warning(f"Performance Alert: {alert.message}")
-            except:
-                pass  # Might not be in Streamlit context
+        return {
+            'operation_name': operation_name,
+            'time_period_hours': hours,
+            'total_executions': len(recent_timings),
+            'successful_executions': len(successful),
+            'success_rate': len(successful) / len(recent_timings),
+            'average_duration': sum(durations) / len(durations),
+            'min_duration': min(durations),
+            'max_duration': max(durations),
+            'total_duration': sum(durations),
+            'executions_per_hour': len(recent_timings) / hours
+        }
     
-    def start_monitoring(self, system_interval: int = 5):
-        """Start automatic performance monitoring"""
-        self.system_collector.start_collection(interval=system_interval)
-        logger.info("Performance monitoring started")
-    
-    def stop_monitoring(self):
-        """Stop automatic performance monitoring"""
-        self.system_collector.stop_collection()
-        logger.info("Performance monitoring stopped")
-    
-    def track_function_performance(self, name: Optional[str] = None):
-        """Decorator to track function performance"""
-        def decorator(func):
-            func_name = name or f"{func.__module__}.{func.__name__}"
-            
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                start_time = time.time()
-                try:
-                    result = func(*args, **kwargs)
-                    success = True
-                    return result
-                except Exception as e:
-                    success = False
-                    self.metrics_collector.add_metric(
-                        f"function_error_{func_name}", 1, "performance",
-                        metadata={"error": str(e)}
-                    )
-                    raise
-                finally:
-                    duration = time.time() - start_time
-                    self.metrics_collector.add_metric(
-                        f"function_duration_{func_name}", duration, "performance",
-                        metadata={"success": success}
-                    )
-            
-            return wrapper
-        return decorator
-    
-    def get_performance_summary(self, hours: int = 1) -> Dict[str, Any]:
-        """Get comprehensive performance summary"""
-        since = datetime.now() - timedelta(hours=hours)
-        summary = self.metrics_collector.get_summary(since=since)
+    def detect_performance_degradation(self, operation_name: str, 
+                                     baseline_hours: float = 168.0,  # 1 week
+                                     recent_hours: float = 24.0) -> Dict[str, Any]:
+        """Detect performance degradation by comparing recent vs baseline performance."""
+        baseline_stats = self.get_operation_statistics(operation_name, baseline_hours)
+        recent_stats = self.get_operation_statistics(operation_name, recent_hours)
         
-        # Add query statistics
-        summary['database_queries'] = self.db_collector.get_query_stats()
+        if not baseline_stats or not recent_stats:
+            return {'has_degradation': False, 'reason': 'Insufficient data'}
         
-        # Add system status
-        try:
-            summary['current_system'] = {
-                'cpu_percent': psutil.cpu_percent(),
-                'memory_percent': psutil.virtual_memory().percent,
-                'disk_percent': psutil.disk_usage('/').used / psutil.disk_usage('/').total * 100
+        # Compare average durations
+        baseline_avg = baseline_stats['average_duration']
+        recent_avg = recent_stats['average_duration']
+        duration_change = ((recent_avg - baseline_avg) / baseline_avg) * 100
+        
+        # Compare success rates
+        baseline_success = baseline_stats['success_rate']
+        recent_success = recent_stats['success_rate']
+        success_change = ((baseline_success - recent_success) / baseline_success) * 100
+        
+        # Detect degradation (20% threshold)
+        has_duration_degradation = duration_change > 20
+        has_success_degradation = success_change > 5  # 5% drop in success rate
+        
+        return {
+            'has_degradation': has_duration_degradation or has_success_degradation,
+            'operation_name': operation_name,
+            'duration_change_percent': duration_change,
+            'success_rate_change_percent': success_change,
+            'baseline_avg_duration': baseline_avg,
+            'recent_avg_duration': recent_avg,
+            'baseline_success_rate': baseline_success,
+            'recent_success_rate': recent_success,
+            'degradation_types': {
+                'duration': has_duration_degradation,
+                'success_rate': has_success_degradation
             }
-        except:
-            summary['current_system'] = {'error': 'Could not get current system stats'}
-        
-        return summary
+        }
+
+
+class ResourceTracker:
+    """
+    Track resource usage for specific operations or processes.
     
-    def create_performance_dashboard(self) -> Optional[Any]:
-        """Create performance monitoring dashboard"""
-        if not STREAMLIT_AVAILABLE or not PLOTLY_AVAILABLE:
-            logger.warning("Streamlit or Plotly not available for performance dashboard")
-            return None
+    Features:
+    - Per-operation resource tracking
+    - Resource usage trends
+    - Resource leak detection
+    - Resource efficiency metrics
+    """
+    
+    def __init__(self):
+        self.active_operations = {}
+        self.completed_operations = []
+        self.resource_snapshots = defaultdict(list)
+    
+    def start_operation_tracking(self, operation_id: str, operation_name: str):
+        """Start tracking resources for an operation."""
+        start_time = datetime.now(timezone.utc)
+        process = psutil.Process()
         
-        try:
-            st.header("Performance Monitoring Dashboard")
-            
-            # Get recent metrics
-            since = datetime.now() - timedelta(hours=1)
-            metrics = self.metrics_collector.get_metrics(since=since)
-            
-            if not metrics:
-                st.warning("No performance metrics available")
-                return
-            
-            # Convert to DataFrame for easier plotting
-            if PANDAS_AVAILABLE:
-                df_data = []
-                for metric in metrics:
-                    if isinstance(metric.value, (int, float)):
-                        df_data.append({
-                            'timestamp': metric.timestamp,
-                            'name': metric.name,
-                            'value': metric.value,
-                            'category': metric.category
-                        })
+        initial_snapshot = {
+            'timestamp': start_time,
+            'memory_mb': process.memory_info().rss / 1024 / 1024,
+            'cpu_percent': process.cpu_percent(),
+            'threads': process.num_threads(),
+            'open_files': len(process.open_files())
+        }
+        
+        self.active_operations[operation_id] = {
+            'operation_name': operation_name,
+            'start_time': start_time,
+            'initial_snapshot': initial_snapshot,
+            'snapshots': [initial_snapshot]
+        }
+        
+        logger.debug(f"Started resource tracking for operation: {operation_name}",
+                    operation_id=operation_id)
+    
+    def stop_operation_tracking(self, operation_id: str) -> Dict[str, Any]:
+        """Stop tracking resources for an operation and return summary."""
+        if operation_id not in self.active_operations:
+            return {}
+        
+        operation = self.active_operations.pop(operation_id)
+        end_time = datetime.now(timezone.utc)
+        process = psutil.Process()
+        
+        final_snapshot = {
+            'timestamp': end_time,
+            'memory_mb': process.memory_info().rss / 1024 / 1024,
+            'cpu_percent': process.cpu_percent(),
+            'threads': process.num_threads(),
+            'open_files': len(process.open_files())
+        }
+        
+        operation['end_time'] = end_time
+        operation['final_snapshot'] = final_snapshot
+        operation['duration'] = (end_time - operation['start_time']).total_seconds()
+        
+        # Calculate resource usage
+        initial = operation['initial_snapshot']
+        final = final_snapshot
+        
+        resource_summary = {
+            'operation_id': operation_id,
+            'operation_name': operation['operation_name'],
+            'duration_seconds': operation['duration'],
+            'memory_growth_mb': final['memory_mb'] - initial['memory_mb'],
+            'peak_memory_mb': max(s['memory_mb'] for s in operation['snapshots'] + [final]),
+            'average_cpu_percent': sum(s['cpu_percent'] for s in operation['snapshots']) / len(operation['snapshots']),
+            'thread_count_change': final['threads'] - initial['threads'],
+            'file_descriptor_change': final['open_files'] - initial['open_files'],
+            'resource_efficiency': self._calculate_efficiency(operation)
+        }
+        
+        self.completed_operations.append(resource_summary)
+        
+        logger.debug(f"Stopped resource tracking for operation: {operation['operation_name']}",
+                    resource_summary=resource_summary)
+        
+        return resource_summary
+    
+    def _calculate_efficiency(self, operation: Dict[str, Any]) -> float:
+        """Calculate resource efficiency score (0-100)."""
+        score = 100.0
+        
+        initial = operation['initial_snapshot']
+        final = operation['final_snapshot']
+        
+        # Penalise excessive memory growth
+        memory_growth = final['memory_mb'] - initial['memory_mb']
+        if memory_growth > 100:  # More than 100MB growth
+            score -= min(50, memory_growth / 10)
+        
+        # Penalise high CPU usage
+        avg_cpu = sum(s['cpu_percent'] for s in operation['snapshots']) / len(operation['snapshots'])
+        if avg_cpu > 80:
+            score -= min(30, (avg_cpu - 80) * 2)
+        
+        # Penalise resource leaks
+        thread_leak = final['threads'] - initial['threads']
+        if thread_leak > 0:
+            score -= min(20, thread_leak * 5)
+        
+        file_leak = final['open_files'] - initial['open_files']
+        if file_leak > 0:
+            score -= min(20, file_leak * 2)
+        
+        return max(0.0, score)
+
+
+class AlertManager:
+    """
+    Manage performance alerts and notifications.
+    
+    Features:
+    - Threshold-based alerting
+    - Alert escalation
+    - Alert suppression
+    - Custom alert callbacks
+    """
+    
+    def __init__(self):
+        self.alerts = {}
+        self.alert_history = []
+        self.suppressed_alerts = set()
+        self.is_monitoring = False
+        
+    def add_alert(self, alert: PerformanceAlert):
+        """Add a performance alert."""
+        self.alerts[alert.alert_id] = alert
+        logger.info(f"Performance alert added: {alert.alert_name}",
+                   alert_id=alert.alert_id,
+                   metric=alert.metric_name,
+                   threshold=alert.threshold_value)
+    
+    def remove_alert(self, alert_id: str):
+        """Remove a performance alert."""
+        if alert_id in self.alerts:
+            del self.alerts[alert_id]
+            logger.info(f"Performance alert removed: {alert_id}")
+    
+    def check_alerts(self, metrics: Dict[str, float]):
+        """Check all alerts against current metrics."""
+        for alert in self.alerts.values():
+            if alert.alert_id in self.suppressed_alerts:
+                continue
                 
-                if df_data:
-                    df = pd.DataFrame(df_data)
-                    
-                    # System metrics
-                    st.subheader("System Metrics")
-                    system_metrics = df[df['category'] == 'system']
-                    
-                    if not system_metrics.empty:
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            cpu_data = system_metrics[system_metrics['name'] == 'cpu_usage_percent']
-                            if not cpu_data.empty:
-                                fig = px.line(cpu_data, x='timestamp', y='value', title='CPU Usage %')
-                                st.plotly_chart(fig, use_container_width=True)
-                        
-                        with col2:
-                            memory_data = system_metrics[system_metrics['name'] == 'memory_usage_percent']
-                            if not memory_data.empty:
-                                fig = px.line(memory_data, x='timestamp', y='value', title='Memory Usage %')
-                                st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Database metrics
-                    st.subheader("Database Performance")
-                    db_metrics = df[df['category'] == 'database']
-                    
-                    if not db_metrics.empty:
-                        query_duration_metrics = db_metrics[db_metrics['name'].str.contains('duration')]
-                        if not query_duration_metrics.empty:
-                            fig = px.scatter(query_duration_metrics, x='timestamp', y='value', 
-                                           color='name', title='Query Duration Times')
-                            st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Performance summary
-                    st.subheader("Performance Summary")
-                    summary = self.get_performance_summary()
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total Metrics", summary.get('total_metrics', 0))
-                    with col2:
-                        if 'current_system' in summary:
-                            st.metric("Current CPU %", 
-                                    f"{summary['current_system'].get('cpu_percent', 0):.1f}")
-                    with col3:
-                        if 'current_system' in summary:
-                            st.metric("Current Memory %", 
-                                    f"{summary['current_system'].get('memory_percent', 0):.1f}")
-                    
-                    # Detailed statistics
-                    with st.expander("Detailed Statistics"):
-                        st.json(summary)
+            metric_value = metrics.get(alert.metric_name)
+            if metric_value is None:
+                continue
             
-        except Exception as e:
-            st.error(f"Error creating performance dashboard: {e}")
-            logger.error(f"Error creating performance dashboard: {e}")
+            threshold_crossed = alert.check_threshold(metric_value)
+            
+            if threshold_crossed and not alert.is_active:
+                # Alert triggered
+                self._trigger_alert(alert, metric_value)
+            elif not threshold_crossed and alert.is_active:
+                # Alert resolved
+                self._resolve_alert(alert, metric_value)
     
-    # Context managers for tracking
-    def track_database_query(self, query_name: str, query_sql: Optional[str] = None):
-        """Track database query performance"""
-        return self.db_collector.track_query(query_name, query_sql)
+    def _trigger_alert(self, alert: PerformanceAlert, metric_value: float):
+        """Trigger an alert."""
+        alert.is_active = True
+        alert.triggered_at = datetime.now(timezone.utc)
+        alert.trigger_count += 1
+        
+        alert_event = {
+            'alert_id': alert.alert_id,
+            'alert_name': alert.alert_name,
+            'event_type': 'triggered',
+            'timestamp': alert.triggered_at,
+            'metric_name': alert.metric_name,
+            'metric_value': metric_value,
+            'threshold_value': alert.threshold_value,
+            'trigger_count': alert.trigger_count
+        }
+        
+        self.alert_history.append(alert_event)
+        
+        logger.warning(f"Performance alert triggered: {alert.alert_name}",
+                      alert_event=alert_event)
+        
+        # Call custom callback if provided
+        if alert.callback:
+            try:
+                alert.callback(alert_event)
+            except Exception as e:
+                logger.error(f"Alert callback failed for {alert.alert_id}", error=str(e))
     
-    def track_page_load(self, page_name: str):
-        """Track page loading performance"""
-        return self.streamlit_collector.track_page_load(page_name)
+    def _resolve_alert(self, alert: PerformanceAlert, metric_value: float):
+        """Resolve an alert."""
+        alert.is_active = False
+        alert.resolved_at = datetime.now(timezone.utc)
+        
+        alert_event = {
+            'alert_id': alert.alert_id,
+            'alert_name': alert.alert_name,
+            'event_type': 'resolved',
+            'timestamp': alert.resolved_at,
+            'metric_name': alert.metric_name,
+            'metric_value': metric_value,
+            'threshold_value': alert.threshold_value,
+            'duration_minutes': (alert.resolved_at - alert.triggered_at).total_seconds() / 60
+        }
+        
+        self.alert_history.append(alert_event)
+        
+        logger.info(f"Performance alert resolved: {alert.alert_name}",
+                   alert_event=alert_event)
     
-    def track_user_interaction(self, interaction_type: str, component: str = ""):
-        """Track user interaction"""
-        self.streamlit_collector.track_user_interaction(interaction_type, component)
+    def suppress_alert(self, alert_id: str, duration_minutes: int = 60):
+        """Suppress an alert for a specified duration."""
+        self.suppressed_alerts.add(alert_id)
+        logger.info(f"Alert suppressed: {alert_id}",
+                   duration_minutes=duration_minutes)
+        
+        # Schedule unsuppression (simplified - in production use proper scheduler)
+        def unsuppress():
+            time.sleep(duration_minutes * 60)
+            self.suppressed_alerts.discard(alert_id)
+            logger.info(f"Alert suppression expired: {alert_id}")
+        
+        threading.Thread(target=unsuppress, daemon=True).start()
     
-    def add_custom_metric(self, name: str, value: Union[float, int, str], 
-                         category: str = "custom", **kwargs):
-        """Add custom performance metric"""
-        return self.metrics_collector.add_metric(name, value, category, **kwargs)
+    def get_active_alerts(self) -> List[Dict[str, Any]]:
+        """Get all currently active alerts."""
+        return [
+            {
+                'alert_id': alert.alert_id,
+                'alert_name': alert.alert_name,
+                'metric_name': alert.metric_name,
+                'threshold_value': alert.threshold_value,
+                'triggered_at': alert.triggered_at.isoformat() if alert.triggered_at else None,
+                'trigger_count': alert.trigger_count
+            }
+            for alert in self.alerts.values()
+            if alert.is_active
+        ]
 
 
-def create_performance_monitor(storage_path: Optional[Path] = None) -> PerformanceMonitor:
-    """Factory function to create performance monitor"""
-    return PerformanceMonitor(storage_path=storage_path)
-
-
-# Global performance monitor instance
-_global_monitor: Optional[PerformanceMonitor] = None
-
-
-def get_performance_monitor(storage_path: Optional[Path] = None) -> PerformanceMonitor:
-    """Get or create global performance monitor"""
-    global _global_monitor
-    if _global_monitor is None:
-        _global_monitor = create_performance_monitor(storage_path)
-    return _global_monitor
-
-
-# Decorators for easy performance tracking
-def track_performance(name: Optional[str] = None):
-    """Decorator to track function performance"""
-    monitor = get_performance_monitor()
-    return monitor.track_function_performance(name)
-
-
-if __name__ == "__main__":
-    # Test performance monitoring
-    import tempfile
+class PerformanceReporter:
+    """
+    Generate performance reports and visualisations.
     
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
-        storage_path = Path(f.name)
+    Features:
+    - Automated report generation
+    - Performance visualisations
+    - Trend analysis reports
+    - Executive summaries
+    """
     
-    print("Testing performance monitoring...")
+    def __init__(self, output_dir: str = "reports/performance"):
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
     
-    monitor = create_performance_monitor(storage_path)
+    def generate_system_report(self, system_monitor: SystemMonitor, 
+                             hours: float = 24.0) -> str:
+        """Generate a comprehensive system performance report."""
+        metrics_history = system_monitor.get_metrics_history(hours)
+        if not metrics_history:
+            return "No metrics data available for report generation."
+        
+        report_data = {
+            'report_type': 'system_performance',
+            'generated_at': datetime.now(timezone.utc).isoformat(),
+            'time_period_hours': hours,
+            'metrics_count': len(metrics_history),
+            'summary': self._generate_system_summary(metrics_history),
+            'trends': self._analyse_system_trends(metrics_history)
+        }
+        
+        # Save report
+        report_file = self.output_dir / f"system_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(report_file, 'w') as f:
+            json.dump(report_data, f, indent=2)
+        
+        # Generate visualisation if matplotlib available
+        if MATPLOTLIB_AVAILABLE:
+            self._create_system_visualisation(metrics_history, report_file.stem)
+        
+        logger.info(f"System performance report generated: {report_file}")
+        return str(report_file)
     
-    # Test function tracking
-    @monitor.track_function_performance()
-    def test_function(n: int) -> int:
-        time.sleep(0.1)
-        return sum(range(n))
+    def _generate_system_summary(self, metrics_history: List[SystemMetrics]) -> Dict[str, Any]:
+        """Generate system performance summary."""
+        cpu_values = [m.cpu_percent for m in metrics_history]
+        memory_values = [m.memory_percent for m in metrics_history]
+        disk_values = [m.disk_usage_percent for m in metrics_history]
+        
+        return {
+            'cpu_usage': {
+                'average': sum(cpu_values) / len(cpu_values),
+                'max': max(cpu_values),
+                'min': min(cpu_values)
+            },
+            'memory_usage': {
+                'average': sum(memory_values) / len(memory_values),
+                'max': max(memory_values),
+                'min': min(memory_values)
+            },
+            'disk_usage': {
+                'average': sum(disk_values) / len(disk_values),
+                'max': max(disk_values),
+                'min': min(disk_values)
+            }
+        }
     
-    # Test database tracking
-    with monitor.track_database_query("test_query", "SELECT * FROM test"):
-        time.sleep(0.05)
+    def _analyse_system_trends(self, metrics_history: List[SystemMetrics]) -> List[PerformanceTrend]:
+        """Analyse performance trends in system metrics."""
+        trends = []
+        
+        # Simple trend analysis (in production, use more sophisticated algorithms)
+        cpu_values = [m.cpu_percent for m in metrics_history]
+        memory_values = [m.memory_percent for m in metrics_history]
+        
+        # CPU trend
+        if len(cpu_values) > 5:
+            cpu_slope = (cpu_values[-1] - cpu_values[0]) / len(cpu_values)
+            cpu_trend = PerformanceTrend(
+                metric_name='cpu_percent',
+                trend_direction='increasing' if cpu_slope > 0.5 else 'decreasing' if cpu_slope < -0.5 else 'stable',
+                trend_strength=min(1.0, abs(cpu_slope) / 10),
+                slope=cpu_slope,
+                correlation=0.0,  # Would calculate actual correlation
+                duration_hours=(metrics_history[-1].timestamp - metrics_history[0].timestamp).total_seconds() / 3600,
+                data_points=len(cpu_values)
+            )
+            trends.append(cpu_trend)
+        
+        # Memory trend
+        if len(memory_values) > 5:
+            memory_slope = (memory_values[-1] - memory_values[0]) / len(memory_values)
+            memory_trend = PerformanceTrend(
+                metric_name='memory_percent',
+                trend_direction='increasing' if memory_slope > 0.5 else 'decreasing' if memory_slope < -0.5 else 'stable',
+                trend_strength=min(1.0, abs(memory_slope) / 10),
+                slope=memory_slope,
+                correlation=0.0,
+                duration_hours=(metrics_history[-1].timestamp - metrics_history[0].timestamp).total_seconds() / 3600,
+                data_points=len(memory_values)
+            )
+            trends.append(memory_trend)
+        
+        return trends
     
-    # Run test function
-    result = test_function(100)
-    
-    # Get summary
-    time.sleep(6)  # Wait for system metrics
-    summary = monitor.get_performance_summary()
-    
-    print(f"Performance summary: {json.dumps(summary, indent=2, default=str)}")
-    
-    # Cleanup
-    monitor.stop_monitoring()
-    storage_path.unlink()
-    
-    print("Performance monitoring test completed!")
+    def _create_system_visualisation(self, metrics_history: List[SystemMetrics], filename_base: str):
+        """Create visualisation of system metrics."""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+        
+        timestamps = [m.timestamp for m in metrics_history]
+        cpu_values = [m.cpu_percent for m in metrics_history]
+        memory_values = [m.memory_percent for m in metrics_history]
+        disk_values = [m.disk_usage_percent for m in metrics_history]
+        
+        fig, axes = plt.subplots(3, 1, figsize=(12, 10))
+        fig.suptitle('System Performance Metrics', fontsize=16)
+        
+        # CPU usage
+        axes[0].plot(timestamps, cpu_values, 'b-', linewidth=2)
+        axes[0].set_title('CPU Usage (%)')
+        axes[0].set_ylabel('CPU %')
+        axes[0].grid(True, alpha=0.3)
+        axes[0].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        
+        # Memory usage
+        axes[1].plot(timestamps, memory_values, 'r-', linewidth=2)
+        axes[1].set_title('Memory Usage (%)')
+        axes[1].set_ylabel('Memory %')
+        axes[1].grid(True, alpha=0.3)
+        axes[1].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        
+        # Disk usage
+        axes[2].plot(timestamps, disk_values, 'g-', linewidth=2)
+        axes[2].set_title('Disk Usage (%)')
+        axes[2].set_ylabel('Disk %')
+        axes[2].set_xlabel('Time')
+        axes[2].grid(True, alpha=0.3)
+        axes[2].xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+        
+        plt.tight_layout()
+        
+        # Save plot
+        plot_file = self.output_dir / f"{filename_base}_visualisation.png"
+        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        logger.info(f"System performance visualisation saved: {plot_file}")

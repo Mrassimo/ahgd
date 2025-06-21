@@ -1,8 +1,18 @@
-# Python-generated files
+################################################################################
+# Python-specific ignores
+################################################################################
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyc
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -23,6 +33,16 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -36,31 +56,72 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+cover/
+test-results/
+*.coveragerc
 
 # Translations
 *.mo
 *.pot
 
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
 # Sphinx documentation
 docs/_build/
+docs/_static/
+docs/_templates/
 
 # PyBuilder
 target/
+.pybuilder/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb_checkpoints/
 
 # IPython
 profile_default/
 ipython_config.py
 
 # pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
 .python-version
 
 # pipenv
-Pipfile.lock
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
 
-# PEP 582
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
 __pypackages__/
 
 # Celery stuff
@@ -78,6 +139,12 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.env.local
+.env.production
+.env.staging
+.env.development
+.env.test
+*.env
 
 # Spyder project settings
 .spyderproject
@@ -97,38 +164,82 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# IDE
-.idea/
-.vscode/
-*.code-workspace
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+################################################################################
+# AHGD Project-specific ignores
+################################################################################
+
+# Data directories
+data_raw/**
+!data_raw/.gitkeep
+data_processed/**
+!data_processed/.gitkeep
+data_interim/**
+!data_interim/.gitkeep
+data_external/**
+!data_external/.gitkeep
+data/
+*.csv
+*.xlsx
+*.xls
+*.json
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# Log files
+logs/**
+!logs/.gitkeep
+*.log
+*.out
+*.err
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
 *.swp
 *.swo
 *~
+temp/
+tmp/
+cache/
 
-# OS files
+################################################################################
+# OS-specific files
+################################################################################
+
+# macOS
 .DS_Store
 .DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 .AppleDouble
 .LSOverride
-Icon?
-._*
+Icon
 .DocumentRevisions-V100
 .fseventsd
-.Spotlight-V100
 .TemporaryItems
-.Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
+
+# Windows
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
 ehthumbs_vista.db
-Desktop.ini
+*.stackdump
+[Dd]esktop.ini
 $RECYCLE.BIN/
 *.cab
 *.msi
@@ -137,91 +248,220 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
-# Data files - Project-specific data storage
-data/raw/*.csv
-data/raw/*.xlsx
-data/raw/*.json
-data/raw/*.zip
-data/raw/*.shp
-data/raw/*.dbf
-data/raw/*.shx
-data/raw/*.prj
-data/raw/*.cpg
-data/raw/*.parquet
-data/processed/*.csv
-data/processed/*.xlsx
-data/processed/*.json
-data/processed/*.parquet
-data/cache/
-data/outputs/
-data/web_exports/
-data/performance_benchmarks/
-data/parquet/
-data/bronze/
-data/silver/
-data/gold/
-data/staging/
-data/metadata/versions/
-data/metadata/change_log/
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
 
-# Large data files (>100MB) - GitHub limit
-data/raw/demographics/2021_GCP_AUS_SA2.zip
-data/raw/demographics/2021_GCP_NSW_SA2.zip
-data/raw/health/mbs_demographics_historical_1993_2015.zip
-docs/assets/initial_map.html
+################################################################################
+# IDE and Editor files
+################################################################################
 
-# Large zip files and downloads
-data/raw/**/*.zip
-data/raw/**/*.7z
-data/raw/**/*.gz
+# Visual Studio Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.code-workspace
 
-# Database files
+# JetBrains IDEs (PyCharm, IntelliJ, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+*.tmlanguage.cache
+*.tmPreferences.cache
+*.stTheme.cache
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~
+tags
+[._]*.un~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+.org-id-locations
+*_archive
+*_flymake.*
+/eshell/history
+/eshell/lastdir
+/elpa/
+*.rel
+/auto/
+.cask/
+dist/
+flycheck_*.el
+/server/
+.projectile
+.dir-locals.el
+/network-security.data
+
+################################################################################
+# Configuration and secrets
+################################################################################
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.template
+*.env
+env.sh
+env.bat
+
+# Configuration files with secrets
+configs/secrets.yaml
+configs/local.yaml
+configs/production.yaml
+secrets/
+credentials/
+*.pem
+*.key
+*.cert
+*.crt
+
+################################################################################
+# DVC (Data Version Control)
+################################################################################
+
+# DVC cache and temporary files
+.dvc/cache/
+.dvc/tmp/
+.dvc/plots/
+
+# DVC tracked files (actual data files)
+*.dvc
+!*.dvc.example
+
+# DVC remote storage (if local)
+dvc-storage/
+ahgd_dvc_storage/
+
+################################################################################
+# Documentation builds
+################################################################################
+
+# Sphinx
+docs/_build/
+docs/_static/generated/
+docs/api/generated/
+
+# MkDocs
+site/
+mkdocs_build/
+
+# Other documentation
+*.pdf
+!docs/**/*.pdf
+!reports/**/*.pdf
+
+################################################################################
+# Testing and Coverage
+################################################################################
+
+# Test artifacts
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+.nox/
+nosetests.xml
+test-results/
+junit/
+*.coveragerc
+
+# Performance testing
+.benchmarks/
+*.prof
+*.lprof
+
+################################################################################
+# Package managers and dependencies
+################################################################################
+
+# Node.js (if using for documentation or tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+
+# R (if using R for analysis)
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rproj
+
+################################################################################
+# Miscellaneous
+################################################################################
+
+# Databases
 *.db
 *.sqlite
 *.sqlite3
-*.duckdb
+!data/*.db  # Allow database in data folder if needed
 
-# Large output files and generated content
-data/outputs/*.json
-data/outputs/*.geojson
-data/outputs/*.html
-!data/outputs/.gitkeep
+# Model files (large binaries)
+models/**/*.h5
+models/**/*.pkl
+models/**/*.joblib
+!models/**/.gitkeep
 
-# Logs
-logs/
-*.log
+# Compressed files
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+!data/raw/**/*.zip  # Allow zip files in raw data
 
-# Temporary files
-temp/
-tmp/
-.tmp/
-*.tmp
-*.temp
+# Media files
+*.mp4
+*.avi
+*.mov
+*.mp3
+*.wav
 
-# Configuration files with secrets
-config/secrets.env
-config/api_keys.env
-.secrets
-.api_keys
-.env.local
-.env.*.local
-
-# Model artifacts
-models/
-*.pkl
-*.joblib
-*.model
-
-# Streamlit
-.streamlit/secrets.toml
-.streamlit/
-
-# Jupyter notebook outputs (keep source, ignore outputs)
-**/outputs/
-**/.ipynb_checkpoints/
-
-# Pre-commit
-.pre-commit-config.yaml
-
-# UV lock file (keep pyproject.toml, ignore lock)
-uv.lock
+# Custom project patterns
+results/
+outputs/
+!outputs/.gitkeep
+experiments/
+!experiments/.gitkeep
+scratch/
+sandbox/

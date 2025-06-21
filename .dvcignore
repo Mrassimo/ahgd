@@ -1,3 +1,48 @@
 # Add patterns of files dvc should ignore, which could improve
 # the performance. Learn more at
 # https://dvc.org/doc/user-guide/dvcignore
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Log files that shouldn't be versioned
+*.log
+logs/*.log
+
+# Exclude specific test data
+test_data/
+*_test.csv
+*_sample.csv
+
+# Exclude documentation builds
+docs/_build/
+docs/site/
+
+# Exclude environment files
+.env
+.env.*
+
+# Exclude backups
+*.bak
+*.backup

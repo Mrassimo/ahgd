@@ -1,0 +1,438 @@
+# AHGD Performance Monitoring Configuration
+# Configuration for real-time performance monitoring
+
+# General monitoring settings
+monitoring:
+  enabled: true
+  collection_interval: 60  # seconds
+  data_retention_hours: 168  # 1 week
+  storage_backend: "sqlite"  # sqlite, postgresql, mongodb
+  storage_location: "data/monitoring/performance.db"
+  
+  # Monitoring components
+  components:
+    system_monitor: true
+    performance_monitor: true
+    resource_tracker: true
+    alert_manager: true
+    
+  # Real-time monitoring
+  real_time:
+    enabled: true
+    update_interval: 10  # seconds
+    websocket_port: 8765
+    max_connections: 50
+
+# System Resource Monitoring
+system_monitoring:
+  enabled: true
+  
+  # Collection settings
+  collection:
+    interval: 60  # seconds
+    max_history: 1440  # 24 hours at 1-minute intervals
+    
+  # Metrics to collect
+  metrics:
+    cpu:
+      enabled: true
+      individual_cores: false
+      load_average: true
+      
+    memory:
+      enabled: true
+      virtual_memory: true
+      swap_memory: true
+      process_memory: true
+      
+    disk:
+      enabled: true
+      usage_by_partition: true
+      io_counters: true
+      
+    network:
+      enabled: true
+      bytes_sent_recv: true
+      packets_sent_recv: false
+      
+    processes:
+      enabled: true
+      count_only: true
+      top_processes: false
+
+# Application Performance Monitoring
+application_monitoring:
+  enabled: true
+  
+  # Operation tracking
+  operation_tracking:
+    enabled: true
+    auto_track: true
+    custom_metrics: true
+    
+  # Performance data collection
+  data_collection:
+    store_raw_data: true
+    aggregate_data: true
+    aggregation_intervals: [300, 3600, 86400]  # 5min, 1hour, 1day
+    
+  # Operation categorisation
+  operation_categories:
+    etl_operations:
+      - extract_*
+      - transform_*
+      - load_*
+      - validate_*
+    data_processing:
+      - process_*
+      - analyse_*
+      - compute_*
+    database_operations:
+      - query_*
+      - insert_*
+      - update_*
+
+# Resource Tracking
+resource_tracking:
+  enabled: true
+  
+  # Per-operation tracking
+  per_operation:
+    memory_tracking: true
+    cpu_tracking: true
+    io_tracking: true
+    thread_tracking: true
+    
+  # Resource thresholds
+  thresholds:
+    memory_growth_mb: 100
+    cpu_usage_percent: 80
+    thread_count_increase: 10
+    file_descriptor_increase: 50
+    
+  # Leak detection
+  leak_detection:
+    enabled: true
+    memory_leak_threshold: 50  # MB growth without decrease
+    resource_leak_check_interval: 300  # seconds
+
+# Alert Management
+alerts:
+  enabled: true
+  
+  # Alert storage
+  storage:
+    max_history: 1000
+    retention_days: 30
+    
+  # Notification channels
+  notifications:
+    console: true
+    file: true
+    email: false
+    slack: false
+    webhook: false
+    
+  # Default alert thresholds
+  thresholds:
+    # System resource alerts
+    cpu_high: 80.0
+    cpu_critical: 95.0
+    memory_high: 80.0
+    memory_critical: 95.0
+    disk_high: 85.0
+    disk_critical: 95.0
+    
+    # Application performance alerts
+    slow_operation: 30.0  # seconds
+    very_slow_operation: 120.0  # seconds
+    high_error_rate: 5.0  # percent
+    low_throughput: 10.0  # operations per minute
+    
+    # Resource usage alerts
+    memory_leak: 100.0  # MB growth
+    high_memory_usage: 500.0  # MB
+    thread_explosion: 50  # thread count
+    
+  # Alert suppression
+  suppression:
+    enabled: true
+    default_duration: 60  # minutes
+    max_duration: 480  # minutes (8 hours)
+    
+  # Alert escalation
+  escalation:
+    enabled: false
+    levels:
+      - level: 1
+        delay_minutes: 15
+        contacts: ["admin"]
+      - level: 2
+        delay_minutes: 60
+        contacts: ["manager", "admin"]
+
+# Predefined Alert Rules
+alert_rules:
+  # System alerts
+  system_cpu_high:
+    metric: "cpu_percent"
+    threshold: 80.0
+    operator: "gte"
+    severity: "high"
+    description: "High CPU usage detected"
+    
+  system_memory_critical:
+    metric: "memory_percent"
+    threshold: 95.0
+    operator: "gte"
+    severity: "critical"
+    description: "Critical memory usage"
+    
+  system_disk_critical:
+    metric: "disk_usage_percent"
+    threshold: 95.0
+    operator: "gte"
+    severity: "critical"
+    description: "Critical disk space usage"
+    
+  # Application alerts
+  slow_etl_operation:
+    metric: "operation_duration"
+    threshold: 300.0  # 5 minutes
+    operator: "gte"
+    severity: "medium"
+    description: "ETL operation taking too long"
+    filter:
+      operation_type: "etl_*"
+      
+  memory_leak_detected:
+    metric: "memory_growth_mb"
+    threshold: 100.0
+    operator: "gte"
+    severity: "high"
+    description: "Potential memory leak detected"
+    
+  high_error_rate:
+    metric: "error_rate_percent"
+    threshold: 10.0
+    operator: "gte"
+    severity: "high"
+    description: "High error rate in operations"
+
+# Performance Degradation Detection
+degradation_detection:
+  enabled: true
+  
+  # Analysis settings
+  analysis:
+    baseline_period_hours: 168  # 1 week
+    comparison_period_hours: 24  # 1 day
+    minimum_samples: 10
+    
+  # Degradation thresholds
+  thresholds:
+    duration_increase: 25.0  # percent
+    throughput_decrease: 20.0  # percent
+    error_rate_increase: 5.0  # percent
+    memory_increase: 30.0  # percent
+    
+  # Analysis frequency
+  check_interval: 3600  # 1 hour
+  
+  # Actions on detection
+  actions:
+    create_alert: true
+    log_warning: true
+    generate_report: true
+
+# Trend Analysis
+trend_analysis:
+  enabled: true
+  
+  # Analysis periods
+  periods:
+    short_term: 24  # hours
+    medium_term: 168  # hours (1 week)
+    long_term: 720  # hours (1 month)
+    
+  # Trend detection
+  detection:
+    minimum_correlation: 0.7
+    minimum_data_points: 10
+    significance_threshold: 0.05
+    
+  # Trend reporting
+  reporting:
+    enabled: true
+    frequency: "daily"
+    include_predictions: false
+
+# Performance Reporting
+reporting:
+  enabled: true
+  
+  # Report generation
+  generation:
+    auto_generate: true
+    schedule: "daily"  # hourly, daily, weekly
+    formats: ["json", "html"]
+    
+  # Report content
+  content:
+    system_summary: true
+    application_performance: true
+    alert_summary: true
+    trend_analysis: true
+    recommendations: true
+    
+  # Report storage
+  storage:
+    directory: "reports/monitoring"
+    retention_days: 90
+    compression: true
+    
+  # Report distribution
+  distribution:
+    save_to_file: true
+    email: false
+    webhook: false
+
+# Dashboard Configuration
+dashboard:
+  enabled: true
+  
+  # Web dashboard
+  web_dashboard:
+    enabled: true
+    port: 8080
+    host: "localhost"
+    refresh_interval: 30  # seconds
+    
+  # Dashboard content
+  panels:
+    system_overview: true
+    cpu_usage: true
+    memory_usage: true
+    disk_usage: true
+    application_performance: true
+    recent_alerts: true
+    performance_trends: true
+    
+  # Real-time updates
+  real_time_updates: true
+  websocket_enabled: true
+
+# Data Export
+data_export:
+  enabled: true
+  
+  # Export formats
+  formats:
+    csv: true
+    json: true
+    parquet: false
+    
+  # Export schedules
+  schedules:
+    hourly_metrics: true
+    daily_summary: true
+    weekly_report: true
+    
+  # Export destinations
+  destinations:
+    local_file: true
+    s3_bucket: false
+    database: false
+
+# Integration Settings
+integrations:
+  # Logging integration
+  logging:
+    enabled: true
+    log_level: "INFO"
+    structured_logging: true
+    
+  # Metrics integration
+  metrics:
+    prometheus: false
+    statsd: false
+    custom_exporter: false
+    
+  # External monitoring
+  external:
+    grafana: false
+    datadog: false
+    new_relic: false
+
+# Environment-specific Settings
+environments:
+  development:
+    monitoring:
+      collection_interval: 30
+      data_retention_hours: 24
+    alerts:
+      thresholds:
+        cpu_high: 90.0
+        memory_high: 90.0
+    dashboard:
+      enabled: true
+      
+  testing:
+    monitoring:
+      collection_interval: 60
+      data_retention_hours: 48
+    alerts:
+      enabled: false
+    dashboard:
+      enabled: false
+      
+  production:
+    monitoring:
+      collection_interval: 30
+      data_retention_hours: 720  # 30 days
+    alerts:
+      enabled: true
+      notifications:
+        email: true
+        slack: true
+    dashboard:
+      enabled: true
+      web_dashboard:
+        host: "0.0.0.0"
+
+# Security Settings
+security:
+  # Dashboard authentication
+  authentication:
+    enabled: false
+    type: "basic"  # basic, oauth, token
+    
+  # API security
+  api_security:
+    enabled: false
+    api_key_required: false
+    rate_limiting: false
+    
+  # Data privacy
+  data_privacy:
+    anonymise_sensitive_data: true
+    exclude_personal_info: true
+
+# Performance Optimisation
+optimisation:
+  # Monitoring performance
+  monitoring_overhead:
+    max_cpu_impact: 5.0  # percent
+    max_memory_impact: 100  # MB
+    
+  # Data management
+  data_management:
+    auto_cleanup: true
+    compression_enabled: true
+    archival_enabled: false
+    
+  # Query optimisation
+  query_optimisation:
+    use_indexes: true
+    batch_operations: true
+    connection_pooling: true

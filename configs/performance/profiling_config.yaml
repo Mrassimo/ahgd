@@ -1,0 +1,434 @@
+# AHGD Performance Profiling Configuration
+# Configuration for comprehensive performance profiling
+
+# General profiling settings
+profiling:
+  enabled: true
+  output_directory: "profiling_results"
+  results_retention_days: 30
+  auto_cleanup: true
+  
+  # Profiling modes
+  modes:
+    development: "comprehensive"  # comprehensive, minimal, disabled
+    testing: "minimal"
+    production: "selective"
+    
+  # Default profiling scope
+  default_scope:
+    memory: true
+    cpu: true
+    io: true
+    queries: true
+
+# Memory Profiling
+memory_profiling:
+  enabled: true
+  
+  # Profiler backends
+  backends:
+    tracemalloc:
+      enabled: true
+      start_tracing: true
+      max_frames: 25
+      
+    memory_profiler:
+      enabled: false  # Requires memory_profiler package
+      precision: 1
+      backend: "psutil"
+      
+    psutil:
+      enabled: true
+      detailed_stats: true
+      
+  # Memory tracking settings
+  tracking:
+    max_snapshots: 1000
+    snapshot_interval: 5.0  # seconds during profiling
+    track_allocations: true
+    track_deallocations: true
+    
+  # Memory analysis
+  analysis:
+    detect_leaks: true
+    leak_threshold_mb: 50.0
+    gc_analysis: true
+    top_allocations_count: 10
+    
+  # Memory thresholds
+  thresholds:
+    low_memory_warning: 100  # MB
+    high_memory_warning: 500  # MB
+    critical_memory_warning: 1000  # MB
+    memory_growth_warning: 50  # MB per operation
+    
+  # Memory optimisation hints
+  optimisation_hints:
+    suggest_generators: true
+    suggest_memory_pooling: true
+    suggest_chunk_processing: true
+    suggest_data_types: true
+
+# CPU Profiling
+cpu_profiling:
+  enabled: true
+  
+  # Profiler backends
+  backends:
+    cprofile:
+      enabled: true
+      builtins: true
+      subcalls: true
+      
+    line_profiler:
+      enabled: false  # Requires line_profiler package
+      
+    py_spy:
+      enabled: false  # Requires py-spy installation
+      
+    psutil:
+      enabled: true
+      
+  # CPU tracking settings
+  tracking:
+    max_snapshots: 1000
+    include_system_stats: true
+    track_threads: true
+    track_context_switches: true
+    
+  # CPU analysis
+  analysis:
+    profile_statistics: true
+    hotspot_detection: true
+    call_graph_analysis: true
+    top_functions_count: 20
+    
+  # CPU thresholds
+  thresholds:
+    high_cpu_warning: 70.0  # percent
+    critical_cpu_warning: 90.0  # percent
+    long_operation_warning: 30.0  # seconds
+    
+  # CPU optimisation hints
+  optimisation_hints:
+    suggest_vectorisation: true
+    suggest_parallelisation: true
+    suggest_algorithm_optimisation: true
+    suggest_caching: true
+
+# I/O Profiling
+io_profiling:
+  enabled: true
+  
+  # I/O tracking
+  tracking:
+    file_operations: true
+    network_operations: true
+    disk_usage: true
+    track_latency: true
+    
+  # I/O analysis
+  analysis:
+    io_patterns: true
+    bottleneck_detection: true
+    efficiency_metrics: true
+    
+  # I/O thresholds
+  thresholds:
+    slow_read_warning: 1.0  # seconds
+    slow_write_warning: 2.0  # seconds
+    high_io_usage: 100  # MB/s
+    
+  # I/O optimisation hints
+  optimisation_hints:
+    suggest_buffering: true
+    suggest_async_io: true
+    suggest_compression: true
+    suggest_batch_operations: true
+
+# Query Profiling
+query_profiling:
+  enabled: true
+  
+  # Query tracking
+  tracking:
+    execution_time: true
+    query_plans: false  # May require database-specific setup
+    parameter_binding: true
+    result_set_size: true
+    
+  # Query analysis
+  analysis:
+    slow_query_detection: true
+    query_pattern_analysis: true
+    index_usage_analysis: false
+    
+  # Query thresholds
+  thresholds:
+    slow_query_warning: 1.0  # seconds
+    very_slow_query_warning: 5.0  # seconds
+    large_result_set_warning: 10000  # rows
+    
+  # Query optimisation hints
+  optimisation_hints:
+    suggest_indexes: true
+    suggest_query_rewriting: true
+    suggest_result_limiting: true
+    suggest_caching: true
+
+# Automated Profiling
+automated_profiling:
+  enabled: true
+  
+  # Trigger conditions
+  triggers:
+    slow_operations:
+      enabled: true
+      threshold_seconds: 10.0
+      
+    high_memory_usage:
+      enabled: true
+      threshold_mb: 500.0
+      
+    high_cpu_usage:
+      enabled: true
+      threshold_percent: 80.0
+      
+    error_conditions:
+      enabled: true
+      
+  # Profiling scope for automated triggers
+  scope:
+    memory: true
+    cpu: true
+    io: false
+    queries: true
+    
+  # Automated analysis
+  auto_analysis:
+    enabled: true
+    generate_recommendations: true
+    save_results: true
+
+# Selective Profiling
+selective_profiling:
+  enabled: true
+  
+  # Operation-based profiling
+  operations:
+    etl_operations:
+      enabled: true
+      profile_types: ["memory", "cpu", "io"]
+      
+    data_processing:
+      enabled: true
+      profile_types: ["memory", "cpu"]
+      
+    database_operations:
+      enabled: true
+      profile_types: ["queries", "io"]
+      
+    validation_operations:
+      enabled: false
+      profile_types: ["cpu"]
+      
+  # Function-based profiling
+  functions:
+    # Add specific functions to profile
+    # function_name: ["memory", "cpu", "io", "queries"]
+    
+  # Class-based profiling
+  classes:
+    # Add specific classes to profile
+    # class_name: ["memory", "cpu", "io", "queries"]
+
+# Profiling Output
+output:
+  # Output formats
+  formats:
+    json: true
+    csv: false
+    html: true
+    pickle: false
+    
+  # Output content
+  content:
+    raw_data: true
+    analysis_results: true
+    recommendations: true
+    visualisations: false  # Requires matplotlib
+    
+  # File naming
+  naming:
+    include_timestamp: true
+    include_operation_name: true
+    include_profile_type: true
+    
+  # Compression
+  compression:
+    enabled: true
+    algorithm: "gzip"
+
+# Performance Impact Management
+impact_management:
+  # Profiling overhead limits
+  overhead_limits:
+    max_memory_overhead_mb: 50
+    max_cpu_overhead_percent: 10.0
+    max_execution_time_overhead: 20.0  # percent
+    
+  # Adaptive profiling
+  adaptive:
+    enabled: true
+    reduce_scope_on_overhead: true
+    disable_on_critical_performance: true
+    
+  # Sampling
+  sampling:
+    enabled: false
+    memory_sampling_rate: 0.1  # 10%
+    cpu_sampling_rate: 0.1    # 10%
+
+# Integration Settings
+integration:
+  # Logging integration
+  logging:
+    enabled: true
+    log_profiling_start_stop: true
+    log_performance_issues: true
+    include_profile_data: false
+    
+  # Monitoring integration
+  monitoring:
+    enabled: true
+    export_metrics: true
+    real_time_updates: false
+    
+  # Benchmarking integration
+  benchmarking:
+    enabled: true
+    auto_profile_benchmarks: true
+    compare_with_baseline: true
+
+# Analysis and Recommendations
+analysis:
+  # Automatic analysis
+  automatic:
+    enabled: true
+    analysis_depth: "comprehensive"  # basic, standard, comprehensive
+    
+  # Performance bottleneck detection
+  bottleneck_detection:
+    enabled: true
+    severity_thresholds:
+      critical: 90.0
+      high: 70.0
+      medium: 50.0
+      low: 30.0
+      
+  # Recommendation generation
+  recommendations:
+    enabled: true
+    include_code_suggestions: true
+    include_config_suggestions: true
+    prioritise_by_impact: true
+    
+  # Trend analysis
+  trend_analysis:
+    enabled: true
+    historical_comparison: true
+    regression_detection: true
+
+# Environment-specific Settings
+environments:
+  development:
+    profiling:
+      enabled: true
+      modes:
+        default: "comprehensive"
+    memory_profiling:
+      thresholds:
+        critical_memory_warning: 2000  # MB (higher for dev)
+    cpu_profiling:
+      thresholds:
+        critical_cpu_warning: 95.0  # percent
+    automated_profiling:
+      triggers:
+        slow_operations:
+          threshold_seconds: 30.0  # More lenient in dev
+          
+  testing:
+    profiling:
+      enabled: true
+      modes:
+        default: "minimal"
+    automated_profiling:
+      enabled: false
+    output:
+      formats:
+        json: true
+        html: false
+        
+  production:
+    profiling:
+      enabled: true
+      modes:
+        default: "selective"
+    memory_profiling:
+      backends:
+        memory_profiler:
+          enabled: false
+    cpu_profiling:
+      backends:
+        line_profiler:
+          enabled: false
+    impact_management:
+      overhead_limits:
+        max_memory_overhead_mb: 25
+        max_cpu_overhead_percent: 5.0
+      adaptive:
+        enabled: true
+        disable_on_critical_performance: true
+
+# Advanced Settings
+advanced:
+  # Custom profiling hooks
+  custom_hooks:
+    enabled: false
+    pre_profiling_hook: null
+    post_profiling_hook: null
+    
+  # Profiling data persistence
+  persistence:
+    database_storage: false
+    database_url: null
+    table_prefix: "profiling_"
+    
+  # Distributed profiling
+  distributed:
+    enabled: false
+    aggregation_node: null
+    worker_nodes: []
+    
+  # Security
+  security:
+    sanitise_sensitive_data: true
+    exclude_environment_variables: true
+    exclude_file_paths: true
+
+# Experimental Features
+experimental:
+  # AI-powered analysis
+  ai_analysis:
+    enabled: false
+    model_type: null
+    
+  # Predictive profiling
+  predictive:
+    enabled: false
+    predict_bottlenecks: false
+    
+  # Real-time profiling
+  real_time:
+    enabled: false
+    streaming_analysis: false

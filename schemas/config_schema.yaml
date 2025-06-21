@@ -1,0 +1,1057 @@
+# AHGD Configuration Validation Schema
+# JSON Schema definitions for validating AHGD configuration files
+# This ensures configuration integrity and provides documentation
+
+schema_version: "1.0.0"
+last_updated: "2025-06-20"
+
+# =============================================================================
+# ROOT CONFIGURATION SCHEMA
+# =============================================================================
+
+root_schema:
+  type: "object"
+  additionalProperties: false
+  required:
+    - "app"
+    - "system"
+    - "data_processing"
+  
+  properties:
+    app:
+      $ref: "#/definitions/app_config"
+    system:
+      $ref: "#/definitions/system_config"
+    data_processing:
+      $ref: "#/definitions/data_processing_config"
+    database:
+      $ref: "#/definitions/database_config"
+    api:
+      $ref: "#/definitions/api_config"
+    external_services:
+      $ref: "#/definitions/external_services_config"
+    monitoring:
+      $ref: "#/definitions/monitoring_config"
+    logging:
+      $ref: "#/definitions/logging_config"
+    security:
+      $ref: "#/definitions/security_config"
+    features:
+      $ref: "#/definitions/features_config"
+    performance:
+      $ref: "#/definitions/performance_config"
+    integrations:
+      $ref: "#/definitions/integrations_config"
+    dev_tools:
+      $ref: "#/definitions/dev_tools_config"
+    compliance:
+      $ref: "#/definitions/compliance_config"
+    metadata:
+      $ref: "#/definitions/metadata_config"
+
+# =============================================================================
+# CONFIGURATION DEFINITIONS
+# =============================================================================
+
+definitions:
+  # Application Configuration
+  app_config:
+    type: "object"
+    required: ["name", "version"]
+    properties:
+      name:
+        type: "string"
+        pattern: "^[A-Za-z0-9\\s\\(\\)\\-\\_]+$"
+        minLength: 1
+        maxLength: 100
+        description: "Application name"
+      
+      version:
+        type: "string"
+        pattern: "^\\d+\\.\\d+\\.\\d+.*$"
+        description: "Semantic version string"
+      
+      description:
+        type: "string"
+        maxLength: 500
+        description: "Application description"
+      
+      author:
+        type: "string"
+        maxLength: 100
+        description: "Application author"
+      
+      license:
+        type: "string"
+        enum: ["MIT", "Apache-2.0", "GPL-3.0", "BSD-3-Clause", "Proprietary"]
+        description: "License type"
+      
+      debug:
+        type: "boolean"
+        default: false
+        description: "Enable debug mode"
+      
+      hot_reload:
+        type: "boolean"
+        default: false
+        description: "Enable hot reload for development"
+      
+      environment:
+        type: "string"
+        enum: ["development", "staging", "production", "testing"]
+        description: "Runtime environment"
+      
+      timezone:
+        type: "string"
+        pattern: "^[A-Za-z]+/[A-Za-z_]+$"
+        default: "Australia/Sydney"
+        description: "Application timezone"
+      
+      locale:
+        type: "string"
+        pattern: "^[a-z]{2}_[A-Z]{2}$"
+        default: "en_AU"
+        description: "Application locale"
+
+  # System Configuration
+  system_config:
+    type: "object"
+    properties:
+      max_workers:
+        type: "integer"
+        minimum: 1
+        maximum: 32
+        default: 4
+        description: "Maximum number of worker processes"
+      
+      worker_timeout:
+        type: "integer"
+        minimum: 30
+        maximum: 86400
+        default: 3600
+        description: "Worker timeout in seconds"
+      
+      graceful_shutdown_timeout:
+        type: "integer"
+        minimum: 5
+        maximum: 300
+        default: 30
+        description: "Graceful shutdown timeout in seconds"
+      
+      memory:
+        type: "object"
+        properties:
+          limit_gb:
+            type: "number"
+            minimum: 1
+            maximum: 1024
+            description: "Memory limit in GB"
+          
+          warning_threshold:
+            type: "number"
+            minimum: 0.1
+            maximum: 1.0
+            default: 0.8
+            description: "Memory warning threshold (0-1)"
+          
+          cleanup_interval:
+            type: "integer"
+            minimum: 60
+            maximum: 3600
+            default: 300
+            description: "Memory cleanup interval in seconds"
+      
+      temp:
+        type: "object"
+        properties:
+          dir:
+            type: "string"
+            default: "./temp"
+            description: "Temporary files directory"
+          
+          cleanup_on_startup:
+            type: "boolean"
+            default: true
+            description: "Clean temp directory on startup"
+          
+          max_age_hours:
+            type: "integer"
+            minimum: 1
+            maximum: 168
+            default: 24
+            description: "Maximum age of temp files in hours"
+
+  # Data Processing Configuration
+  data_processing_config:
+    type: "object"
+    required: ["paths"]
+    properties:
+      pipeline:
+        type: "object"
+        properties:
+          stages:
+            type: "array"
+            items:
+              type: "string"
+              enum: ["extract", "transform", "validate", "load"]
+            minItems: 1
+            description: "Pipeline stages to execute"
+          
+          parallel_stages:
+            type: "boolean"
+            default: false
+            description: "Enable parallel stage execution"
+          
+          stage_timeout:
+            type: "integer"
+            minimum: 60
+            maximum: 86400
+            default: 1800
+            description: "Stage timeout in seconds"
+          
+          continue_on_error:
+            type: "boolean"
+            default: false
+            description: "Continue pipeline on stage errors"
+          
+          max_retries:
+            type: "integer"
+            minimum: 0
+            maximum: 10
+            default: 3
+            description: "Maximum retry attempts"
+      
+      paths:
+        type: "object"
+        required: ["raw", "processed"]
+        properties:
+          raw:
+            type: "string"
+            pattern: "^\\./.*$"
+            description: "Raw data directory path"
+          
+          processed:
+            type: "string"
+            pattern: "^\\./.*$"
+            description: "Processed data directory path"
+          
+          cache:
+            type: "string"
+            pattern: "^\\./.*$"
+            description: "Cache directory path"
+          
+          temp:
+            type: "string"
+            pattern: "^\\./.*$"
+            description: "Temporary files directory path"
+          
+          logs:
+            type: "string"
+            pattern: "^\\./.*$"
+            description: "Logs directory path"
+      
+      processing:
+        type: "object"
+        properties:
+          chunk_size:
+            type: "integer"
+            minimum: 100
+            maximum: 1000000
+            default: 10000
+            description: "Processing chunk size"
+          
+          batch_size:
+            type: "integer"
+            minimum: 10
+            maximum: 100000
+            default: 1000
+            description: "Batch processing size"
+          
+          memory_limit_per_worker:
+            type: "integer"
+            minimum: 256
+            maximum: 16384
+            default: 2048
+            description: "Memory limit per worker in MB"
+          
+          compression:
+            type: "string"
+            enum: ["none", "gzip", "bzip2", "lzma"]
+            default: "gzip"
+            description: "Data compression method"
+      
+      cache:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable caching"
+          
+          type:
+            type: "string"
+            enum: ["file", "redis", "memory"]
+            default: "file"
+            description: "Cache backend type"
+          
+          ttl:
+            type: "integer"
+            minimum: 60
+            maximum: 86400
+            default: 3600
+            description: "Cache TTL in seconds"
+          
+          max_size_gb:
+            type: "number"
+            minimum: 0.1
+            maximum: 100
+            default: 5
+            description: "Maximum cache size in GB"
+      
+      geographic:
+        type: "object"
+        properties:
+          default_crs:
+            type: "string"
+            pattern: "^EPSG:\\d+$"
+            default: "EPSG:4326"
+            description: "Default coordinate reference system"
+          
+          australian_crs:
+            type: "string"
+            pattern: "^EPSG:\\d+$"
+            default: "EPSG:3577"
+            description: "Australian coordinate reference system"
+          
+          spatial_index:
+            type: "string"
+            enum: ["rtree", "quadtree", "kdtree"]
+            default: "rtree"
+            description: "Spatial index type"
+      
+      validation:
+        type: "object"
+        properties:
+          strict_mode:
+            type: "boolean"
+            default: true
+            description: "Enable strict validation mode"
+          
+          null_threshold:
+            type: "number"
+            minimum: 0
+            maximum: 1
+            default: 0.1
+            description: "Null values threshold (0-1)"
+          
+          duplicate_threshold:
+            type: "number"
+            minimum: 0
+            maximum: 1
+            default: 0.05
+            description: "Duplicate records threshold (0-1)"
+
+  # Database Configuration
+  database_config:
+    type: "object"
+    properties:
+      url:
+        type: "string"
+        description: "Database connection URL"
+      
+      echo:
+        type: "boolean"
+        default: false
+        description: "Echo SQL queries to logs"
+      
+      connection:
+        type: "object"
+        properties:
+          pool_size:
+            type: "integer"
+            minimum: 1
+            maximum: 100
+            default: 10
+            description: "Connection pool size"
+          
+          max_overflow:
+            type: "integer"
+            minimum: 0
+            maximum: 100
+            default: 20
+            description: "Maximum pool overflow"
+          
+          pool_timeout:
+            type: "integer"
+            minimum: 1
+            maximum: 300
+            default: 30
+            description: "Pool timeout in seconds"
+          
+          pool_recycle:
+            type: "integer"
+            minimum: 300
+            maximum: 86400
+            default: 3600
+            description: "Pool recycle time in seconds"
+      
+      query:
+        type: "object"
+        properties:
+          timeout:
+            type: "integer"
+            minimum: 10
+            maximum: 3600
+            default: 300
+            description: "Query timeout in seconds"
+          
+          fetch_size:
+            type: "integer"
+            minimum: 100
+            maximum: 50000
+            default: 1000
+            description: "Default fetch size"
+
+  # API Configuration
+  api_config:
+    type: "object"
+    properties:
+      server:
+        type: "object"
+        properties:
+          host:
+            type: "string"
+            oneOf:
+              - format: "ipv4"
+              - format: "hostname"
+            default: "0.0.0.0"
+            description: "Server bind address"
+          
+          port:
+            type: "integer"
+            minimum: 1
+            maximum: 65535
+            default: 8000
+            description: "Server port number"
+          
+          workers:
+            type: "integer"
+            minimum: 1
+            maximum: 32
+            default: 4
+            description: "Number of worker processes"
+          
+          timeout:
+            type: "integer"
+            minimum: 30
+            maximum: 3600
+            default: 300
+            description: "Request timeout in seconds"
+      
+      security:
+        type: "object"
+        properties:
+          cors:
+            type: "object"
+            properties:
+              enabled:
+                type: "boolean"
+                default: true
+                description: "Enable CORS support"
+              
+              origins:
+                type: "array"
+                items:
+                  type: "string"
+                  format: "uri"
+                description: "Allowed CORS origins"
+              
+              methods:
+                type: "array"
+                items:
+                  type: "string"
+                  enum: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"]
+                description: "Allowed HTTP methods"
+          
+          rate_limiting:
+            type: "object"
+            properties:
+              enabled:
+                type: "boolean"
+                default: true
+                description: "Enable rate limiting"
+              
+              per_minute:
+                type: "integer"
+                minimum: 1
+                maximum: 10000
+                default: 60
+                description: "Requests per minute limit"
+          
+          authentication:
+            type: "object"
+            properties:
+              enabled:
+                type: "boolean"
+                default: false
+                description: "Enable authentication"
+              
+              type:
+                type: "string"
+                enum: ["jwt", "api_key", "oauth", "basic"]
+                default: "jwt"
+                description: "Authentication method"
+
+  # External Services Configuration
+  external_services_config:
+    type: "object"
+    properties:
+      abs:
+        $ref: "#/definitions/external_service"
+      aihw:
+        $ref: "#/definitions/external_service"
+      bom:
+        $ref: "#/definitions/external_service"
+      osm:
+        $ref: "#/definitions/external_service"
+  
+  external_service:
+    type: "object"
+    properties:
+      base_url:
+        type: "string"
+        format: "uri"
+        description: "Service base URL"
+      
+      timeout:
+        type: "integer"
+        minimum: 5
+        maximum: 300
+        default: 30
+        description: "Request timeout in seconds"
+      
+      rate_limit:
+        type: "number"
+        minimum: 0.1
+        maximum: 100
+        default: 1.0
+        description: "Requests per second limit"
+      
+      retry_attempts:
+        type: "integer"
+        minimum: 0
+        maximum: 10
+        default: 3
+        description: "Retry attempts on failure"
+      
+      retry_delay:
+        type: "integer"
+        minimum: 1
+        maximum: 300
+        default: 5
+        description: "Delay between retries in seconds"
+      
+      mock:
+        type: "boolean"
+        default: false
+        description: "Use mock service for testing"
+
+  # Monitoring Configuration
+  monitoring_config:
+    type: "object"
+    properties:
+      health_checks:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable health checks"
+          
+          interval:
+            type: "integer"
+            minimum: 30
+            maximum: 3600
+            default: 300
+            description: "Health check interval in seconds"
+          
+          timeout:
+            type: "integer"
+            minimum: 5
+            maximum: 120
+            default: 30
+            description: "Health check timeout in seconds"
+      
+      metrics:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable metrics collection"
+          
+          collection_interval:
+            type: "integer"
+            minimum: 10
+            maximum: 300
+            default: 60
+            description: "Metrics collection interval in seconds"
+          
+          retention_hours:
+            type: "integer"
+            minimum: 1
+            maximum: 8760
+            default: 168
+            description: "Metrics retention in hours"
+      
+      alerts:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable alerting"
+          
+          thresholds:
+            type: "object"
+            properties:
+              cpu_usage:
+                type: "number"
+                minimum: 1
+                maximum: 100
+                default: 80
+                description: "CPU usage alert threshold (percent)"
+              
+              memory_usage:
+                type: "number"
+                minimum: 1
+                maximum: 100
+                default: 85
+                description: "Memory usage alert threshold (percent)"
+              
+              disk_usage:
+                type: "number"
+                minimum: 1
+                maximum: 100
+                default: 90
+                description: "Disk usage alert threshold (percent)"
+
+  # Logging Configuration
+  logging_config:
+    type: "object"
+    properties:
+      use_dedicated_config:
+        type: "boolean"
+        default: true
+        description: "Use dedicated logging configuration file"
+      
+      config_file:
+        type: "string"
+        default: "logging_config.yaml"
+        description: "Logging configuration file name"
+      
+      fallback:
+        type: "object"
+        properties:
+          level:
+            type: "string"
+            enum: ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+            default: "INFO"
+            description: "Fallback log level"
+          
+          format:
+            type: "string"
+            description: "Log message format"
+
+  # Security Configuration
+  security_config:
+    type: "object"
+    properties:
+      encryption:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable data encryption"
+          
+          algorithm:
+            type: "string"
+            enum: ["AES-256-GCM", "AES-256-CBC", "ChaCha20-Poly1305"]
+            default: "AES-256-GCM"
+            description: "Encryption algorithm"
+          
+          key_rotation_days:
+            type: "integer"
+            minimum: 1
+            maximum: 365
+            default: 90
+            description: "Key rotation interval in days"
+      
+      sensitive_data:
+        type: "object"
+        properties:
+          mask_in_logs:
+            type: "boolean"
+            default: true
+            description: "Mask sensitive data in logs"
+          
+          patterns:
+            type: "array"
+            items:
+              type: "string"
+            description: "Patterns to identify sensitive data"
+      
+      audit:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable audit logging"
+          
+          retention_years:
+            type: "integer"
+            minimum: 1
+            maximum: 10
+            default: 7
+            description: "Audit log retention in years"
+
+  # Features Configuration
+  features_config:
+    type: "object"
+    properties:
+      data_processing:
+        type: "boolean"
+        default: true
+        description: "Enable data processing features"
+      
+      api_server:
+        type: "boolean"
+        default: true
+        description: "Enable API server"
+      
+      web_interface:
+        type: "boolean"
+        default: true
+        description: "Enable web interface"
+      
+      machine_learning:
+        type: "boolean"
+        default: false
+        description: "Enable machine learning features"
+      
+      real_time_processing:
+        type: "boolean"
+        default: false
+        description: "Enable real-time processing"
+      
+      advanced_analytics:
+        type: "boolean"
+        default: true
+        description: "Enable advanced analytics"
+      
+      experimental:
+        type: "boolean"
+        default: false
+        description: "Enable experimental features"
+
+  # Performance Configuration
+  performance_config:
+    type: "object"
+    properties:
+      database:
+        type: "object"
+        properties:
+          connection_pooling:
+            type: "boolean"
+            default: true
+            description: "Enable database connection pooling"
+          
+          query_caching:
+            type: "boolean"
+            default: true
+            description: "Enable query result caching"
+      
+      application:
+        type: "object"
+        properties:
+          lazy_loading:
+            type: "boolean"
+            default: true
+            description: "Enable lazy loading"
+          
+          response_caching:
+            type: "boolean"
+            default: true
+            description: "Enable response caching"
+          
+          compression:
+            type: "boolean"
+            default: true
+            description: "Enable response compression"
+      
+      profiling:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: false
+            description: "Enable performance profiling"
+          
+          sample_rate:
+            type: "number"
+            minimum: 0.001
+            maximum: 1.0
+            default: 0.01
+            description: "Profiling sample rate (0-1)"
+
+  # Integrations Configuration
+  integrations_config:
+    type: "object"
+    properties:
+      message_queue:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: false
+            description: "Enable message queue integration"
+          
+          type:
+            type: "string"
+            enum: ["redis", "rabbitmq", "kafka", "sqs"]
+            default: "redis"
+            description: "Message queue type"
+      
+      search_engine:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: false
+            description: "Enable search engine integration"
+          
+          type:
+            type: "string"
+            enum: ["elasticsearch", "opensearch", "solr"]
+            default: "elasticsearch"
+            description: "Search engine type"
+      
+      cloud_storage:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: false
+            description: "Enable cloud storage integration"
+          
+          provider:
+            type: "string"
+            enum: ["aws", "azure", "gcp"]
+            default: "aws"
+            description: "Cloud storage provider"
+
+  # Development Tools Configuration
+  dev_tools_config:
+    type: "object"
+    properties:
+      linting:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable code linting"
+          
+          tools:
+            type: "array"
+            items:
+              type: "string"
+              enum: ["flake8", "pylint", "mypy", "bandit"]
+            description: "Linting tools to use"
+      
+      formatting:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable code formatting"
+          
+          tools:
+            type: "array"
+            items:
+              type: "string"
+              enum: ["black", "isort", "autopep8"]
+            description: "Formatting tools to use"
+      
+      testing:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable testing framework"
+          
+          coverage_threshold:
+            type: "integer"
+            minimum: 0
+            maximum: 100
+            default: 80
+            description: "Test coverage threshold (percent)"
+
+  # Compliance Configuration
+  compliance_config:
+    type: "object"
+    properties:
+      data_governance:
+        type: "object"
+        properties:
+          retention_policy:
+            type: "string"
+            enum: ["1_year", "3_years", "7_years", "indefinite"]
+            default: "7_years"
+            description: "Data retention policy"
+          
+          classification:
+            type: "string"
+            enum: ["public", "internal", "confidential", "restricted"]
+            default: "internal"
+            description: "Data classification level"
+      
+      privacy:
+        type: "object"
+        properties:
+          gdpr_compliance:
+            type: "boolean"
+            default: true
+            description: "Enable GDPR compliance features"
+          
+          data_minimization:
+            type: "boolean"
+            default: true
+            description: "Enable data minimization"
+
+  # Metadata Configuration
+  metadata_config:
+    type: "object"
+    properties:
+      schemas:
+        type: "object"
+        properties:
+          validation_enabled:
+            type: "boolean"
+            default: true
+            description: "Enable schema validation"
+          
+          evolution_enabled:
+            type: "boolean"
+            default: true
+            description: "Enable schema evolution"
+      
+      lineage:
+        type: "object"
+        properties:
+          tracking_enabled:
+            type: "boolean"
+            default: true
+            description: "Enable data lineage tracking"
+      
+      catalog:
+        type: "object"
+        properties:
+          enabled:
+            type: "boolean"
+            default: true
+            description: "Enable data catalog"
+
+# =============================================================================
+# ENVIRONMENT-SPECIFIC VALIDATION RULES
+# =============================================================================
+
+environment_rules:
+  development:
+    required_features:
+      - "debug"
+      - "hot_reload"
+    
+    prohibited_features:
+      - "encryption"
+      - "audit_logging"
+    
+    resource_limits:
+      max_workers: 4
+      memory_limit_gb: 8
+      
+  staging:
+    required_features:
+      - "monitoring"
+      - "logging"
+    
+    resource_limits:
+      max_workers: 8
+      memory_limit_gb: 16
+      
+  production:
+    required_features:
+      - "security"
+      - "monitoring"
+      - "audit_logging"
+      - "backup"
+    
+    prohibited_features:
+      - "debug"
+      - "hot_reload"
+      - "experimental"
+    
+    security_requirements:
+      - "authentication"
+      - "encryption"
+      - "rate_limiting"
+    
+    resource_limits:
+      min_workers: 2
+      max_workers: 32
+      
+  testing:
+    required_features:
+      - "mock_services"
+      - "test_fixtures"
+    
+    prohibited_features:
+      - "external_services"
+      - "real_data"
+    
+    resource_limits:
+      max_workers: 2
+      memory_limit_gb: 4
+
+# =============================================================================
+# VALIDATION EXAMPLES
+# =============================================================================
+
+validation_examples:
+  valid_config:
+    app:
+      name: "AHGD"
+      version: "1.0.0"
+      environment: "development"
+    
+    system:
+      max_workers: 2
+      memory:
+        limit_gb: 4
+    
+    data_processing:
+      paths:
+        raw: "./data_raw"
+        processed: "./data_processed"
+  
+  invalid_config:
+    app:
+      name: ""  # Invalid: empty name
+      version: "1.0"  # Invalid: not semantic version
+    
+    system:
+      max_workers: 0  # Invalid: must be >= 1

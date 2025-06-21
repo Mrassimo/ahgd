@@ -1,5 +1,5 @@
 """
-Test fixtures package.
+Test Fixtures
 
-Contains mock data generators and test utilities for Australian health data patterns.
+This module contains test data and fixtures for the AHGD test suite.
 """

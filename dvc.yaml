@@ -1,81 +1,97 @@
 stages:
-  download_data:
-    cmd: python scripts/data_processing/download_data.py
+  download:
+    cmd: python scripts/download_data.py
     deps:
-      - scripts/data_processing/download_data.py
+      - scripts/download_data.py
+      - configs/data_sources.yaml
     outs:
-      - data/raw/download_report_*.md
-    desc: Download raw health data from Australian government sources
-    
-  process_aihw_data:
-    cmd: python scripts/data_processing/aihw_data_extraction.py
+      - data_raw
+    params:
+      - download.sources
+      - download.timeout
+    metrics:
+      - logs/download_metrics.json:
+          cache: false
+
+  preprocess:
+    cmd: python scripts/preprocess_data.py
     deps:
-      - scripts/data_processing/aihw_data_extraction.py
-      - data/raw/health/aihw_grim_data_2025.csv
-      - data/raw/health/aihw_mort_table1_2025.csv
+      - scripts/preprocess_data.py
+      - data_raw
     outs:
-      - data/processed/aihw_grim_data.parquet
-      - data/processed/aihw_mort_table1.parquet
-    desc: Process AIHW mortality and health data
-    
-  process_demographics:
-    cmd: python scripts/data_processing/process_data.py --data-type demographics
+      - data_processed/cleaned
+    params:
+      - preprocess.remove_duplicates
+      - preprocess.handle_missing
+      - preprocess.date_format
+    metrics:
+      - logs/preprocess_metrics.json:
+          cache: false
+
+  extract_features:
+    cmd: python scripts/extract_features.py
     deps:
-      - scripts/data_processing/process_data.py
-      - data/raw/demographics/
+      - scripts/extract_features.py
+      - data_processed/cleaned
     outs:
-      - data/processed/demographics_processed.parquet
-    desc: Process demographic data from ABS Census
-    
-  process_geographic:
-    cmd: python scripts/data_processing/process_data.py --data-type geographic
+      - data_processed/features
+    params:
+      - features.demographic
+      - features.geographic
+      - features.health_indicators
+    metrics:
+      - logs/feature_metrics.json:
+          cache: false
+
+  train_model:
+    cmd: python scripts/train_model.py
     deps:
-      - scripts/data_processing/process_data.py
-      - data/raw/geographic/
-      - data/raw/sa2_2021_boundaries_gda2020.zip
+      - scripts/train_model.py
+      - data_processed/features
     outs:
-      - data/processed/sa2_boundaries_2021.parquet
-    desc: Process geographic boundary data
-    
-  process_socioeconomic:
-    cmd: python scripts/data_processing/process_data.py --data-type socioeconomic
+      - models/health_predictor.pkl
+    params:
+      - model.type
+      - model.hyperparameters
+      - model.validation_split
+    metrics:
+      - logs/model_metrics.json:
+          cache: false
+    plots:
+      - logs/confusion_matrix.csv:
+          template: confusion
+          x: actual
+          y: predicted
+      - logs/learning_curve.csv:
+          template: linear
+          x: epoch
+          y: loss
+
+  evaluate:
+    cmd: python scripts/evaluate_model.py
     deps:
-      - scripts/data_processing/process_data.py
-      - data/raw/socioeconomic/SEIFA_2021_SA2.xlsx
-    outs:
-      - data/processed/seifa_2021_sa2.parquet
-    desc: Process SEIFA socioeconomic data
-    
-  create_analysis_database:
-    cmd: python scripts/data_processing/populate_analysis_database.py
+      - scripts/evaluate_model.py
+      - models/health_predictor.pkl
+      - data_processed/features
+    metrics:
+      - logs/evaluation_metrics.json:
+          cache: false
+    plots:
+      - logs/roc_curve.csv:
+          template: simple
+          x: fpr
+          y: tpr
+      - logs/feature_importance.csv:
+          template: bar_horizontal
+          x: importance
+          y: feature
+
+  generate_report:
+    cmd: python scripts/generate_report.py
     deps:
-      - scripts/data_processing/populate_analysis_database.py
-      - data/processed/aihw_grim_data.parquet
-      - data/processed/aihw_mort_table1.parquet
-      - data/processed/sa2_boundaries_2021.parquet
-      - data/processed/seifa_2021_sa2.parquet
+      - scripts/generate_report.py
+      - logs/evaluation_metrics.json
+      - models/health_predictor.pkl
     outs:
-      - data/health_analytics.db
-    desc: Create consolidated analysis database
-    
-  health_correlation_analysis:
-    cmd: python scripts/analysis/health_correlation_analysis.py
-    deps:
-      - scripts/analysis/health_correlation_analysis.py
-      - data/health_analytics.db
-    outs:
-      - reports/analysis/health_correlation_results.json
-      - docs/assets/health_correlation_analysis.png
-    desc: Perform health inequality correlation analysis
-    
-plots:
-  - health_correlation_analysis.json:
-      x: socioeconomic_index
-      y: health_outcome_score
-      title: Health Inequality Analysis
-      
-params:
-  - params.yaml
-  
-metrics:
-  - metrics.json
+      - reports/health_analysis_report.html
+      - reports/health_analysis_report.pdf

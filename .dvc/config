@@ -1,4 +1,23 @@
 [core]
-    remote = local
-['remote "local"']
-    url = /Users/massimoraso/AHGD/.dvc/remote
+    remote = ahgd_storage
+    autostage = true
+    analytics = false
+
+[remote "ahgd_storage"]
+    # Configure your preferred remote storage here
+    # Default: local storage for development
+    url = ../ahgd_dvc_storage
+
+# Example remote configurations (uncomment and modify as needed):
+# 
+# [remote "s3_backup"]
+#     url = s3://ahgd-backup/data
+#     profile = ahgd_profile
+#     region = us-east-1
+# 
+# [remote "gcs_backup"]
+#     url = gs://ahgd-backup/data
+#     projectname = ahgd-project
+# 
+# [remote "local"]
+#     url = /tmp/ahgd_dvc_cache

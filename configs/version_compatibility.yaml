@@ -1,0 +1,305 @@
+# Schema Version Compatibility Matrix for AHGD
+# Defines which schema versions are compatible and migration paths between them
+
+version_matrix:
+  # Version 1.0.0 - Initial release
+  "1.0.0":
+    release_date: "2024-01-01"
+    status: "deprecated"
+    description: "Initial schema release with basic validation"
+    
+    compatibility:
+      forward_compatible:
+        - version: "1.1.0"
+          migration: "002_enhanced_validation"
+          automatic: true
+          breaking_changes: false
+        - version: "1.2.0"
+          migration: "002_enhanced_validation"
+          automatic: true
+          breaking_changes: false
+        - version: "2.0.0"
+          migration: ["002_enhanced_validation", "003_new_schema_types"]
+          automatic: false
+          breaking_changes: true
+      
+      backward_compatible: []
+    
+    deprecated_fields: []
+    removed_fields: []
+    
+    schemas:
+      - SA2Coordinates
+      - HealthIndicator
+      - SEIFAScore
+  
+  # Version 1.1.0 - Enhanced validation
+  "1.1.0":
+    release_date: "2024-02-01"
+    status: "supported"
+    description: "Enhanced validation rules and additional quality metrics"
+    
+    compatibility:
+      forward_compatible:
+        - version: "1.2.0"
+          migration: "none"
+          automatic: true
+          breaking_changes: false
+        - version: "2.0.0"
+          migration: "003_new_schema_types"
+          automatic: false
+          breaking_changes: true
+      
+      backward_compatible:
+        - version: "1.0.0"
+          migration: "reverse_002"
+          automatic: true
+          breaking_changes: false
+    
+    new_fields:
+      - data_quality_score
+      - validation_timestamp
+      - source_reliability
+      - confidence_level
+      - methodology_notes
+    
+    enhanced_validators:
+      - boundary_consistency_check
+      - clinical_significance_check
+      - index_correlation_check
+    
+    schemas:
+      - SA2Coordinates
+      - HealthIndicator
+      - SEIFAScore
+  
+  # Version 1.2.0 - Bug fixes and improvements
+  "1.2.0":
+    release_date: "2024-02-15"
+    status: "supported"
+    description: "Bug fixes and minor improvements to existing schemas"
+    
+    compatibility:
+      forward_compatible:
+        - version: "2.0.0"
+          migration: "003_new_schema_types"
+          automatic: false
+          breaking_changes: true
+      
+      backward_compatible:
+        - version: "1.1.0"
+          migration: "none"
+          automatic: true
+          breaking_changes: false
+        - version: "1.0.0"
+          migration: "reverse_002"
+          automatic: true
+          breaking_changes: false
+    
+    bug_fixes:
+      - "Fixed SA2 code validation regex"
+      - "Improved SEIFA percentile calculation"
+      - "Enhanced error messages for health indicators"
+    
+    schemas:
+      - SA2Coordinates
+      - HealthIndicator
+      - SEIFAScore
+  
+  # Version 2.0.0 - Major release with new schema types
+  "2.0.0":
+    release_date: "2024-03-01"
+    status: "current"
+    description: "Major release introducing census, mortality, and environmental schemas"
+    
+    compatibility:
+      forward_compatible: []
+      
+      backward_compatible:
+        - version: "1.2.0"
+          migration: "reverse_003"
+          automatic: false
+          breaking_changes: true
+        - version: "1.1.0"
+          migration: ["reverse_003", "reverse_002"]
+          automatic: false
+          breaking_changes: true
+        - version: "1.0.0"
+          migration: ["reverse_003", "reverse_002"]
+          automatic: false
+          breaking_changes: true
+    
+    new_schemas:
+      # Census schemas
+      - CensusDemographics
+      - CensusEducation
+      - CensusEmployment
+      - CensusHousing
+      
+      # Mortality schemas
+      - MortalityRecord
+      - MortalityStatistics
+      - MortalityTrend
+      
+      # Environmental schemas
+      - WeatherObservation
+      - ClimateStatistics
+      - EnvironmentalHealthIndex
+    
+    enhanced_base_schema:
+      - thread_safety: "Added thread-safe validation metrics"
+      - compatibility_checking: "Automated compatibility validation"
+      - performance_monitoring: "Built-in validation performance tracking"
+      - enhanced_error_reporting: "Detailed error messages with context"
+    
+    breaking_changes:
+      - "Pydantic v2 migration (field_validator, model_validator)"
+      - "Enhanced data source requirements"
+      - "Stricter validation rules"
+    
+    all_schemas:
+      # Geographic schemas
+      - SA2Coordinates
+      - SA2GeometryValidation
+      - SA2BoundaryRelationship
+      
+      # Health schemas
+      - HealthIndicator
+      - MortalityData
+      - DiseasePrevalence
+      - HealthcareUtilisation
+      - RiskFactorData
+      - MentalHealthIndicator
+      - HealthDataAggregate
+      
+      # SEIFA schemas
+      - SEIFAScore
+      - SEIFAComponent
+      - SEIFAComparison
+      - SEIFAAggregate
+      
+      # Census schemas
+      - CensusDemographics
+      - CensusEducation
+      - CensusEmployment
+      - CensusHousing
+      
+      # Mortality schemas
+      - MortalityRecord
+      - MortalityStatistics
+      - MortalityTrend
+      
+      # Environmental schemas
+      - WeatherObservation
+      - ClimateStatistics
+      - EnvironmentalHealthIndex
+
+migration_rules:
+  # Automatic migration settings
+  automatic_migrations:
+    enabled: true
+    max_version_gap: 1  # Only auto-migrate across 1 version
+    require_confirmation: false
+    backup_data: true
+  
+  # Manual migration settings
+  manual_migrations:
+    require_explicit_confirmation: true
+    validate_before_migration: true
+    validate_after_migration: true
+    create_migration_log: true
+  
+  # Rollback settings
+  rollback:
+    enabled: true
+    max_rollback_steps: 3
+    require_confirmation: true
+    preserve_migration_history: true
+
+validation_policies:
+  # Version-specific validation
+  version_enforcement:
+    strict_mode: true
+    reject_unsupported_versions: true
+    warn_on_deprecated_versions: true
+    auto_upgrade_suggestions: true
+  
+  # Cross-version validation
+  cross_version:
+    validate_migration_paths: true
+    check_data_loss_risk: true
+    verify_compatibility_claims: true
+    test_round_trip_migration: false  # Enable for thorough testing
+  
+  # Development settings
+  development:
+    allow_experimental_versions: false
+    enable_version_preview: false
+    relaxed_validation: false
+
+support_lifecycle:
+  # Version support status
+  support_status:
+    "1.0.0":
+      status: "end_of_life"
+      end_of_support: "2024-06-01"
+      migration_required_by: "2024-12-31"
+    
+    "1.1.0":
+      status: "maintenance"
+      end_of_support: "2024-12-01"
+      migration_recommended_by: "2024-09-01"
+    
+    "1.2.0":
+      status: "active"
+      end_of_support: "2025-03-01"
+      migration_recommended_by: "2024-12-01"
+    
+    "2.0.0":
+      status: "current"
+      end_of_support: "2025-12-01"
+      next_major_version: "3.0.0"
+  
+  # Deprecation policy
+  deprecation:
+    warning_period_months: 6
+    support_period_months: 12
+    migration_assistance_period_months: 18
+
+schema_evolution:
+  # Field evolution rules
+  field_changes:
+    adding_optional_fields: "minor_version"
+    adding_required_fields: "major_version"
+    removing_fields: "major_version"
+    changing_field_types: "major_version"
+    renaming_fields: "major_version"
+  
+  # Validation evolution rules
+  validation_changes:
+    relaxing_constraints: "minor_version"
+    tightening_constraints: "major_version"
+    adding_validators: "minor_version"
+    removing_validators: "major_version"
+  
+  # Schema evolution rules
+  schema_changes:
+    adding_new_schemas: "minor_version"
+    removing_schemas: "major_version"
+    splitting_schemas: "major_version"
+    merging_schemas: "major_version"
+
+testing:
+  # Version compatibility testing
+  compatibility_tests:
+    test_all_migration_paths: true
+    test_rollback_scenarios: true
+    validate_data_integrity: true
+    performance_regression_tests: true
+  
+  # Test data sets
+  test_datasets:
+    use_synthetic_data: true
+    include_edge_cases: true
+    test_invalid_data: true
+    cross_schema_relationships: true

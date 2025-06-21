@@ -1,0 +1,251 @@
+# Schema Validation Configuration for AHGD
+# Controls schema validation behaviour, migration settings, and performance parameters
+
+schema_validation:
+  # General validation settings
+  strict_mode: true
+  allow_extra_fields: false
+  validate_on_assignment: true
+  use_enum_values: true
+  
+  # Performance settings
+  enable_caching: true
+  cache_ttl_seconds: 3600
+  max_cache_size: 1000
+  validation_timeout_seconds: 30
+  
+  # Thread safety
+  enable_thread_safety: true
+  max_concurrent_validations: 10
+  
+  # Error handling
+  continue_on_error: true
+  max_errors_per_batch: 100
+  detailed_error_messages: true
+  include_field_context: true
+  
+  # Data quality assessment
+  enable_quality_scoring: true
+  quality_thresholds:
+    high: 90.0
+    medium: 70.0
+    low: 50.0
+  
+  # Batch processing
+  batch_size: 1000
+  enable_parallel_processing: true
+  chunk_size: 100
+
+schema_versions:
+  # Current version settings
+  default_version: "2.0.0"
+  
+  # Supported versions
+  supported_versions:
+    - "1.0.0"
+    - "1.1.0"
+    - "1.2.0"
+    - "2.0.0"
+  
+  # Version compatibility matrix
+  compatibility_matrix:
+    "1.0.0":
+      forward_compatible: ["1.1.0", "1.2.0"]
+      backward_compatible: []
+    "1.1.0":
+      forward_compatible: ["1.2.0", "2.0.0"]
+      backward_compatible: ["1.0.0"]
+    "1.2.0":
+      forward_compatible: ["2.0.0"]
+      backward_compatible: ["1.0.0", "1.1.0"]
+    "2.0.0":
+      forward_compatible: []
+      backward_compatible: ["1.0.0", "1.1.0", "1.2.0"]
+
+migrations:
+  # Migration settings
+  auto_migrate: false
+  backup_before_migration: true
+  validate_after_migration: true
+  
+  # Migration paths
+  migration_paths:
+    "1.0.0_to_1.1.0": "002_enhanced_validation"
+    "1.1.0_to_1.2.0": "002_enhanced_validation"
+    "1.2.0_to_2.0.0": "003_new_schema_types"
+    "1.0.0_to_2.0.0": ["002_enhanced_validation", "003_new_schema_types"]
+  
+  # Migration timeouts
+  migration_timeout_seconds: 300
+  batch_migration_size: 500
+  
+  # Rollback settings
+  enable_rollback: true
+  keep_migration_history: true
+  max_history_entries: 1000
+
+schema_types:
+  # Geographic schemas
+  geographic:
+    enabled: true
+    schemas:
+      - SA2Coordinates
+      - SA2GeometryValidation
+      - SA2BoundaryRelationship
+    
+    validation_rules:
+      coordinate_precision: 6
+      require_state_validation: true
+      enable_boundary_checks: true
+  
+  # Health schemas
+  health:
+    enabled: true
+    schemas:
+      - HealthIndicator
+      - MortalityData
+      - DiseasePrevalence
+      - HealthcareUtilisation
+      - RiskFactorData
+      - MentalHealthIndicator
+      - HealthDataAggregate
+    
+    validation_rules:
+      require_confidence_intervals: false
+      validate_medical_codes: true
+      check_age_group_consistency: true
+      validate_rate_calculations: true
+  
+  # SEIFA schemas
+  seifa:
+    enabled: true
+    schemas:
+      - SEIFAScore
+      - SEIFAComponent
+      - SEIFAComparison
+      - SEIFAAggregate
+    
+    validation_rules:
+      validate_index_calculations: true
+      check_ranking_consistency: true
+      require_population_data: true
+      validate_decile_percentile_consistency: true
+  
+  # Census schemas
+  census:
+    enabled: true
+    schemas:
+      - CensusDemographics
+      - CensusEducation
+      - CensusEmployment
+      - CensusHousing
+    
+    validation_rules:
+      validate_census_years: true
+      check_population_totals: true
+      validate_age_group_sums: true
+      check_geographic_hierarchy: true
+  
+  # Mortality schemas
+  mortality:
+    enabled: true
+    schemas:
+      - MortalityRecord
+      - MortalityStatistics
+      - MortalityTrend
+    
+    validation_rules:
+      validate_icd_codes: true
+      check_death_date_consistency: true
+      validate_age_at_death: true
+      check_geographic_consistency: true
+  
+  # Environmental schemas
+  environmental:
+    enabled: true
+    schemas:
+      - WeatherObservation
+      - ClimateStatistics
+      - EnvironmentalHealthIndex
+    
+    validation_rules:
+      validate_weather_ranges: true
+      check_temperature_consistency: true
+      validate_station_locations: true
+      check_observation_quality: true
+
+validation_rules:
+  # Australian-specific validation
+  australian_standards:
+    validate_state_codes: true
+    validate_postcode_ranges: true
+    validate_sa_codes: true
+    validate_indigenous_categories: true
+  
+  # Geographic validation
+  geographic:
+    validate_coordinates: true
+    check_australian_bounds: true
+    validate_area_calculations: true
+    check_boundary_topology: true
+  
+  # Health data validation
+  health:
+    validate_age_groups: true
+    check_rate_bounds: true
+    validate_population_denominators: true
+    check_temporal_consistency: true
+  
+  # Data quality rules
+  quality:
+    check_completeness: true
+    validate_consistency: true
+    check_timeliness: true
+    validate_accuracy: true
+  
+  # Business rules
+  business_rules:
+    enforce_data_relationships: true
+    validate_derived_fields: true
+    check_business_logic: true
+    validate_reference_data: true
+
+reporting:
+  # Validation reporting
+  generate_reports: true
+  report_format: "json"  # json, yaml, html, csv
+  include_summaries: true
+  include_details: true
+  
+  # Report output
+  output_directory: "validation_reports"
+  report_retention_days: 30
+  compress_old_reports: true
+  
+  # Metrics collection
+  collect_metrics: true
+  metrics_retention_days: 90
+  enable_performance_tracking: true
+  
+  # Alerting
+  enable_alerts: false
+  alert_thresholds:
+    error_rate: 10.0  # Percentage
+    validation_time: 5000  # Milliseconds
+    memory_usage: 80.0  # Percentage
+
+logging:
+  # Validation logging
+  log_level: "INFO"
+  log_validation_errors: true
+  log_performance_metrics: true
+  log_migration_operations: true
+  
+  # Log formatting
+  include_timestamps: true
+  include_schema_context: true
+  include_performance_data: true
+  
+  # Log rotation
+  max_log_size_mb: 100
+  max_log_files: 10

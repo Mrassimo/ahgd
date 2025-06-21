@@ -1,0 +1,507 @@
+# AHGD Testing Environment Configuration  
+# Configuration optimized for automated testing, CI/CD, and quality assurance
+
+# =============================================================================
+# APPLICATION SETTINGS
+# =============================================================================
+
+app:
+  debug: false
+  hot_reload: false
+  auto_restart: false
+  detailed_errors: true  # Helpful for debugging test failures
+  environment: "testing"
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+
+system:
+  # Minimal resource usage for fast test execution
+  max_workers: 1
+  worker_timeout: 300  # 5 minutes
+  graceful_shutdown_timeout: 10
+  
+  memory:
+    limit_gb: 2  # Minimal memory for tests
+    warning_threshold: 0.95
+    cleanup_interval: 60  # Frequent cleanup
+    gc_threshold: 256  # MB
+  
+  temp:
+    cleanup_on_startup: true
+    max_age_hours: 1  # Aggressive cleanup
+    max_size_gb: 1
+
+# =============================================================================
+# DATA PROCESSING
+# =============================================================================
+
+data_processing:
+  pipeline:
+    parallel_stages: false  # Sequential for predictable testing
+    stage_timeout: 300  # 5 minutes
+    continue_on_error: false  # Fail fast for tests
+    max_retries: 0  # No retries in tests
+    retry_delay: 0
+  
+  processing:
+    chunk_size: 100  # Small chunks for fast tests
+    batch_size: 10
+    memory_limit_per_worker: 512  # MB
+    max_file_size_gb: 1
+    compression: "none"  # No compression for speed
+  
+  cache:
+    enabled: false  # Disable caching for test isolation
+    
+  validation:
+    strict_mode: true  # Strict validation for tests
+    null_threshold: 0.0  # No nulls allowed in tests
+    duplicate_threshold: 0.0  # No duplicates allowed
+    outlier_detection: false  # Skip for performance
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+
+database:
+  # In-memory SQLite for fast testing
+  url: "sqlite:///:memory:"
+  echo: false  # No SQL logging in tests
+  
+  connection:
+    pool_size: 1
+    max_overflow: 0
+    pool_timeout: 5
+    
+  query:
+    timeout: 30
+    fetch_size: 100
+    batch_size: 10
+    
+  backup:
+    enabled: false  # No backups needed for tests
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+
+api:
+  server:
+    host: "127.0.0.1"
+    port: 0  # Random available port
+    workers: 1
+    timeout: 30
+    
+  security:
+    cors:
+      enabled: false  # Not needed for tests
+      
+    rate_limiting:
+      enabled: false  # Disable for test speed
+      
+    authentication:
+      enabled: false  # Simplified for tests
+      
+  request:
+    max_size: "1MB"  # Small files in tests
+    timeout: 10
+    
+  response:
+    compression: false  # No compression for speed
+    
+  docs:
+    enabled: false  # Not needed in tests
+
+# =============================================================================
+# EXTERNAL SERVICES
+# =============================================================================
+
+external_services:
+  # Mock all external services for test isolation
+  abs:
+    mock: true
+    base_url: "http://localhost:8999/mock/abs"
+    timeout: 5
+    rate_limit: 100  # No limiting in tests
+    retry_attempts: 0
+    
+  aihw:
+    mock: true
+    base_url: "http://localhost:8999/mock/aihw"
+    timeout: 5
+    rate_limit: 100
+    retry_attempts: 0
+    
+  bom:
+    mock: true
+    base_url: "http://localhost:8999/mock/bom"
+    timeout: 5
+    rate_limit: 100
+    retry_attempts: 0
+    
+  osm:
+    mock: true
+    base_url: "http://localhost:8999/mock/osm"
+    timeout: 5
+    rate_limit: 100
+    retry_attempts: 0
+
+# =============================================================================
+# MONITORING
+# =============================================================================
+
+monitoring:
+  health_checks:
+    enabled: false  # Disable for test isolation
+    
+  metrics:
+    enabled: false  # Disable for test performance
+    
+  alerts:
+    enabled: false  # No alerts in tests
+
+# =============================================================================
+# LOGGING
+# =============================================================================
+
+logging:
+  use_dedicated_config: true
+  
+  fallback:
+    level: "WARNING"  # Minimal logging for tests
+    
+    console:
+      enabled: false  # No console logging during tests
+      
+    file:
+      enabled: true
+      level: "ERROR"  # Only errors to file
+      path: "./logs/test/test.log"
+      max_size: "1MB"
+      backup_count: 1
+      
+  # Test-specific logging
+  test_logging:
+    capture_warnings: true
+    log_cli: false
+    log_cli_level: "WARNING"
+    log_file: "./logs/test/pytest.log"
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+
+security:
+  encryption:
+    enabled: false  # Disable for test speed
+    
+  sensitive_data:
+    mask_in_logs: false  # Allow in test logs for debugging
+    
+  audit:
+    enabled: false  # Not needed in tests
+
+# =============================================================================
+# TESTING CONFIGURATION
+# =============================================================================
+
+testing:
+  # Test execution settings
+  execution:
+    parallel: false  # Sequential execution
+    timeout: 300  # 5 minutes per test
+    verbose: true
+    capture_output: false  # Don't capture for debugging
+    fail_fast: true  # Stop on first failure
+    
+  # Test data management
+  data:
+    use_fixtures: true
+    generate_test_data: true
+    data_size: "minimal"
+    cleanup_after_test: true
+    
+    # Test data sources
+    fixtures_dir: "./tests/fixtures"
+    sample_data_dir: "./tests/data"
+    mock_data_dir: "./tests/mocks"
+    
+  # Database testing
+  database:
+    # Use separate test database
+    url: "sqlite:///./tests/test_ahgd.db"
+    reset_between_tests: true
+    migrate_on_start: true
+    
+    # Transaction rollback for test isolation
+    use_transactions: true
+    rollback_on_teardown: true
+    
+  # Mock services
+  mocking:
+    enabled: true
+    external_services: true
+    database: false  # Use real database for integration tests
+    file_system: false
+    network: true
+    
+    # Mock server
+    mock_server:
+      enabled: true
+      host: "localhost"
+      port: 8999
+      auto_start: true
+      
+  # Coverage settings
+  coverage:
+    enabled: true
+    min_percentage: 80
+    source_dirs: ["src"]
+    omit_patterns:
+      - "*/tests/*"
+      - "*/test_*"
+      - "*/conftest.py"
+      - "*/__pycache__/*"
+      - "*/mock_*"
+    
+    # Coverage reporting
+    formats: ["term", "html", "xml"]
+    output_dir: "./reports/coverage"
+    
+  # Test categories
+  categories:
+    unit:
+      enabled: true
+      timeout: 30
+      
+    integration:
+      enabled: true
+      timeout: 120
+      setup_required: true
+      
+    functional:
+      enabled: true
+      timeout: 300
+      
+    performance:
+      enabled: false  # Disabled by default
+      timeout: 600
+      
+    security:
+      enabled: false  # Disabled by default
+      timeout: 300
+      
+  # Quality gates
+  quality_gates:
+    coverage_threshold: 80
+    test_pass_rate: 100
+    performance_regression: 10  # percent
+    security_issues: 0
+
+# =============================================================================
+# CI/CD CONFIGURATION
+# =============================================================================
+
+cicd:
+  # Continuous Integration
+  ci:
+    # Environment detection
+    detect_ci: true
+    ci_providers: ["github", "gitlab", "jenkins", "travis"]
+    
+    # Test execution in CI
+    parallel_jobs: 1
+    timeout: 1800  # 30 minutes
+    artifacts_retention: 7  # days
+    
+    # Reporting
+    junit_xml: "./reports/junit.xml"
+    coverage_xml: "./reports/coverage.xml"
+    
+  # Code quality
+  code_quality:
+    linting: true
+    formatting: true
+    type_checking: true
+    security_scanning: true
+    
+    # Quality tools
+    tools:
+      - "flake8"
+      - "pylint" 
+      - "mypy"
+      - "bandit"
+      - "safety"
+      
+  # Test automation
+  automation:
+    run_on_commit: true
+    run_on_pr: true
+    run_nightly: true
+    
+    # Test selection
+    changed_files_only: false
+    smoke_tests_only: false
+    
+# =============================================================================
+# PERFORMANCE TESTING
+# =============================================================================
+
+performance:
+  # Load testing
+  load_testing:
+    enabled: false
+    tool: "locust"
+    users: 10
+    spawn_rate: 1
+    duration: "1m"
+    
+  # Benchmarking
+  benchmarking:
+    enabled: false
+    baseline_file: "./tests/benchmarks/baseline.json"
+    regression_threshold: 20  # percent
+    
+  # Profiling
+  profiling:
+    enabled: false
+    profiler: "py-spy"
+    output_dir: "./reports/profiles"
+
+# =============================================================================
+# INTEGRATION TESTING
+# =============================================================================
+
+integration:
+  # External service testing
+  external_services:
+    test_real_services: false  # Use mocks by default
+    timeout: 10
+    retry_attempts: 1
+    
+  # Database integration
+  database:
+    test_migrations: true
+    test_constraints: true
+    test_indexes: true
+    
+  # API integration
+  api:
+    test_endpoints: true
+    test_authentication: false
+    test_rate_limiting: false
+    
+  # File system integration
+  file_system:
+    test_permissions: true
+    test_disk_space: false
+    create_temp_dirs: true
+
+# =============================================================================
+# TEST ENVIRONMENT SETUP
+# =============================================================================
+
+setup:
+  # Pre-test setup
+  before_tests:
+    create_directories: true
+    setup_database: true
+    start_mock_services: true
+    load_fixtures: true
+    
+  # Post-test cleanup
+  after_tests:
+    cleanup_temp_files: true
+    stop_mock_services: true
+    reset_database: true
+    generate_reports: true
+    
+  # Per-test setup
+  before_each_test:
+    reset_state: true
+    clear_cache: true
+    
+  after_each_test:
+    cleanup_resources: true
+    collect_metrics: false
+
+# =============================================================================
+# FEATURE FLAGS FOR TESTING
+# =============================================================================
+
+features:
+  # Core features
+  data_processing: true
+  api_server: true
+  web_interface: false  # Not needed for most tests
+  
+  # Advanced features
+  machine_learning: false  # Too slow for regular tests
+  real_time_processing: false
+  advanced_analytics: false
+  
+  # Testing-specific features
+  mock_services: true
+  test_fixtures: true
+  debug_mode: true
+  verbose_logging: false
+  
+  # Experimental features
+  experimental: false
+  beta_features: false
+
+# =============================================================================
+# RESOURCE LIMITS
+# =============================================================================
+
+resources:
+  # CPU limits
+  cpu:
+    max_usage: 50  # percent
+    timeout_on_exceed: true
+    
+  # Memory limits
+  memory:
+    max_usage_mb: 1024
+    fail_on_exceed: true
+    
+  # Disk limits
+  disk:
+    max_usage_mb: 500
+    cleanup_on_exceed: true
+    
+  # Network limits
+  network:
+    max_requests: 100
+    timeout: 5
+    
+  # Time limits
+  time:
+    max_test_duration: 300  # 5 minutes
+    max_suite_duration: 1800  # 30 minutes
+
+# =============================================================================
+# ERROR HANDLING
+# =============================================================================
+
+error_handling:
+  # Test failure handling
+  on_test_failure:
+    capture_logs: true
+    capture_screenshots: false
+    save_state: true
+    continue_execution: false
+    
+  # Error reporting
+  reporting:
+    detailed_errors: true
+    stack_traces: true
+    context_information: true
+    
+  # Recovery
+  recovery:
+    auto_retry: false
+    max_retries: 0
+    retry_delay: 0

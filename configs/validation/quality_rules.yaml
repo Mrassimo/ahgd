@@ -1,0 +1,171 @@
+# Data Quality Rules Configuration
+# Defines thresholds and rules for assessing data quality in Australian Health Geography Datasets
+
+version: "1.0"
+schema_version: "2024-01"
+
+# Overall quality scoring weights
+quality_weights:
+  completeness: 0.25      # Percentage of non-null values
+  validity: 0.25          # Percentage of values passing validation rules  
+  consistency: 0.20       # Internal data consistency
+  accuracy: 0.15          # Accuracy against reference datasets
+  timeliness: 0.10        # Freshness of data
+  uniqueness: 0.05        # Absence of duplicates
+
+# Completeness rules - minimum acceptable percentages
+completeness_rules:
+  critical_columns:       # Must be 100% complete
+    - sa2_code
+    - state_code
+    - year
+  high_priority_columns:  # Must be >= 95% complete
+    - population_count
+    - geographic_area_sqkm
+    - usual_resident_population
+  medium_priority_columns: # Must be >= 85% complete
+    - median_age
+    - median_household_income_weekly
+    - unemployment_rate
+  low_priority_columns:   # Must be >= 70% complete
+    - indigenous_population_percentage
+    - overseas_born_percentage
+
+# Validity rules - data format and range validation
+validity_rules:
+  sa2_codes:
+    pattern: "^[0-9]{9}$"
+    description: "SA2 codes must be 9-digit numeric strings"
+    severity: "error"
+  
+  state_codes:
+    allowed_values: ["1", "2", "3", "4", "5", "6", "7", "8"]
+    description: "State codes must be valid Australian state/territory codes"
+    severity: "error"
+  
+  postcode:
+    pattern: "^[0-9]{4}$"
+    description: "Australian postcodes must be 4-digit numbers"
+    severity: "warning"
+  
+  population_counts:
+    min_value: 0
+    max_value: 50000
+    description: "Population counts should be reasonable for SA2 areas"
+    severity: "warning"
+  
+  geographic_coordinates:
+    latitude:
+      min_value: -44.0    # Approximate southern boundary of Australia
+      max_value: -10.0    # Approximate northern boundary
+      description: "Latitude must be within Australian bounds"
+      severity: "error"
+    longitude:
+      min_value: 113.0    # Approximate western boundary
+      max_value: 154.0    # Approximate eastern boundary  
+      description: "Longitude must be within Australian bounds"
+      severity: "error"
+  
+  percentages:
+    min_value: 0.0
+    max_value: 100.0
+    description: "Percentage values must be between 0 and 100"
+    severity: "error"
+  
+  income_values:
+    min_value: 0
+    max_value: 5000      # Weekly income in AUD
+    description: "Weekly income values should be reasonable"
+    severity: "warning"
+
+# Consistency rules - internal data relationships
+consistency_rules:
+  population_relationships:
+    - rule_id: "pop_age_consistency"
+      description: "Age group populations should sum to total population"
+      tolerance: 0.05     # 5% tolerance for rounding
+      severity: "warning"
+  
+  geographic_relationships:
+    - rule_id: "sa2_state_consistency"
+      description: "SA2 codes must belong to correct state"
+      severity: "error"
+  
+  temporal_consistency:
+    - rule_id: "year_progression"
+      description: "Population should show reasonable year-over-year changes"
+      max_change_percentage: 0.20  # 20% maximum change
+      severity: "warning"
+
+# Accuracy thresholds against reference datasets
+accuracy_rules:
+  abs_population_comparison:
+    tolerance: 0.10       # 10% tolerance vs ABS official figures
+    severity: "warning"
+  
+  geographic_boundary_accuracy:
+    coordinate_precision: 0.001  # Decimal degrees precision
+    severity: "info"
+
+# Timeliness rules - data freshness requirements  
+timeliness_rules:
+  maximum_age_months: 24    # Data should not be older than 2 years
+  census_data_lag_months: 18 # Census data can be up to 18 months old
+  severity: "warning"
+
+# Uniqueness rules - duplicate detection
+uniqueness_rules:
+  primary_keys:
+    - columns: ["sa2_code", "year"]
+      description: "SA2 code and year combination must be unique"
+      severity: "error"
+  
+  duplicate_detection:
+    similarity_threshold: 0.95  # 95% similarity threshold
+    columns_to_compare: ["sa2_name", "postcode", "state_name"]
+    severity: "warning"
+
+# Quality score thresholds
+quality_thresholds:
+  excellent: 0.95       # >= 95% overall quality score
+  good: 0.85           # >= 85% overall quality score  
+  acceptable: 0.70     # >= 70% overall quality score
+  poor: 0.50           # >= 50% overall quality score
+  # < 50% = critical quality issues
+
+# Anomaly detection settings
+anomaly_detection:
+  statistical_methods:
+    - iqr_outliers:
+        multiplier: 1.5
+        columns: ["population_count", "median_household_income_weekly"]
+        severity: "info"
+    - z_score_outliers:
+        threshold: 3.0
+        columns: ["unemployment_rate", "median_age"]
+        severity: "info"
+    - isolation_forest:
+        contamination: 0.05  # Expect 5% outliers
+        columns: ["population_density", "geographic_area_sqkm"]
+        severity: "info"
+
+# Performance and caching settings
+performance:
+  enable_caching: true
+  cache_ttl_minutes: 60
+  parallel_validation: true
+  max_worker_threads: 4
+  batch_size: 1000
+
+# Reporting configuration
+reporting:
+  include_sample_records: true
+  max_sample_size: 10
+  generate_charts: true
+  export_formats: ["html", "json", "csv"]
+  
+# Logging configuration for validation
+logging:
+  level: "INFO"
+  include_performance_metrics: true
+  log_validation_details: false  # Set to true for debugging

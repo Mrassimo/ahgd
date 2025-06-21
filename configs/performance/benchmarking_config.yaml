@@ -1,0 +1,330 @@
+# AHGD Performance Benchmarking Configuration
+# Configuration for performance benchmarking suite
+
+# General benchmarking settings
+benchmarking:
+  enabled: true
+  output_directory: "benchmarks"
+  results_retention_days: 90
+  auto_cleanup: true
+  
+  # Default benchmark suite configuration
+  default_suite:
+    iterations: 3
+    warmup_iterations: 1
+    timeout_seconds: 300
+    parallel_execution: false
+    max_workers: 4
+    
+  # Data sizes for scalability testing
+  test_data_sizes:
+    small: [100, 500, 1000]
+    medium: [5000, 10000, 25000]
+    large: [50000, 100000, 250000]
+    xlarge: [500000, 1000000]
+
+# ETL Pipeline Benchmarks
+etl_benchmarks:
+  # Extraction benchmarks
+  extraction:
+    enabled: true
+    benchmarks:
+      - extract_csv
+      - extract_json
+      - extract_parquet
+      - extract_database
+    data_sizes: [1000, 5000, 10000, 25000]
+    
+  # Transformation benchmarks
+  transformation:
+    enabled: true
+    benchmarks:
+      - transform_standardise
+      - transform_validate
+      - transform_aggregate
+      - transform_join
+    data_sizes: [1000, 5000, 10000]
+    
+  # Loading benchmarks
+  loading:
+    enabled: true
+    benchmarks:
+      - load_csv
+      - load_parquet
+      - load_database
+      - load_json
+    data_sizes: [1000, 5000, 10000, 25000]
+    
+  # Full pipeline benchmarks
+  pipeline:
+    enabled: true
+    benchmarks:
+      - full_pipeline
+      - incremental_pipeline
+    data_sizes: [1000, 5000, 10000]
+
+# Data Processing Benchmarks
+data_processing:
+  # DataFrame operations
+  dataframe:
+    enabled: true
+    operations:
+      - groupby_operations
+      - filter_operations
+      - merge_operations
+      - pivot_operations
+      - sort_operations
+    data_sizes: [10000, 50000, 100000]
+    
+  # Array processing
+  array_processing:
+    enabled: true
+    operations:
+      - numerical_operations
+      - statistical_operations
+      - matrix_operations
+      - sorting_operations
+    data_sizes: [100000, 500000, 1000000]
+    
+  # String processing
+  string_processing:
+    enabled: true
+    operations:
+      - regex_operations
+      - text_cleaning
+      - string_transformation
+    data_sizes: [10000, 50000, 100000]
+
+# Validation Benchmarks
+validation:
+  enabled: true
+  types:
+    - schema_validation
+    - business_rule_validation
+    - statistical_validation
+    - geographic_validation
+  data_sizes: [5000, 10000, 25000]
+  
+  # Validation complexity levels
+  complexity_levels:
+    simple:
+      - required_field_checks
+      - data_type_validation
+    moderate:
+      - range_validation
+      - pattern_matching
+      - cross_field_validation
+    complex:
+      - statistical_outlier_detection
+      - geographic_boundary_validation
+      - business_rule_validation
+
+# File Format Benchmarks
+file_formats:
+  enabled: true
+  formats:
+    - csv
+    - json
+    - parquet
+    - pickle
+    - hdf5
+  operations:
+    - read_performance
+    - write_performance
+    - compression_performance
+  data_sizes: [1000, 10000, 100000]
+  
+  # Compression settings
+  compression:
+    enabled: true
+    algorithms:
+      - gzip
+      - bz2
+      - xz
+      - snappy
+
+# Database Benchmarks
+database:
+  enabled: true
+  operations:
+    - bulk_insert
+    - batch_update
+    - complex_queries
+    - index_performance
+  record_counts: [1000, 10000, 50000]
+  
+  # Connection settings
+  connection_pooling:
+    enabled: true
+    pool_sizes: [1, 5, 10, 20]
+    
+  # Query types
+  query_types:
+    - simple_select
+    - join_queries
+    - aggregation_queries
+    - subqueries
+
+# Memory Benchmarks
+memory:
+  enabled: true
+  scenarios:
+    - memory_growth_analysis
+    - memory_leak_detection
+    - garbage_collection_impact
+    - memory_efficiency_analysis
+  
+  # Memory thresholds (MB)
+  thresholds:
+    low_memory_warning: 500
+    high_memory_warning: 1000
+    critical_memory_warning: 2000
+
+# CPU Benchmarks
+cpu:
+  enabled: true
+  scenarios:
+    - cpu_intensive_operations
+    - parallel_processing_efficiency
+    - algorithm_comparison
+  
+  # CPU thresholds (%)
+  thresholds:
+    high_cpu_warning: 80
+    critical_cpu_warning: 95
+
+# I/O Benchmarks
+io:
+  enabled: true
+  scenarios:
+    - disk_read_performance
+    - disk_write_performance
+    - network_io_performance
+    - concurrent_io_operations
+  
+  # File sizes for I/O testing
+  file_sizes:
+    small: "1MB"
+    medium: "10MB"
+    large: "100MB"
+    xlarge: "1GB"
+
+# Performance Regression Testing
+regression_testing:
+  enabled: true
+  
+  # Baseline management
+  baseline:
+    auto_update: false
+    update_threshold_percent: 10.0
+    minimum_samples: 5
+    
+  # Regression thresholds
+  thresholds:
+    performance_degradation: 20.0  # % slower than baseline
+    memory_regression: 15.0        # % more memory than baseline
+    throughput_regression: 15.0    # % lower throughput than baseline
+  
+  # Alerting
+  alerts:
+    enabled: true
+    email_notifications: false
+    slack_notifications: false
+    log_level: "WARNING"
+
+# Profiling Integration
+profiling:
+  enabled: true
+  
+  # Profiler settings
+  memory_profiling:
+    enabled: true
+    tracemalloc: true
+    memory_profiler: true
+    
+  cpu_profiling:
+    enabled: true
+    cprofile: true
+    line_profiler: false  # Requires separate installation
+    
+  io_profiling:
+    enabled: true
+    track_file_operations: true
+    
+  query_profiling:
+    enabled: true
+    slow_query_threshold: 1.0  # seconds
+
+# Reporting
+reporting:
+  enabled: true
+  
+  # Report formats
+  formats:
+    - json
+    - html
+    - csv
+    
+  # Report content
+  include_visualisations: true
+  include_recommendations: true
+  include_historical_comparison: true
+  
+  # Auto-reporting
+  auto_generate: true
+  schedule: "daily"  # daily, weekly, monthly
+  
+  # Report distribution
+  save_to_file: true
+  email_reports: false
+
+# Environment-specific settings
+environments:
+  development:
+    benchmarking:
+      iterations: 1
+      warmup_iterations: 0
+      timeout_seconds: 60
+    test_data_sizes:
+      small: [100, 500]
+      medium: [1000, 5000]
+    
+  testing:
+    benchmarking:
+      iterations: 1
+      warmup_iterations: 0
+      timeout_seconds: 30
+    test_data_sizes:
+      small: [100]
+      medium: [500]
+    
+  production:
+    benchmarking:
+      iterations: 5
+      warmup_iterations: 2
+      timeout_seconds: 600
+    test_data_sizes:
+      small: [1000, 5000, 10000]
+      medium: [25000, 50000, 100000]
+      large: [250000, 500000, 1000000]
+
+# Integration settings
+integration:
+  # Monitoring integration
+  monitoring:
+    enabled: true
+    export_metrics: true
+    
+  # CI/CD integration
+  ci_cd:
+    enabled: false
+    fail_on_regression: true
+    performance_budget:
+      max_duration_increase: 25.0  # %
+      max_memory_increase: 20.0    # %
+      
+  # External tools
+  external_tools:
+    grafana_dashboard: false
+    prometheus_metrics: false
+    elasticsearch_logging: false
