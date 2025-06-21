@@ -22,7 +22,7 @@ from .base_schema import (
 class SA2Coordinates(VersionedSchema):
     """Schema for SA2 coordinate data with validation."""
     
-    sa2_code: str = Field(..., regex=r'^\d{9}$', description="9-digit SA2 code")
+    sa2_code: str = Field(..., pattern=r'^\d{9}$', description="9-digit SA2 code")
     sa2_name: str = Field(..., min_length=1, max_length=100, description="SA2 name")
     
     # Extend GeographicBoundary fields
@@ -39,8 +39,8 @@ class SA2Coordinates(VersionedSchema):
     )
     
     # Hierarchical relationships
-    sa3_code: str = Field(..., regex=r'^\d{5}$', description="Parent SA3 code")
-    sa4_code: str = Field(..., regex=r'^\d{3}$', description="Parent SA4 code")
+    sa3_code: str = Field(..., pattern=r'^\d{5}$', description="Parent SA3 code")
+    sa4_code: str = Field(..., pattern=r'^\d{3}$', description="Parent SA4 code")
     state_code: str = Field(..., description="State/territory code")
     
     # Data source information
@@ -159,7 +159,7 @@ class SA2Coordinates(VersionedSchema):
 class SA2GeometryValidation(VersionedSchema):
     """Extended schema for detailed SA2 geometry validation."""
     
-    sa2_code: str = Field(..., regex=r'^\d{9}$', description="9-digit SA2 code")
+    sa2_code: str = Field(..., pattern=r'^\d{9}$', description="9-digit SA2 code")
     
     # Geometry validation results
     is_valid_geometry: bool = Field(..., description="Whether geometry is valid")
@@ -230,7 +230,7 @@ class SA2GeometryValidation(VersionedSchema):
 class SA2BoundaryRelationship(VersionedSchema):
     """Schema for SA2 spatial relationships and adjacency."""
     
-    sa2_code: str = Field(..., regex=r'^\d{9}$', description="Primary SA2 code")
+    sa2_code: str = Field(..., pattern=r'^\d{9}$', description="Primary SA2 code")
     
     # Adjacent boundaries
     adjacent_sa2s: List[Dict[str, Any]] = Field(

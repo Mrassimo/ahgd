@@ -397,7 +397,7 @@ class PostcodeToSA2Mapper:
             (5000, 5999),  # SA
             (6000, 6999),  # WA
             (7000, 7999),  # TAS
-            (0800, 0999),  # NT
+            (800, 999),    # NT
         ]
         
         return any(start <= postcode_int <= end for start, end in valid_ranges)

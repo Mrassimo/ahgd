@@ -59,7 +59,7 @@ class MasterHealthRecord(VersionedSchema):
     # === PRIMARY IDENTIFICATION ===
     sa2_code: str = Field(
         ..., 
-        regex=r'^\d{9}$', 
+        pattern=r'^\d{9}$', 
         description="9-digit Statistical Area Level 2 code (primary key)"
     )
     sa2_name: str = Field(
@@ -395,7 +395,7 @@ class SA2HealthProfile(VersionedSchema):
     """
     
     # === IDENTIFICATION ===
-    sa2_code: str = Field(..., regex=r'^\d{9}$', description="SA2 code")
+    sa2_code: str = Field(..., pattern=r'^\d{9}$', description="SA2 code")
     sa2_name: str = Field(..., description="SA2 name")
     reference_period: TemporalData = Field(..., description="Data reference period")
     
