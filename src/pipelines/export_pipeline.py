@@ -20,7 +20,7 @@ import pandas as pd
 import numpy as np
 from loguru import logger
 
-from ..utils.interfaces import AHGDError, LoadingError
+from ..utils.interfaces import AHGDException, LoadingError
 from ..utils.config import get_config
 from ..utils.logging import get_logger, monitor_performance, track_lineage
 from ..loaders.production_loader import ProductionLoader
@@ -633,7 +633,8 @@ class ExportPipeline:
         output_path = Path(output_path)
         
         # Generate task ID
-        task_id = f"export_{int(time.time())}_{hash(str(data.values.tobytes()))[:8}"
+        data_hash = hash(str(data.values.tobytes()))
+        task_id = f"export_{int(time.time())}_{str(data_hash)[:8]}"
         
         # Create export task
         task = ExportTask(

@@ -12,7 +12,7 @@ import csv
 import io
 from collections import defaultdict, Counter
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Union, IO
+from typing import Any, Dict, List, Optional, Set, Union, IO, Tuple
 from dataclasses import dataclass, field, asdict
 import base64
 import statistics

@@ -22,7 +22,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from loguru import logger
 
-from ..utils.interfaces import BaseLoader, LoadingError
+from .base import BaseLoader
+from ..utils.interfaces import LoadingError
 from ..utils.config import get_config
 from ..utils.logging import get_logger, monitor_performance, track_lineage
 

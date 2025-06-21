@@ -15,7 +15,7 @@ import threading
 import psutil
 
 from src.utils.logging import get_logger, monitor_performance
-from src.utils.interfaces import AHGDError, ValidationError
+from src.utils.interfaces import AHGDException, ValidationError
 from src.pipelines.base_pipeline import PipelineContext, StageState, StageResult
 
 logger = get_logger(__name__)
@@ -90,12 +90,12 @@ class StageValidationError(ValidationError):
     pass
 
 
-class StageTimeoutError(AHGDError):
+class StageTimeoutError(AHGDException):
     """Exception for stage timeout."""
     pass
 
 
-class StagePrerequisiteError(AHGDError):
+class StagePrerequisiteError(AHGDException):
     """Exception for missing prerequisites."""
     pass
 
@@ -130,7 +130,7 @@ class PipelineStage(ABC):
         self._monitoring_thread: Optional[threading.Thread] = None
         self._stop_monitoring = threading.Event()
         
-        logger.log.info(
+        logger.info(
             "Pipeline stage initialised",
             stage=config.name,
             enabled=config.enabled
@@ -243,7 +243,7 @@ class PipelineStage(ABC):
         
         # Check if stage should execute
         if not self.should_execute(context):
-            logger.log.info(
+            logger.info(
                 "Stage skipped due to conditions",
                 stage=self.config.name
             )
@@ -269,7 +269,7 @@ class PipelineStage(ABC):
         try:
             while attempt < self.config.retry_attempts:
                 try:
-                    logger.log.info(
+                    logger.info(
                         "Starting stage execution",
                         stage=self.config.name,
                         attempt=attempt + 1
@@ -290,7 +290,7 @@ class PipelineStage(ABC):
                     self.state = StageState.COMPLETED
                     self.metrics.end_time = datetime.now()
                     
-                    logger.log.info(
+                    logger.info(
                         "Stage completed successfully",
                         stage=self.config.name,
                         duration=self.metrics.duration.total_seconds() if self.metrics.duration else 0,
@@ -315,7 +315,7 @@ class PipelineStage(ABC):
                     attempt += 1
                     
                     if attempt < self.config.retry_attempts:
-                        logger.log.warning(
+                        logger.warning(
                             "Stage execution failed, retrying",
                             stage=self.config.name,
                             attempt=attempt,
@@ -347,17 +347,17 @@ class PipelineStage(ABC):
     
     def pause(self) -> None:
         """Pause stage execution if supported."""
-        logger.log.info("Stage pause requested", stage=self.config.name)
+        logger.info("Stage pause requested", stage=self.config.name)
         # Override in subclasses that support pausing
     
     def resume(self) -> None:
         """Resume stage execution if supported."""
-        logger.log.info("Stage resume requested", stage=self.config.name)
+        logger.info("Stage resume requested", stage=self.config.name)
         # Override in subclasses that support resuming
     
     def cancel(self) -> None:
         """Cancel stage execution."""
-        logger.log.info("Stage cancellation requested", stage=self.config.name)
+        logger.info("Stage cancellation requested", stage=self.config.name)
         self.state = StageState.FAILED
         self._stop_monitoring.set()
     
@@ -430,7 +430,7 @@ class PipelineStage(ABC):
             self._monitoring_thread.start()
             
         except Exception as e:
-            logger.log.warning(
+            logger.warning(
                 "Failed to start resource monitoring",
                 stage=self.config.name,
                 error=str(e)
@@ -463,7 +463,7 @@ class PipelineStage(ABC):
                 except psutil.NoSuchProcess:
                     break
                 except Exception as e:
-                    logger.log.debug(
+                    logger.debug(
                         "Resource monitoring error",
                         stage=self.config.name,
                         error=str(e)
@@ -473,7 +473,7 @@ class PipelineStage(ABC):
                 self._stop_monitoring.wait(1.0)
                 
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Resource monitoring failed",
                 stage=self.config.name,
                 error=str(e)
@@ -531,7 +531,7 @@ class ExtractorStage(PipelineStage):
     
     def execute(self, context: PipelineContext) -> Any:
         """Execute extraction."""
-        logger.log.info(
+        logger.info(
             "Running data extraction",
             stage=self.config.name,
             extractor=self.extractor.__class__.__name__
@@ -570,7 +570,7 @@ class TransformerStage(PipelineStage):
     
     def execute(self, context: PipelineContext) -> Any:
         """Execute transformation."""
-        logger.log.info(
+        logger.info(
             "Running data transformation",
             stage=self.config.name,
             transformer=self.transformer.__class__.__name__
@@ -623,7 +623,7 @@ class ValidatorStage(PipelineStage):
     
     def execute(self, context: PipelineContext) -> Any:
         """Execute validation."""
-        logger.log.info(
+        logger.info(
             "Running data validation",
             stage=self.config.name,
             validator=self.validator.__class__.__name__
@@ -678,7 +678,7 @@ class LoaderStage(PipelineStage):
     
     def execute(self, context: PipelineContext) -> Any:
         """Execute loading."""
-        logger.log.info(
+        logger.info(
             "Running data loading",
             stage=self.config.name,
             loader=self.loader.__class__.__name__

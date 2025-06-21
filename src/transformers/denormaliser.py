@@ -13,7 +13,7 @@ import numpy as np
 from dataclasses import dataclass
 
 from .base import BaseTransformer
-from ..schemas.integrated_schema import MasterHealthRecord, SA2HealthProfile
+from schemas.integrated_schema import MasterHealthRecord, SA2HealthProfile
 from ..utils.interfaces import DataBatch, TransformationError
 from ..utils.logging import get_logger
 

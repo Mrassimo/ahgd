@@ -15,7 +15,7 @@ from datetime import datetime
 from statistics import mean, median, stdev
 
 from src.utils.logging import get_logger
-from src.schemas.base import BaseSchemaV1
+from schemas.base_schema import VersionedSchema
 
 logger = get_logger(__name__)
 

@@ -26,13 +26,12 @@ from ..utils.interfaces import (
     SourceMetadata,
 )
 from ..utils.logging import get_logger
-from ..schemas.environmental_schema import (
-    EnvironmentalIndicator,
-    ClimateData,
-    AirQualityData,
-    WeatherStationData,
+from schemas.environmental_schema import (
+    WeatherObservation,
+    ClimateStatistics,
+    EnvironmentalHealthIndex,
 )
-from ..schemas.integrated_schema import (
+from schemas.integrated_schema import (
     MasterHealthRecord,
     GeographicHealthMapping,
 )

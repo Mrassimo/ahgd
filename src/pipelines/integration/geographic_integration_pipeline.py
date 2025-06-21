@@ -12,14 +12,15 @@ from typing import Dict, List, Any, Optional, Tuple
 import json
 
 from ..base_pipeline import BasePipeline
-from ..stage import Stage
+from ..stage import PipelineStage
 from ...utils.integration_rules import DataIntegrationRules, ConflictResolver
-from ...utils.interfaces import DataBatch, PipelineError
+from ...utils.interfaces import DataBatch
+from ..base_pipeline import PipelineError
 from ...utils.logging import get_logger, track_lineage
-from ...schemas.base_schema import GeographicBoundary
+from schemas.base_schema import GeographicBoundary
 
 
-class GeographicDataValidationStage(Stage):
+class GeographicDataValidationStage(PipelineStage):
     """Validates geographic data before integration."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -226,7 +227,7 @@ class GeographicDataValidationStage(Stage):
         return {'errors': errors}
 
 
-class BoundaryStandardisationStage(Stage):
+class BoundaryStandardisationStage(PipelineStage):
     """Standardises boundary data from different sources."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -323,7 +324,7 @@ class BoundaryStandardisationStage(Stage):
         return record
 
 
-class SpatialRelationshipsStage(Stage):
+class SpatialRelationshipsStage(PipelineStage):
     """Establishes spatial relationships between geographic areas."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -510,7 +511,7 @@ class SpatialRelationshipsStage(Stage):
             return max(0.0, 50.0 - ((min_distance - 200) / 500) * 50)  # Scale from 50 to 0
 
 
-class GeographicQualityAssessmentStage(Stage):
+class GeographicQualityAssessmentStage(PipelineStage):
     """Assesses geographic data quality and completeness."""
     
     def __init__(self, config: Dict[str, Any]):

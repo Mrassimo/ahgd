@@ -125,7 +125,7 @@ class ResourceManager:
             
             for resource_type, required in requirements.items():
                 if available.get(resource_type, 0) < required:
-                    logger.log.warning(
+                    logger.warning(
                         "Insufficient resources",
                         pipeline=pipeline_name,
                         resource=resource_type.value,
@@ -136,7 +136,7 @@ class ResourceManager:
             
             # Allocate resources
             self.allocated_resources[pipeline_name] = requirements
-            logger.log.debug(
+            logger.debug(
                 "Resources allocated",
                 pipeline=pipeline_name,
                 resources=requirements
@@ -148,7 +148,7 @@ class ResourceManager:
         with self._lock:
             if pipeline_name in self.allocated_resources:
                 released = self.allocated_resources.pop(pipeline_name)
-                logger.log.debug(
+                logger.debug(
                     "Resources released",
                     pipeline=pipeline_name,
                     resources=released
@@ -216,7 +216,7 @@ class PipelineOrchestrator:
         self._failed_pipelines: Set[str] = set()
         self._lock = threading.RLock()
         
-        logger.log.info(
+        logger.info(
             "Pipeline orchestrator initialised",
             name=name,
             mode=execution_mode.value,
@@ -241,7 +241,7 @@ class PipelineOrchestrator:
             for dependency in definition.dependencies:
                 self.dependency_graph.add_edge(dependency, definition.name)
             
-            logger.log.info(
+            logger.info(
                 "Pipeline registered",
                 pipeline=definition.name,
                 dependencies=definition.dependencies
@@ -312,7 +312,7 @@ class PipelineOrchestrator:
                 if p not in skip_pipelines
             ]
             
-            logger.log.info(
+            logger.info(
                 "Starting pipeline orchestration",
                 total_pipelines=len(execution_order),
                 execution_order=execution_order,
@@ -347,7 +347,7 @@ class PipelineOrchestrator:
                 }
             )
             
-            logger.log.info(
+            logger.info(
                 "Pipeline orchestration completed",
                 duration=result.duration.total_seconds(),
                 success_rate=result.success_rate
@@ -359,7 +359,7 @@ class PipelineOrchestrator:
             return result
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Orchestration failed",
                 error=str(e)
             )
@@ -407,7 +407,7 @@ class PipelineOrchestrator:
                 self.monitor.start_pipeline_monitoring(pipeline_name)
             
             # Run pipeline
-            logger.log.info("Running pipeline", pipeline=pipeline_name)
+            logger.info("Running pipeline", pipeline=pipeline_name)
             result = pipeline.run()
             
             self._completed_pipelines.add(pipeline_name)
@@ -416,7 +416,7 @@ class PipelineOrchestrator:
             
         except Exception as e:
             self._failed_pipelines.add(pipeline_name)
-            logger.log.error(
+            logger.error(
                 "Pipeline execution failed",
                 pipeline=pipeline_name,
                 error=str(e)
@@ -436,7 +436,7 @@ class PipelineOrchestrator:
             for pipeline in self.pipeline_instances.values():
                 if pipeline.state == PipelineState.RUNNING:
                     pipeline.pause()
-            logger.log.info("All pipelines paused")
+            logger.info("All pipelines paused")
     
     def resume_all(self) -> None:
         """Resume all paused pipelines."""
@@ -444,7 +444,7 @@ class PipelineOrchestrator:
             for pipeline in self.pipeline_instances.values():
                 if pipeline.state == PipelineState.PAUSED:
                     pipeline.resume()
-            logger.log.info("All pipelines resumed")
+            logger.info("All pipelines resumed")
     
     def get_status(self) -> Dict[str, Any]:
         """Get orchestrator status."""
@@ -523,7 +523,7 @@ class PipelineOrchestrator:
         # Create instance
         self.pipeline_instances[pipeline_name] = definition.pipeline_class(**config)
         
-        logger.log.debug(
+        logger.debug(
             "Pipeline instance created",
             pipeline=pipeline_name,
             class_name=definition.pipeline_class.__name__
@@ -540,7 +540,7 @@ class PipelineOrchestrator:
             try:
                 results[pipeline_name] = self.run_pipeline(pipeline_name)
             except Exception as e:
-                logger.log.error(
+                logger.error(
                     "Pipeline failed in sequential execution",
                     pipeline=pipeline_name,
                     error=str(e)
@@ -583,7 +583,7 @@ class PipelineOrchestrator:
                     )
                     self._futures[pipeline_name] = future
                     
-                    logger.log.debug(
+                    logger.debug(
                         "Pipeline submitted for execution",
                         pipeline=pipeline_name
                     )
@@ -598,7 +598,7 @@ class PipelineOrchestrator:
                                 results[name] = future.result()
                                 completed.add(name)
                             except Exception as e:
-                                logger.log.error(
+                                logger.error(
                                     "Pipeline failed in parallel execution",
                                     pipeline=name,
                                     error=str(e)
@@ -655,7 +655,7 @@ class PipelineOrchestrator:
             
             dependencies = set(self.dependency_graph.predecessors(pipeline_name))
             if failed_pipeline in dependencies:
-                logger.log.warning(
+                logger.warning(
                     "Skipping pipeline due to failed dependency",
                     pipeline=pipeline_name,
                     failed_dependency=failed_pipeline
@@ -686,7 +686,7 @@ class PipelineOrchestrator:
         with open(state_file, "w") as f:
             json.dump(state, f, indent=2)
         
-        logger.log.debug(
+        logger.debug(
             "Orchestration state saved",
             file=str(state_file)
         )
@@ -705,4 +705,4 @@ class PipelineOrchestrator:
         
         self.pipeline_instances.clear()
         
-        logger.log.debug("Orchestration cleanup completed")
+        logger.debug("Orchestration cleanup completed")

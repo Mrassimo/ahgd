@@ -15,12 +15,12 @@ import pytest
 import numpy as np
 
 from src.pipelines.master_etl_pipeline import (
-    MasterETLPipeline, PipelineStageDefinition, QualityAssuranceConfig, PipelineStageType
+    MasterETLPipeline, PipelineStageDefinition, QualityAssuranceConfig, PipelineStageType, QualityLevel
 )
-from src.pipelines.validation_pipeline import ValidationMode, QualityLevel
+from src.pipelines.validation_pipeline import ValidationMode
 from src.extractors.aihw_extractor import AIHWMortalityExtractor
 from src.transformers.geographic_standardiser import GeographicStandardiser
-from src.transformers.data_integrator import DataIntegrator
+from src.transformers.data_integrator import MasterDataIntegrator
 from src.validators import ValidationOrchestrator, QualityChecker
 from src.utils.config import get_config
 from src.utils.interfaces import ValidationError, TransformationError

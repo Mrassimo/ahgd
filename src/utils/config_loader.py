@@ -7,8 +7,10 @@ including logging, monitoring, and application settings.
 
 import os
 import yaml
+import json
 from pathlib import Path
 from typing import Dict, Any, Optional, Union
+from .interfaces import ConfigurationError
 
 
 class ConfigLoader:
@@ -352,6 +354,163 @@ def print_config_summary(environment: Optional[str] = None):
         print(f"\nWarnings:")
         for warning in summary['validation_warnings']:
             print(f"  - {warning}")
+
+
+# Generic configuration loading functions for compatibility with tests
+def load_config(config_file: Union[str, Path]) -> Dict[str, Any]:
+    """
+    Load configuration from a file.
+    
+    Args:
+        config_file: Path to configuration file
+        
+    Returns:
+        Configuration dictionary
+        
+    Raises:
+        ConfigurationError: If file cannot be loaded or parsed
+    """
+    config_path = Path(config_file)
+    
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            if config_path.suffix.lower() in ['.yaml', '.yml']:
+                return yaml.safe_load(f) or {}
+            elif config_path.suffix.lower() == '.json':
+                return json.load(f)
+            else:
+                raise ConfigurationError(f"Unsupported configuration file format: {config_path.suffix}")
+    except yaml.YAMLError as e:
+        raise ConfigurationError(f"Failed to parse YAML file {config_path}: {e}")
+    except json.JSONDecodeError as e:
+        raise ConfigurationError(f"Failed to parse JSON file {config_path}: {e}")
+    except Exception as e:
+        raise ConfigurationError(f"Error loading configuration file {config_path}: {e}")
+
+
+def validate_config(config: Dict[str, Any], 
+                   schema: Optional[Dict[str, Any]] = None,
+                   type_constraints: Optional[Dict[str, type]] = None,
+                   value_constraints: Optional[Dict[str, list]] = None) -> None:
+    """
+    Validate configuration against schema and constraints.
+    
+    Args:
+        config: Configuration dictionary to validate
+        schema: Schema dictionary with required/optional field definitions
+        type_constraints: Dictionary mapping field paths to expected types
+        value_constraints: Dictionary mapping field paths to allowed values
+        
+    Raises:
+        ConfigurationError: If validation fails
+    """
+    errors = []
+    
+    # Schema validation
+    if schema:
+        errors.extend(_validate_schema(config, schema))
+    
+    # Type validation
+    if type_constraints:
+        errors.extend(_validate_types(config, type_constraints))
+    
+    # Value validation
+    if value_constraints:
+        errors.extend(_validate_values(config, value_constraints))
+    
+    if errors:
+        raise ConfigurationError(f"Configuration validation failed: {'; '.join(errors)}")
+
+
+def _validate_schema(config: Dict[str, Any], schema: Dict[str, Any], prefix: str = "") -> list:
+    """Validate configuration against schema."""
+    errors = []
+    
+    for key, requirement in schema.items():
+        full_key = f"{prefix}.{key}" if prefix else key
+        
+        if isinstance(requirement, dict):
+            # Nested schema
+            if key in config and isinstance(config[key], dict):
+                errors.extend(_validate_schema(config[key], requirement, full_key))
+            elif "required" in str(requirement).lower():
+                errors.append(f"Missing required section: {full_key}")
+        elif requirement == "required":
+            if key not in config:
+                errors.append(f"Missing required configuration: {full_key}")
+    
+    return errors
+
+
+def _validate_types(config: Dict[str, Any], type_constraints: Dict[str, type]) -> list:
+    """Validate configuration types."""
+    errors = []
+    
+    for path, expected_type in type_constraints.items():
+        value = _get_nested_value(config, path)
+        if value is not None and not isinstance(value, expected_type):
+            errors.append(f"Invalid configuration type for {path}: expected {expected_type.__name__}, got {type(value).__name__}")
+    
+    return errors
+
+
+def _validate_values(config: Dict[str, Any], value_constraints: Dict[str, list]) -> list:
+    """Validate configuration values."""
+    errors = []
+    
+    for path, allowed_values in value_constraints.items():
+        value = _get_nested_value(config, path)
+        if value is not None and value not in allowed_values:
+            errors.append(f"Invalid configuration value for {path}: '{value}' not in {allowed_values}")
+    
+    return errors
+
+
+def _get_nested_value(config: Dict[str, Any], path: str) -> Any:
+    """Get nested value from configuration using dot notation."""
+    keys = path.split('.')
+    current = config
+    
+    try:
+        for key in keys:
+            current = current[key]
+        return current
+    except (KeyError, TypeError):
+        return None
+
+
+def merge_configs(*configs: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Merge multiple configuration dictionaries.
+    
+    Args:
+        *configs: Configuration dictionaries to merge
+        
+    Returns:
+        Merged configuration dictionary
+    """
+    result = {}
+    
+    for config in configs:
+        result = _deep_merge(result, config)
+    
+    return result
+
+
+def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """Deep merge two dictionaries."""
+    result = base.copy()
+    
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    
+    return result
 
 
 if __name__ == "__main__":

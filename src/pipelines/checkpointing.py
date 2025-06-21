@@ -15,12 +15,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Type, Union
+from typing import Any, Dict, List, Optional, Set, Type, Union, Tuple
 import threading
 from collections import OrderedDict
 
 from src.utils.logging import get_logger
-from src.utils.interfaces import AHGDError
+from src.utils.interfaces import AHGDException
 
 logger = get_logger(__name__)
 
@@ -214,7 +214,7 @@ class CheckpointManager:
         # Load existing metadata
         self._load_metadata()
         
-        logger.log.info(
+        logger.info(
             "Checkpoint manager initialised",
             checkpoint_dir=str(checkpoint_dir),
             default_format=default_format.value
@@ -263,7 +263,7 @@ class CheckpointManager:
                 checkpoint_path = self.checkpoint_dir / f"{checkpoint_id}.{file_ext}"
                 
                 # Serialise data
-                logger.log.debug(
+                logger.debug(
                     "Creating checkpoint",
                     checkpoint_id=checkpoint_id,
                     format=checkpoint_format.value
@@ -294,7 +294,7 @@ class CheckpointManager:
                 # Cleanup old checkpoints
                 self._cleanup_old_checkpoints(pipeline_name, stage_name)
                 
-                logger.log.info(
+                logger.info(
                     "Checkpoint created",
                     checkpoint_id=checkpoint_id,
                     size_mb=metadata.size_bytes / 1024 / 1024
@@ -303,7 +303,7 @@ class CheckpointManager:
                 return metadata
                 
             except Exception as e:
-                logger.log.error(
+                logger.error(
                     "Failed to create checkpoint",
                     pipeline=pipeline_name,
                     stage=stage_name,
@@ -359,7 +359,7 @@ class CheckpointManager:
                 checkpoint_path = self._get_checkpoint_path(metadata)
                 serializer = self._get_serializer(metadata.format)
                 
-                logger.log.debug(
+                logger.debug(
                     "Loading checkpoint",
                     checkpoint_id=metadata.checkpoint_id,
                     format=metadata.format.value
@@ -367,7 +367,7 @@ class CheckpointManager:
                 
                 data = serializer.deserialize(checkpoint_path)
                 
-                logger.log.info(
+                logger.info(
                     "Checkpoint loaded",
                     checkpoint_id=metadata.checkpoint_id,
                     age_hours=(datetime.now() - metadata.created_at).total_seconds() / 3600
@@ -376,7 +376,7 @@ class CheckpointManager:
                 return data, metadata
                 
             except Exception as e:
-                logger.log.error(
+                logger.error(
                     "Failed to load checkpoint",
                     pipeline=pipeline_name,
                     stage=stage_name,
@@ -478,7 +478,7 @@ class CheckpointManager:
                     f"Checkpoint is {age_days} days old (retention: {self.retention_days} days)"
                 )
             
-            logger.log.debug(
+            logger.debug(
                 "Checkpoint validated",
                 checkpoint_id=checkpoint_id,
                 is_valid=result.is_valid
@@ -495,7 +495,7 @@ class CheckpointManager:
         with self._lock:
             metadata = self.metadata_cache.get(checkpoint_id)
             if not metadata:
-                logger.log.warning(
+                logger.warning(
                     "Checkpoint not found for deletion",
                     checkpoint_id=checkpoint_id
                 )
@@ -510,7 +510,7 @@ class CheckpointManager:
             del self.metadata_cache[checkpoint_id]
             self._persist_metadata()
             
-            logger.log.info(
+            logger.info(
                 "Checkpoint deleted",
                 checkpoint_id=checkpoint_id
             )
@@ -549,7 +549,7 @@ class CheckpointManager:
             for checkpoint_id in to_delete:
                 self.delete_checkpoint(checkpoint_id)
             
-            logger.log.info(
+            logger.info(
                 "Checkpoint cleanup completed",
                 deleted=len(to_delete),
                 cutoff_days=cutoff_days
@@ -660,7 +660,7 @@ class CheckpointManager:
             if isinstance(result, dict) and isinstance(delta_data, dict):
                 result.update(delta_data)
             else:
-                logger.log.warning(
+                logger.warning(
                     "Cannot merge non-dict incremental checkpoint",
                     checkpoint_id=metadata.checkpoint_id
                 )
@@ -825,13 +825,13 @@ class CheckpointManager:
                     )
                     self.metadata_cache[metadata.checkpoint_id] = metadata
                 
-                logger.log.debug(
+                logger.debug(
                     "Metadata loaded",
                     checkpoints=len(self.metadata_cache)
                 )
                 
             except Exception as e:
-                logger.log.error(
+                logger.error(
                     "Failed to load metadata",
                     error=str(e)
                 )
@@ -867,7 +867,7 @@ class CheckpointManager:
                 json.dump(data, f, indent=2)
                 
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to persist metadata",
                 error=str(e)
             )

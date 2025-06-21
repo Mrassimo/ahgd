@@ -32,7 +32,7 @@ from src.utils.interfaces import (
     ValidationResult,
     ValidationSeverity,
 )
-from src.utils.config import ConfigManager
+from src.utils.config import ConfigurationManager
 from src.utils.logging import get_logger
 from src.extractors.base import BaseExtractor
 from src.transformers.base import BaseTransformer
@@ -420,8 +420,8 @@ def mock_loader(sample_config: Dict[str, Any], mock_logger: logging.Logger) -> M
 
 
 @pytest.fixture
-def config_manager(temp_dir: Path) -> ConfigManager:
-    """Provide a ConfigManager instance for testing."""
+def config_manager(temp_dir: Path) -> ConfigurationManager:
+    """Provide a ConfigurationManager instance for testing."""
     config_file = temp_dir / "test_config.yaml"
     
     # Create a basic config file
@@ -442,7 +442,16 @@ validation:
     with open(config_file, 'w') as f:
         f.write(config_content)
     
-    return ConfigManager(config_file)
+    # Create config directory structure expected by ConfigurationManager
+    config_dir = temp_dir / "configs"
+    config_dir.mkdir(exist_ok=True)
+    
+    # Create default.yaml in the configs directory
+    default_config = config_dir / "default.yaml"
+    with open(default_config, 'w') as f:
+        f.write(config_content)
+    
+    return ConfigurationManager(config_dir=config_dir, environment="testing")
 
 
 @pytest.fixture

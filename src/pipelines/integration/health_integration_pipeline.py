@@ -13,16 +13,17 @@ import pandas as pd
 import numpy as np
 
 from ..base_pipeline import BasePipeline
-from ..stage import Stage
+from ..stage import PipelineStage
 from ...transformers.data_integrator import MasterDataIntegrator
 from ...transformers.derived_indicators import HealthIndicatorDeriver
 from ...utils.integration_rules import DataIntegrationRules, ConflictResolver
-from ...utils.interfaces import DataBatch, PipelineError
+from ...utils.interfaces import DataBatch
+from ..base_pipeline import PipelineError
 from ...utils.logging import get_logger, track_lineage
-from ...schemas.integrated_schema import MasterHealthRecord, DataIntegrationLevel
+from schemas.integrated_schema import MasterHealthRecord, DataIntegrationLevel
 
 
-class HealthDataValidationStage(Stage):
+class HealthDataValidationStage(PipelineStage):
     """Validates health data before integration."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -87,7 +88,7 @@ class HealthDataValidationStage(Stage):
         return validated_data
 
 
-class HealthIndicatorStandardisationStage(Stage):
+class HealthIndicatorStandardisationStage(PipelineStage):
     """Standardises health indicators from different sources."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -133,7 +134,7 @@ class HealthIndicatorStandardisationStage(Stage):
         return standardised_data
 
 
-class HealthDataIntegrationStage(Stage):
+class HealthDataIntegrationStage(PipelineStage):
     """Integrates health data from multiple sources."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -482,7 +483,7 @@ class HealthDataIntegrationStage(Stage):
         return risk_factors_data
 
 
-class HealthQualityAssessmentStage(Stage):
+class HealthQualityAssessmentStage(PipelineStage):
     """Assesses health data quality and completeness."""
     
     def __init__(self, config: Dict[str, Any]):

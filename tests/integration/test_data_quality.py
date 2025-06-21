@@ -16,7 +16,7 @@ from src.validators.base import BaseValidator
 from src.validators.quality_checker import QualityChecker
 from src.validators.statistical_validator import StatisticalValidator
 from src.validators.geographic_validator import GeographicValidator
-from src.validators.business_rules import BusinessRulesValidator
+from src.validators.business_rules import AustralianHealthBusinessRulesValidator
 from src.validators.validation_orchestrator import ValidationOrchestrator
 from src.validators.reporting import ValidationReporter
 from src.utils.interfaces import (
@@ -42,7 +42,7 @@ class TestDataQualityIntegration:
         quality_checker = QualityChecker("quality_checker", {"completeness_threshold": 0.9}, mock_logger)
         statistical_validator = StatisticalValidator("stats_validator", {"outlier_detection": True}, mock_logger)
         geographic_validator = GeographicValidator("geo_validator", sample_config["geographic"], mock_logger)
-        business_rules_validator = BusinessRulesValidator("business_validator", sample_config["validators"]["schema_validator"], mock_logger)
+        business_rules_validator = AustralianHealthBusinessRulesValidator("business_validator", sample_config["validators"]["schema_validator"], mock_logger)
         
         orchestrator.add_validator(schema_validator)
         orchestrator.add_validator(quality_checker)
@@ -130,7 +130,7 @@ class TestDataQualityIntegration:
         schema_validator = BaseValidator("health_schema", health_schema_config, mock_logger)
         quality_checker = QualityChecker("health_quality", {"completeness_threshold": 0.95}, mock_logger)
         statistical_validator = StatisticalValidator("health_stats", health_schema_config, mock_logger)
-        business_rules_validator = BusinessRulesValidator("health_business", health_schema_config, mock_logger)
+        business_rules_validator = AustralianHealthBusinessRulesValidator("health_business", health_schema_config, mock_logger)
         
         orchestrator.add_validator(schema_validator)
         orchestrator.add_validator(quality_checker)
@@ -209,7 +209,7 @@ class TestDataQualityIntegration:
         }
         
         schema_validator = BaseValidator("census_schema", census_config, mock_logger)
-        business_rules_validator = BusinessRulesValidator("census_business", census_config, mock_logger)
+        business_rules_validator = AustralianHealthBusinessRulesValidator("census_business", census_config, mock_logger)
         statistical_validator = StatisticalValidator("census_stats", census_config, mock_logger)
         quality_checker = QualityChecker("census_quality", {"completeness_threshold": 0.9}, mock_logger)
         
@@ -278,7 +278,7 @@ class TestDataQualityIntegration:
         }
         
         schema_validator = BaseValidator("seifa_schema", seifa_config, mock_logger)
-        business_rules_validator = BusinessRulesValidator("seifa_business", seifa_config, mock_logger) 
+        business_rules_validator = AustralianHealthBusinessRulesValidator("seifa_business", seifa_config, mock_logger) 
         quality_checker = QualityChecker("seifa_quality", {"completeness_threshold": 0.85}, mock_logger)
         
         # Custom SEIFA validator for domain-specific rules
@@ -347,7 +347,7 @@ class TestDataQualityIntegration:
         
         # Add multiple validators that will find different errors
         schema_validator = BaseValidator("schema_validator", sample_config["validators"]["schema_validator"], mock_logger)
-        business_rules_validator = BusinessRulesValidator("business_validator", sample_config["validators"]["schema_validator"], mock_logger)
+        business_rules_validator = AustralianHealthBusinessRulesValidator("business_validator", sample_config["validators"]["schema_validator"], mock_logger)
         quality_checker = QualityChecker("quality_checker", {"completeness_threshold": 0.95}, mock_logger)
         
         orchestrator.add_validator(schema_validator)
@@ -595,7 +595,7 @@ class TestDataQualityIntegration:
         
         # Add validators
         schema_validator = BaseValidator("schema_validator", sample_config["validators"]["schema_validator"], mock_logger)
-        business_rules_validator = BusinessRulesValidator("business_validator", sample_config["validators"]["schema_validator"], mock_logger)
+        business_rules_validator = AustralianHealthBusinessRulesValidator("business_validator", sample_config["validators"]["schema_validator"], mock_logger)
         
         orchestrator.add_validator(schema_validator)
         orchestrator.add_validator(business_rules_validator)

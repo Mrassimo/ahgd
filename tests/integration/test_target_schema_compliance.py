@@ -13,10 +13,10 @@ from decimal import Decimal
 from datetime import datetime, date
 
 from src.utils.logging import get_logger
-from src.schemas.base import BaseSchemaV1
-from src.schemas.sa2_geographic import SA2GeographicSchema
-from src.schemas.health_indicators import HealthIndicatorsSchema
-from src.schemas.seifa import SEIFASchema
+from schemas.base_schema import VersionedSchema
+from schemas.sa2_schema import SA2Coordinates
+from schemas.health_schema import HealthIndicator
+from schemas.seifa_schema import SEIFAScore
 
 logger = get_logger(__name__)
 

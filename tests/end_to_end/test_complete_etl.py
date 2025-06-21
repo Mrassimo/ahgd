@@ -20,7 +20,8 @@ from src.pipelines.master_etl_pipeline import (
     MasterETLPipeline, PipelineStageDefinition, QualityAssuranceConfig,
     PipelineStageType, DataFlowCheckpoint
 )
-from src.pipelines.validation_pipeline import ValidationMode, QualityLevel
+from src.pipelines.validation_pipeline import ValidationMode
+from schemas.base_schema import DataQualityLevel
 from src.extractors.base import BaseExtractor
 from src.transformers.base import BaseTransformer
 from src.loaders.base import BaseLoader
@@ -469,7 +470,7 @@ class TestCompleteETLPipeline:
             'data_size': 2000,  # Reasonable size for testing
             'quality_config': QualityAssuranceConfig(
                 enabled=True,
-                quality_level=QualityLevel.COMPREHENSIVE,
+                quality_level=DataQualityLevel.HIGH,
                 validation_mode=ValidationMode.SELECTIVE,
                 halt_on_critical_errors=False,  # Continue on errors for testing
                 generate_quality_reports=True,
@@ -507,7 +508,7 @@ class TestCompleteETLPipeline:
                     'quality_threshold': 90.0
                 },
                 validation_required=True,
-                quality_level=QualityLevel.STANDARD,
+                quality_level=DataQualityLevel.MEDIUM,
                 timeout_seconds=120,
                 retry_attempts=2
             ),
@@ -524,7 +525,7 @@ class TestCompleteETLPipeline:
                     'coordinate_validation': True
                 },
                 validation_required=True,
-                quality_level=QualityLevel.COMPREHENSIVE,
+                quality_level=DataQualityLevel.HIGH,
                 timeout_seconds=180,
                 retry_attempts=2
             ),
@@ -540,7 +541,7 @@ class TestCompleteETLPipeline:
                     'validate_integration': True
                 },
                 validation_required=True,
-                quality_level=QualityLevel.COMPREHENSIVE,
+                quality_level=DataQualityLevel.HIGH,
                 timeout_seconds=240,
                 retry_attempts=1
             ),
@@ -557,7 +558,7 @@ class TestCompleteETLPipeline:
                     'compression': False  # Disable for testing
                 },
                 validation_required=True,
-                quality_level=QualityLevel.STANDARD,
+                quality_level=DataQualityLevel.MEDIUM,
                 timeout_seconds=120,
                 retry_attempts=3
             )
@@ -597,7 +598,6 @@ class TestCompleteETLPipeline:
             stage_definitions=stage_definitions,
             quality_config=etl_config['quality_config'],
             enable_checkpoints=etl_config['enable_checkpoints'],
-            checkpoint_interval=etl_config['checkpoint_interval'],
             max_retries=etl_config['max_retries'],
             parallel_stages=etl_config['parallel_stages']
         )
@@ -779,7 +779,7 @@ class TestCompleteETLPipeline:
                     'halt_on_validation_failure': False
                 },
                 validation_required=True,
-                quality_level=QualityLevel.COMPREHENSIVE,
+                quality_level=DataQualityLevel.HIGH,
                 timeout_seconds=60,
                 retry_attempts=3
             ),
@@ -795,7 +795,7 @@ class TestCompleteETLPipeline:
                     'halt_on_validation_failure': False
                 },
                 validation_required=True,
-                quality_level=QualityLevel.COMPREHENSIVE,
+                quality_level=DataQualityLevel.HIGH,
                 timeout_seconds=60,
                 retry_attempts=2
             )
@@ -860,7 +860,7 @@ class TestCompleteETLPipeline:
             'data_size': 10000,  # Larger dataset
             'quality_config': QualityAssuranceConfig(
                 enabled=True,
-                quality_level=QualityLevel.STANDARD,  # Reduced validation overhead
+                quality_level=DataQualityLevel.MEDIUM,  # Reduced validation overhead
                 validation_mode=ValidationMode.SELECTIVE,
                 halt_on_critical_errors=False,
                 generate_quality_reports=False,  # Reduce overhead
@@ -886,7 +886,7 @@ class TestCompleteETLPipeline:
                     'quality_threshold': 85.0
                 },
                 validation_required=True,
-                quality_level=QualityLevel.STANDARD,
+                quality_level=DataQualityLevel.MEDIUM,
                 parallel_capable=False
             ),
             PipelineStageDefinition(
@@ -901,7 +901,7 @@ class TestCompleteETLPipeline:
                     'batch_processing': True
                 },
                 validation_required=True,
-                quality_level=QualityLevel.STANDARD,
+                quality_level=DataQualityLevel.MEDIUM,
                 parallel_capable=True
             )
         ]

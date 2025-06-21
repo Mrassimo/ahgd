@@ -559,7 +559,10 @@ class ETLBenchmarkSuite:
                 'min': min(success_rates),
                 'max': max(success_rates)
             }
-        }class DataProcessingBenchmarks:
+        }
+
+
+class DataProcessingBenchmarks:
     """
     Specialised benchmarks for data processing operations.
     

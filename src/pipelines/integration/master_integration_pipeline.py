@@ -12,21 +12,21 @@ from typing import Dict, List, Any, Optional
 import asyncio
 
 from ..base_pipeline import BasePipeline
-from ..stage import Stage
+from ..stage import PipelineStage
 from ...transformers.data_integrator import MasterDataIntegrator
 from ...transformers.denormaliser import HealthDataDenormaliser, MetadataDenormaliser
 from ...transformers.derived_indicators import HealthIndicatorDeriver
 from ...utils.integration_rules import DataIntegrationRules, ConflictResolver, QualityBasedSelector
-from ...utils.interfaces import DataBatch, PipelineError
+from ...utils.interfaces import DataBatch, AHGDException
 from ...utils.logging import get_logger, track_lineage
-from ...schemas.integrated_schema import MasterHealthRecord, DataIntegrationLevel
-from ...schemas.quality_standards import validate_against_standards
+from schemas.integrated_schema import MasterHealthRecord, DataIntegrationLevel
+from schemas.quality_standards import validate_against_standards
 from .health_integration_pipeline import HealthIntegrationPipeline
 from .demographic_integration_pipeline import DemographicIntegrationPipeline
 from .geographic_integration_pipeline import GeographicIntegrationPipeline
 
 
-class DataSourceOrchestrationStage(Stage):
+class DataSourceOrchestrationStage(PipelineStage):
     """Orchestrates integration of multiple data source pipelines."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -242,7 +242,7 @@ class DataSourceOrchestrationStage(Stage):
         return merged_data
 
 
-class MasterRecordCreationStage(Stage):
+class MasterRecordCreationStage(PipelineStage):
     """Creates final MasterHealthRecord instances."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -591,7 +591,7 @@ class MasterRecordCreationStage(Stage):
         }
 
 
-class DerivedIndicatorCalculationStage(Stage):
+class DerivedIndicatorCalculationStage(PipelineStage):
     """Calculates derived health indicators and composite indices."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -622,7 +622,7 @@ class DerivedIndicatorCalculationStage(Stage):
         return enhanced_records
 
 
-class TargetSchemaValidationStage(Stage):
+class TargetSchemaValidationStage(PipelineStage):
     """Validates master records against target schema requirements."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -798,7 +798,7 @@ class MasterIntegrationPipeline(BasePipeline):
         
         return current_data
     
-    def _process_in_batches(self, stage: Stage, data: DataBatch) -> DataBatch:
+    def _process_in_batches(self, stage: PipelineStage, data: DataBatch) -> DataBatch:
         """Process large datasets in batches."""
         self.logger.info(f"Processing {len(data)} records in batches of {self.batch_size}")
         

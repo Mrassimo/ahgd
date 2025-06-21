@@ -261,7 +261,10 @@ class SystemMonitor:
             'timestamp': current.timestamp.isoformat(),
             'issues': health_issues,
             'metrics': current.to_dict()
-        }class PerformanceMonitor:
+        }
+
+
+class PerformanceMonitor:
     """
     Application-level performance monitoring.
     

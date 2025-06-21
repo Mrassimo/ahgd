@@ -207,7 +207,7 @@ class MemoryProfiler:
             'generation_0': gc.get_count()[0],
             'generation_1': gc.get_count()[1],
             'generation_2': gc.get_count()[2],
-            'total_collections': sum(gc.get_stats()),
+            'total_collections': sum(stat.get('collections', 0) for stat in gc.get_stats()),
             'uncollectable': len(gc.garbage)
         }
         

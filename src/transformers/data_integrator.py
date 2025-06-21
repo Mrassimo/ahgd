@@ -15,14 +15,14 @@ import numpy as np
 from dataclasses import dataclass, field
 
 from .base import BaseTransformer, MissingValueStrategy
-from ..schemas.integrated_schema import (
+from schemas.integrated_schema import (
     MasterHealthRecord, 
     SA2HealthProfile,
     DataIntegrationLevel,
     UrbanRuralClassification
 )
-from ..schemas.base_schema import GeographicBoundary, TemporalData, DataSource
-from ..schemas.seifa_schema import SEIFAIndexType
+from schemas.base_schema import GeographicBoundary, TemporalData, DataSource
+from schemas.seifa_schema import SEIFAIndexType
 from ..utils.interfaces import DataBatch, TransformationError
 from ..utils.logging import get_logger
 

@@ -287,13 +287,13 @@ class AlertManager:
                 try:
                     handler(alert)
                 except Exception as e:
-                    logger.log.error(
+                    logger.error(
                         "Alert handler failed",
                         handler=handler.__name__,
                         error=str(e)
                     )
             
-            logger.log.info(
+            logger.info(
                 "Alert created",
                 alert_id=alert.id,
                 severity=severity.value,
@@ -318,7 +318,7 @@ class AlertManager:
                     alert.resolved = True
                     alert.resolved_at = datetime.now()
                     
-                    logger.log.info(
+                    logger.info(
                         "Alert resolved",
                         alert_id=alert_id
                     )
@@ -377,7 +377,7 @@ class SystemMonitor:
         )
         self.monitoring_thread.start()
         
-        logger.log.info("System monitoring started")
+        logger.info("System monitoring started")
     
     def stop(self) -> None:
         """Stop system monitoring."""
@@ -386,7 +386,7 @@ class SystemMonitor:
         if self.monitoring_thread:
             self.monitoring_thread.join(timeout=10.0)
         
-        logger.log.info("System monitoring stopped")
+        logger.info("System monitoring stopped")
     
     def _monitor_loop(self) -> None:
         """Main monitoring loop."""
@@ -461,7 +461,7 @@ class SystemMonitor:
                 )
                 
             except Exception as e:
-                logger.log.error(
+                logger.error(
                     "System monitoring error",
                     error=str(e)
                 )
@@ -508,7 +508,7 @@ class PipelineMonitor:
         # Set up alert handlers
         self.alert_manager.add_handler(self._log_alert)
         
-        logger.log.info(
+        logger.info(
             "Pipeline monitor initialised",
             metrics_dir=str(self.metrics_dir)
         )
@@ -539,7 +539,7 @@ class PipelineMonitor:
             )
             self.pipeline_summaries[pipeline_name] = summary
             
-            logger.log.info(
+            logger.info(
                 "Started pipeline monitoring",
                 pipeline=pipeline_name
             )
@@ -561,7 +561,7 @@ class PipelineMonitor:
                 # Save summary to file
                 self._save_pipeline_summary(summary)
                 
-                logger.log.info(
+                logger.info(
                     "Stopped pipeline monitoring",
                     pipeline=pipeline_name,
                     duration=summary.duration.total_seconds() if summary.duration else 0
@@ -886,7 +886,7 @@ class PipelineMonitor:
                 json.dump(data, f, indent=2)
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to save pipeline summary",
                 pipeline=summary.pipeline_name,
                 error=str(e)

@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Set, Union, Callable, Tuple
 import pandas as pd
 import numpy as np
 
-from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, PipelineError
+from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, AHGDException
 from .validation_pipeline import (
     ValidationPipeline, StageValidator, QualityGatekeeper,
     ValidationAction, ValidationMode, StageValidationResult
@@ -26,13 +26,13 @@ from .validation_pipeline import (
 from ..extractors import ExtractorRegistry
 from ..transformers.base import BaseTransformer
 from ..transformers.geographic_standardiser import GeographicStandardiser
-from ..transformers.data_integrator import DataIntegrator
+from ..transformers.data_integrator import MasterDataIntegrator
 from ..loaders.base import BaseLoader
 from ..validators import ValidationOrchestrator, ValidationReporter
 from ..utils.logging import get_logger, monitor_performance, track_lineage
 from ..utils.config import get_config
 from ..utils.interfaces import (
-    ExtractionError, TransformationError, ValidationError, LoadingError, AHGDError
+    ExtractionError, TransformationError, ValidationError, LoadingError, AHGDException
 )
 
 
@@ -142,7 +142,7 @@ class PipelineStageManager:
         self._build_execution_order()
         self._initialise_stage_instances()
         
-        logger.log.info(
+        logger.info(
             "Pipeline stage manager initialised",
             stages_count=len(self.stage_definitions),
             quality_level=self.quality_config.quality_level.value
@@ -172,7 +172,7 @@ class PipelineStageManager:
         stage_def = self.stage_definitions[stage_id]
         start_time = datetime.now()
         
-        logger.log.info(
+        logger.info(
             "Executing pipeline stage",
             stage_id=stage_id,
             stage_type=stage_def.stage_type.value
@@ -218,7 +218,7 @@ class PipelineStageManager:
             if self.quality_config.track_data_lineage:
                 track_lineage(f"{stage_id}_input", f"{stage_id}_output", stage_def.stage_type.value)
             
-            logger.log.info(
+            logger.info(
                 "Stage execution completed",
                 stage_id=stage_id,
                 duration=stage_result.duration,
@@ -244,7 +244,7 @@ class PipelineStageManager:
             self.stage_results[stage_id] = stage_result
             self.data_flow_status[stage_id] = DataFlowStatus.FAILED
             
-            logger.log.error(
+            logger.error(
                 "Stage execution failed",
                 stage_id=stage_id,
                 error=str(e),
@@ -298,7 +298,7 @@ class PipelineStageManager:
         
         self.stage_execution_order = execution_order
         
-        logger.log.info(
+        logger.info(
             "Stage execution order determined",
             execution_order=self.stage_execution_order
         )
@@ -320,7 +320,7 @@ class PipelineStageManager:
                 if stage_def.validation_required:
                     self._initialise_stage_validator(stage_id, stage_def)
                 
-                logger.log.debug(
+                logger.debug(
                     "Stage instance initialised",
                     stage_id=stage_id,
                     stage_class=stage_def.stage_class
@@ -355,7 +355,7 @@ class PipelineStageManager:
             self.stage_validators[stage_id] = validator
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to initialise stage validator",
                 stage_id=stage_id,
                 error=str(e)
@@ -545,7 +545,7 @@ class DataFlowController:
         self.data_buffers: Dict[str, pd.DataFrame] = {}
         self.flow_metrics: Dict[str, Dict[str, Any]] = {}
         
-        logger.log.info(
+        logger.info(
             "Data flow controller initialised",
             checkpoints_count=len(self.checkpoints),
             buffer_size=buffer_size
@@ -573,7 +573,7 @@ class DataFlowController:
         """
         checkpoint_id = f"{source_stage}_to_{target_stage}"
         
-        logger.log.info(
+        logger.info(
             "Transferring data between stages",
             source_stage=source_stage,
             target_stage=target_stage,
@@ -615,7 +615,7 @@ class DataFlowController:
                 "timestamp": datetime.now().isoformat()
             }
             
-            logger.log.info(
+            logger.info(
                 "Data transfer completed",
                 checkpoint_id=checkpoint_id,
                 input_records=len(data),
@@ -626,7 +626,7 @@ class DataFlowController:
             return buffered_data
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Data transfer failed",
                 source_stage=source_stage,
                 target_stage=target_stage,
@@ -713,7 +713,7 @@ class DataFlowController:
         # In production, would use more sophisticated buffering (disk, distributed storage)
         self.data_buffers[checkpoint_id] = data
         
-        logger.log.info(
+        logger.info(
             "Large dataset buffered",
             checkpoint_id=checkpoint_id,
             records_count=len(data)
@@ -755,7 +755,7 @@ class QualityAssuranceManager:
         self.compliance_status: Dict[str, str] = {}
         self.quality_reports: List[str] = []
         
-        logger.log.info(
+        logger.info(
             "Quality assurance manager initialised",
             quality_level=quality_config.quality_level.value,
             compliance_standards=self.compliance_standards
@@ -777,7 +777,7 @@ class QualityAssuranceManager:
         Returns:
             Comprehensive quality assessment
         """
-        logger.log.info("Assessing pipeline quality")
+        logger.info("Assessing pipeline quality")
         
         try:
             # Calculate overall metrics
@@ -820,7 +820,7 @@ class QualityAssuranceManager:
                 report_path = self._generate_quality_report(quality_assessment, context)
                 quality_assessment["report_path"] = report_path
             
-            logger.log.info(
+            logger.info(
                 "Pipeline quality assessment completed",
                 overall_quality_score=overall_quality_score,
                 quality_grade=quality_assessment["quality_grade"]
@@ -829,7 +829,7 @@ class QualityAssuranceManager:
             return quality_assessment
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Quality assessment failed",
                 error=str(e)
             )
@@ -997,7 +997,7 @@ class QualityAssuranceManager:
             
             self.quality_reports.append(str(report_path))
             
-            logger.log.info(
+            logger.info(
                 "Quality report generated",
                 report_path=str(report_path)
             )
@@ -1005,7 +1005,7 @@ class QualityAssuranceManager:
             return str(report_path)
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to generate quality report",
                 error=str(e)
             )
@@ -1054,7 +1054,7 @@ class MasterETLPipeline(BasePipeline):
         self.stage_outputs: Dict[str, pd.DataFrame] = {}
         self.validation_results: Dict[str, StageValidationResult] = {}
         
-        logger.log.info(
+        logger.info(
             "Master ETL pipeline initialised",
             name=name,
             stages_count=len(self.stage_definitions),
@@ -1077,7 +1077,7 @@ class MasterETLPipeline(BasePipeline):
         Returns:
             Stage output
         """
-        logger.log.info("Executing master ETL stage", stage=stage_name)
+        logger.info("Executing master ETL stage", stage=stage_name)
         
         try:
             # Get input data for stage
@@ -1106,7 +1106,7 @@ class MasterETLPipeline(BasePipeline):
                     )
                     context.add_output(f"{stage_name}_to_{next_stage}", processed_data)
             
-            logger.log.info(
+            logger.info(
                 "Master ETL stage completed",
                 stage=stage_name,
                 output_records=len(output_data) if output_data is not None else 0
@@ -1115,7 +1115,7 @@ class MasterETLPipeline(BasePipeline):
             return stage_result
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Master ETL stage failed",
                 stage=stage_name,
                 error=str(e)
@@ -1137,7 +1137,7 @@ class MasterETLPipeline(BasePipeline):
         Returns:
             Complete pipeline results
         """
-        logger.log.info("Starting complete ETL pipeline execution")
+        logger.info("Starting complete ETL pipeline execution")
         
         try:
             # Set up pipeline context
@@ -1182,7 +1182,7 @@ class MasterETLPipeline(BasePipeline):
                 "execution_summary": self._generate_execution_summary()
             }
             
-            logger.log.info(
+            logger.info(
                 "Complete ETL pipeline execution finished",
                 status=self.state.value,
                 overall_quality_score=quality_assessment.get("overall_quality_score", 0),
@@ -1192,7 +1192,7 @@ class MasterETLPipeline(BasePipeline):
             return results
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Complete ETL pipeline execution failed",
                 error=str(e)
             )

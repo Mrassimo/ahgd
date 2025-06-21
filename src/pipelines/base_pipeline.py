@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 
 from src.utils.logging import get_logger
-from src.utils.interfaces import AHGDError
+from src.utils.interfaces import AHGDException
 
 logger = get_logger(__name__)
 
@@ -81,7 +81,7 @@ class StageResult:
         return None
 
 
-class PipelineError(AHGDError):
+class PipelineError(AHGDException):
     """Base exception for pipeline errors."""
     pass
 
@@ -146,7 +146,7 @@ class BasePipeline(ABC):
         self._executor: Optional[ThreadPoolExecutor] = None
         self._futures: Dict[str, Future] = {}
         
-        logger.log.info(
+        logger.info(
             "Pipeline initialised",
             pipeline=name,
             checkpoint_dir=str(self.checkpoint_dir),
@@ -233,7 +233,7 @@ class BasePipeline(ABC):
                 if resume_from:
                     self.context = self._load_checkpoint(resume_from)
                     self.state = PipelineState.RECOVERING
-                    logger.log.info(
+                    logger.info(
                         "Resuming pipeline from checkpoint",
                         pipeline=self.name,
                         resume_stage=resume_from
@@ -269,7 +269,7 @@ class BasePipeline(ABC):
                     )
                 
                 self.state = PipelineState.COMPLETED
-                logger.log.info(
+                logger.info(
                     "Pipeline completed successfully",
                     pipeline=self.name,
                     duration=self._calculate_total_duration()
@@ -279,7 +279,7 @@ class BasePipeline(ABC):
                 
             except Exception as e:
                 self.state = PipelineState.FAILED
-                logger.log.error(
+                logger.error(
                     "Pipeline failed",
                     pipeline=self.name,
                     error=str(e),
@@ -292,14 +292,14 @@ class BasePipeline(ABC):
         with self._lock:
             if self.state == PipelineState.RUNNING:
                 self.state = PipelineState.PAUSED
-                logger.log.info("Pipeline paused", pipeline=self.name)
+                logger.info("Pipeline paused", pipeline=self.name)
     
     def resume(self) -> None:
         """Resume paused pipeline."""
         with self._lock:
             if self.state == PipelineState.PAUSED:
                 self.state = PipelineState.RUNNING
-                logger.log.info("Pipeline resumed", pipeline=self.name)
+                logger.info("Pipeline resumed", pipeline=self.name)
     
     def get_progress(self) -> Dict[str, Any]:
         """
@@ -414,7 +414,7 @@ class BasePipeline(ABC):
                         future.result()  # Raise any exceptions
                         completed.add(stage_name)
                     except Exception as e:
-                        logger.log.error(
+                        logger.error(
                             "Stage failed in parallel execution",
                             stage=stage_name,
                             error=str(e)
@@ -441,7 +441,7 @@ class BasePipeline(ABC):
                     start_time=datetime.now()
                 )
                 
-                logger.log.info(
+                logger.info(
                     "Executing stage",
                     stage=stage_name,
                     attempt=attempt + 1
@@ -466,7 +466,7 @@ class BasePipeline(ABC):
                 
             except Exception as e:
                 last_error = e
-                logger.log.warning(
+                logger.warning(
                     "Stage execution failed",
                     stage=stage_name,
                     attempt=attempt + 1,
@@ -496,7 +496,7 @@ class BasePipeline(ABC):
         """Record stage execution result."""
         with self._lock:
             self.stage_results[stage_name] = result
-            logger.log.info(
+            logger.info(
                 "Stage result recorded",
                 stage=stage_name,
                 state=result.state.value,
@@ -528,14 +528,14 @@ class BasePipeline(ABC):
             
             self.context.checkpoints.append(str(checkpoint_file))
             
-            logger.log.debug(
+            logger.debug(
                 "Checkpoint created",
                 stage=stage_name,
                 file=str(checkpoint_file)
             )
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to create checkpoint",
                 stage=stage_name,
                 error=str(e)
@@ -572,7 +572,7 @@ class BasePipeline(ABC):
                 checkpoint_data["stage_results"]
             )
             
-            logger.log.info(
+            logger.info(
                 "Checkpoint loaded",
                 stage=stage_name,
                 file=str(checkpoint_file)
@@ -680,7 +680,7 @@ class BasePipeline(ABC):
             
             for checkpoint_file in checkpoint_files[keep_last:]:
                 checkpoint_file.unlink()
-                logger.log.debug("Removed old checkpoint", file=str(checkpoint_file))
+                logger.debug("Removed old checkpoint", file=str(checkpoint_file))
                 
         except Exception as e:
-            logger.log.error("Failed to clean up checkpoints", error=str(e))
+            logger.error("Failed to clean up checkpoints", error=str(e))

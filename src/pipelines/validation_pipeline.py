@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Set, Union, Callable, Tuple
 import pandas as pd
 import numpy as np
 
-from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, PipelineError
+from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, AHGDException
 from ..validators import (
     ValidationOrchestrator, QualityChecker, GeographicValidator,
     StatisticalValidator, AustralianHealthBusinessRulesValidator,
@@ -150,7 +150,7 @@ class StageValidator:
         self.geographic_validator = GeographicValidator()
         self.reporter = ValidationReporter()
         
-        logger.log.info(
+        logger.info(
             "Stage validator initialised",
             stage=stage_name,
             gate_id=quality_gate.gate_id,
@@ -240,7 +240,7 @@ class StageValidator:
             result.validation_metrics.validation_time_seconds = result.execution_time
             
             # Log validation result
-            logger.log.info(
+            logger.info(
                 "Stage validation completed",
                 stage=self.stage_name,
                 gate_status=result.gate_status.value,
@@ -258,7 +258,7 @@ class StageValidator:
             return result
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Stage validation failed",
                 stage=self.stage_name,
                 error=str(e)
@@ -507,7 +507,7 @@ class StageValidator:
                 }
             )
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to generate validation report",
                 stage=self.stage_name,
                 error=str(e)
@@ -546,7 +546,7 @@ class QualityGatekeeper:
         # Load quality gates from configuration
         self.quality_gates: Dict[str, QualityGate] = self._load_quality_gates()
         
-        logger.log.info(
+        logger.info(
             "Quality gatekeeper initialised",
             gates_count=len(self.quality_gates)
         )
@@ -569,7 +569,7 @@ class QualityGatekeeper:
             Tuple of (gate_passed, action_message)
         """
         if stage_name not in self.quality_gates:
-            logger.log.warning(
+            logger.warning(
                 "No quality gate configured for stage",
                 stage=stage_name
             )
@@ -579,7 +579,7 @@ class QualityGatekeeper:
         
         # Check for bypass conditions
         if self._check_bypass_conditions(gate, validation_result, context):
-            logger.log.info(
+            logger.info(
                 "Quality gate bypassed",
                 stage=stage_name,
                 gate_id=gate.gate_id
@@ -596,7 +596,7 @@ class QualityGatekeeper:
         elif gate.mode == ValidationMode.AUDIT_ONLY:
             return True, "Audit-only mode - gate always passes"
         else:
-            logger.log.error(
+            logger.error(
                 "Unknown validation mode",
                 mode=gate.mode.value
             )
@@ -611,7 +611,7 @@ class QualityGatekeeper:
             reason: Reason for bypass
         """
         self.bypass_tokens.add(token)
-        logger.log.warning(
+        logger.warning(
             "Bypass token registered",
             token=token[:8] + "...",  # Only log partial token
             reason=reason
@@ -643,7 +643,7 @@ class QualityGatekeeper:
                 gates[gate.stage_name] = gate
                 
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to load quality gates configuration",
                 error=str(e)
             )
@@ -687,7 +687,7 @@ class QualityGatekeeper:
             elif condition.startswith("dev_environment"):
                 return get_config("environment") == "development"
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to evaluate bypass condition",
                 condition=condition,
                 error=str(e)
@@ -790,7 +790,7 @@ class ValidationPipeline(BasePipeline):
         self.stage_validation_results: Dict[str, StageValidationResult] = {}
         self.pipeline_validation_summary: Optional[ValidationSummary] = None
         
-        logger.log.info(
+        logger.info(
             "Validation pipeline initialised",
             name=name,
             config_keys=list(self.validation_config.keys())
@@ -821,12 +821,12 @@ class ValidationPipeline(BasePipeline):
         Returns:
             Validation results for the stage
         """
-        logger.log.info("Executing validation stage", stage=stage_name)
+        logger.info("Executing validation stage", stage=stage_name)
         
         # Get data from context
         data = self._get_stage_data(stage_name, context)
         if data is None:
-            logger.log.warning("No data available for validation", stage=stage_name)
+            logger.warning("No data available for validation", stage=stage_name)
             return None
         
         # Get or create stage validator
@@ -847,7 +847,7 @@ class ValidationPipeline(BasePipeline):
             if validation_result.gate_status == QualityGateStatus.FAILED:
                 raise ValidationError(f"Quality gate failed for stage {stage_name}: {gate_message}")
             else:
-                logger.log.warning(
+                logger.warning(
                     "Quality gate warning",
                     stage=stage_name,
                     message=gate_message
@@ -903,7 +903,7 @@ class ValidationPipeline(BasePipeline):
             
             self.pipeline_validation_summary = summary
             
-            logger.log.info(
+            logger.info(
                 "Pipeline validation summary generated",
                 overall_quality_score=overall_quality_score,
                 stages_validated=len(self.stage_validation_results)
@@ -912,7 +912,7 @@ class ValidationPipeline(BasePipeline):
             return summary
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to generate pipeline validation summary",
                 error=str(e)
             )
@@ -1011,14 +1011,14 @@ class ValidationPipeline(BasePipeline):
             with open(report_path, 'w') as f:
                 json.dump(report_data, f, indent=2, default=str)
             
-            logger.log.debug(
+            logger.debug(
                 "Stage validation report generated",
                 stage=stage_name,
                 report_path=str(report_path)
             )
             
         except Exception as e:
-            logger.log.error(
+            logger.error(
                 "Failed to generate stage report",
                 stage=stage_name,
                 error=str(e)

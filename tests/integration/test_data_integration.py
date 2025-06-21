@@ -16,8 +16,8 @@ from src.pipelines.integration.demographic_integration_pipeline import Demograph
 from src.pipelines.integration.geographic_integration_pipeline import GeographicIntegrationPipeline
 from src.transformers.data_integrator import MasterDataIntegrator
 from src.utils.integration_rules import DataIntegrationRules, ConflictResolver
-from src.schemas.integrated_schema import MasterHealthRecord, DataIntegrationLevel
-from src.schemas.seifa_schema import SEIFAIndexType
+from schemas.integrated_schema import MasterHealthRecord, DataIntegrationLevel
+from schemas.seifa_schema import SEIFAIndexType
 
 
 class TestDataIntegration:

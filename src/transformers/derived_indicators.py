@@ -14,7 +14,7 @@ import pandas as pd
 from dataclasses import dataclass
 
 from .base import BaseTransformer
-from ..schemas.integrated_schema import MasterHealthRecord, HealthOutcome
+from schemas.integrated_schema import MasterHealthRecord, HealthOutcome
 from ..utils.interfaces import DataBatch, TransformationError
 from ..utils.logging import get_logger
 

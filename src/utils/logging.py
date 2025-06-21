@@ -188,7 +188,6 @@ class AHGDLogger:
             processors=[
                 structlog.contextvars.merge_contextvars,
                 structlog.processors.add_log_level,
-                structlog.processors.add_logger_name,
                 structlog.processors.TimeStamper(fmt="iso"),
                 structlog.dev.ConsoleRenderer() if self.config.get('console_logs') else structlog.processors.JSONRenderer(),
             ],
@@ -411,6 +410,27 @@ class AHGDLogger:
             health_status['error'] = str(e)
         
         return health_status
+    
+    # Standard logging interface
+    def debug(self, message: str, **kwargs):
+        """Log debug message"""
+        logger.debug(message, **kwargs)
+    
+    def info(self, message: str, **kwargs):
+        """Log info message"""
+        logger.info(message, **kwargs)
+    
+    def warning(self, message: str, **kwargs):
+        """Log warning message"""
+        logger.warning(message, **kwargs)
+    
+    def error(self, message: str, **kwargs):
+        """Log error message"""
+        logger.error(message, **kwargs)
+    
+    def critical(self, message: str, **kwargs):
+        """Log critical message"""
+        logger.critical(message, **kwargs)
 
 
 # Global logger instance

@@ -19,7 +19,7 @@ import pandas as pd
 import numpy as np
 from loguru import logger
 
-from .interfaces import AHGDError
+from .interfaces import AHGDException
 from .config import get_config
 from .logging import get_logger, monitor_performance
 

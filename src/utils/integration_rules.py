@@ -12,7 +12,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 
 from ..utils.logging import get_logger
-from ..schemas.base_schema import DataQualityLevel
+from schemas.base_schema import DataQualityLevel
 
 
 class ConflictResolutionStrategy(str, Enum):

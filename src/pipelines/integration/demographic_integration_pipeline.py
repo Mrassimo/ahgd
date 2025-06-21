@@ -13,15 +13,16 @@ import pandas as pd
 import numpy as np
 
 from ..base_pipeline import BasePipeline
-from ..stage import Stage
+from ..stage import PipelineStage
 from ...transformers.data_integrator import DemographicProfileBuilder
 from ...utils.integration_rules import DataIntegrationRules, ConflictResolver
-from ...utils.interfaces import DataBatch, PipelineError
+from ...utils.interfaces import DataBatch
+from ..base_pipeline import PipelineError
 from ...utils.logging import get_logger, track_lineage
-from ...schemas.seifa_schema import SEIFAIndexType
+from schemas.seifa_schema import SEIFAIndexType
 
 
-class DemographicDataValidationStage(Stage):
+class DemographicDataValidationStage(PipelineStage):
     """Validates demographic data before integration."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -203,7 +204,7 @@ class DemographicDataValidationStage(Stage):
         return {'errors': errors}
 
 
-class PopulationStandardisationStage(Stage):
+class PopulationStandardisationStage(PipelineStage):
     """Standardises population data from different sources."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -325,7 +326,7 @@ class PopulationStandardisationStage(Stage):
         return record
 
 
-class SEIFAIntegrationStage(Stage):
+class SEIFAIntegrationStage(PipelineStage):
     """Integrates SEIFA socioeconomic data."""
     
     def __init__(self, config: Dict[str, Any]):
@@ -435,7 +436,7 @@ class SEIFAIntegrationStage(Stage):
         return derived
 
 
-class DemographicQualityAssessmentStage(Stage):
+class DemographicQualityAssessmentStage(PipelineStage):
     """Assesses demographic data quality and completeness."""
     
     def __init__(self, config: Dict[str, Any]):

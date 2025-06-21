@@ -555,7 +555,10 @@ class BottleneckDetector:
                         metadata={'coefficient_of_variation': cv}
                     ))
         
-        return bottlenecksclass OptimisationRecommender:
+        return bottlenecks
+
+
+class OptimisationRecommender:
     """
     Generate specific optimisation recommendations based on performance analysis.
     

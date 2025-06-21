@@ -46,9 +46,9 @@ from src.extractors.extractor_registry import (
 )
 
 # Import target schemas for validation
-from src.schemas.health_schema import HealthIndicatorType, AgeGroupType
-from src.schemas.seifa_schema import SEIFAIndexType
-from src.schemas.integrated_schema import UrbanRuralClassification
+from schemas.health_schema import HealthIndicatorType, AgeGroupType
+from schemas.seifa_schema import SEIFAIndexType
+from schemas.integrated_schema import UrbanRuralClassification
 
 # Import interfaces
 from src.utils.interfaces import ExtractionError

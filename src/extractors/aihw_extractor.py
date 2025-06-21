@@ -27,7 +27,7 @@ from ..utils.interfaces import (
     SourceMetadata,
 )
 from ..utils.logging import get_logger
-from ..schemas.health_schema import (
+from schemas.health_schema import (
     HealthIndicator,
     MortalityData,
     DiseasePrevalence,
@@ -36,7 +36,7 @@ from ..schemas.health_schema import (
     AgeGroupType,
     HealthIndicatorType,
 )
-from ..schemas.integrated_schema import (
+from schemas.integrated_schema import (
     MasterHealthRecord,
     SA2HealthProfile,
     HealthIndicatorSummary,

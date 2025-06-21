@@ -20,8 +20,8 @@ from dataclasses import dataclass, asdict
 from typing import Dict, List, Optional, Any, Callable, Union
 from pathlib import Path
 from collections import defaultdict, deque
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 import requests
 from loguru import logger
@@ -214,7 +214,7 @@ class SystemMonitor:
             return eval(alert.condition, {"__builtins__": {}}, context)
             
         except Exception as e:
-            self.logger.log.error(f"Error evaluating alert condition: {alert.name}: {e}")
+            self.logger.error(f"Error evaluating alert condition: {alert.name}: {e}")
             return False
     
     def _trigger_alert(self, alert: Alert, metrics: PerformanceMetrics):
@@ -225,7 +225,7 @@ class SystemMonitor:
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
         
-        self.logger.log.warning(
+        self.logger.warning(
             f"Alert triggered: {alert.name}",
             alert_name=alert.name,
             severity=alert.severity,
@@ -254,7 +254,7 @@ class SystemMonitor:
     def _send_email_notification(self, alert: Alert, alert_data: Dict[str, Any], email_config: Dict[str, Any]):
         """Send email notification"""
         try:
-            msg = MimeMultipart()
+            msg = MIMEMultipart()
             msg['From'] = email_config['from']
             msg['To'] = ', '.join(email_config['to'])
             msg['Subject'] = f"AHGD Alert: {alert.name} ({alert.severity})"
@@ -269,7 +269,7 @@ class SystemMonitor:
             {json.dumps(alert_data['metrics'], indent=2)}
             """
             
-            msg.attach(MimeText(body, 'plain'))
+            msg.attach(MIMEText(body, 'plain'))
             
             with smtplib.SMTP(email_config['smtp_server'], email_config['smtp_port']) as server:
                 if email_config.get('use_tls', True):
@@ -279,7 +279,7 @@ class SystemMonitor:
                 server.send_message(msg)
                 
         except Exception as e:
-            self.logger.log.error(f"Failed to send email notification: {e}")
+            self.logger.error(f"Failed to send email notification: {e}")
     
     def _send_webhook_notification(self, alert: Alert, alert_data: Dict[str, Any], webhook_config: Dict[str, Any]):
         """Send webhook notification"""
@@ -299,7 +299,7 @@ class SystemMonitor:
             response.raise_for_status()
             
         except Exception as e:
-            self.logger.log.error(f"Failed to send webhook notification: {e}")
+            self.logger.error(f"Failed to send webhook notification: {e}")
     
     def _send_slack_notification(self, alert: Alert, alert_data: Dict[str, Any], slack_config: Dict[str, Any]):
         """Send Slack notification"""
@@ -325,7 +325,7 @@ class SystemMonitor:
             response.raise_for_status()
             
         except Exception as e:
-            self.logger.log.error(f"Failed to send Slack notification: {e}")
+            self.logger.error(f"Failed to send Slack notification: {e}")
     
     def start_monitoring(self, interval: int = 60):
         """Start continuous monitoring"""
@@ -340,7 +340,7 @@ class SystemMonitor:
         )
         self.monitor_thread.start()
         
-        self.logger.log.info(f"System monitoring started with {interval}s interval")
+        self.logger.info(f"System monitoring started with {interval}s interval")
     
     def stop_monitoring(self):
         """Stop continuous monitoring"""
@@ -348,7 +348,7 @@ class SystemMonitor:
         if self.monitor_thread:
             self.monitor_thread.join(timeout=5)
         
-        self.logger.log.info("System monitoring stopped")
+        self.logger.info("System monitoring stopped")
     
     def _monitoring_loop(self, interval: int):
         """Main monitoring loop"""
@@ -357,7 +357,7 @@ class SystemMonitor:
                 self.collect_metrics()
                 time.sleep(interval)
             except Exception as e:
-                self.logger.log.error(f"Error in monitoring loop: {e}")
+                self.logger.error(f"Error in monitoring loop: {e}")
                 time.sleep(interval)
     
     def get_metrics_summary(self, hours: int = 24) -> Dict[str, Any]:
@@ -469,7 +469,7 @@ class HealthChecker:
         
         self.last_results[name] = health_result
         
-        self.logger.log.info(
+        self.logger.info(
             f"Health check completed: {name}",
             component=name,
             status=health_result.status,
@@ -561,7 +561,7 @@ class ErrorTracker:
         self.error_history.append(error_data)
         self.error_counts[error_data['type']] += 1
         
-        self.logger.log.error(
+        self.logger.error(
             f"Error tracked: {error_data['type']}",
             error_type=error_data['type'],
             error_message=error_data['message'],

@@ -29,22 +29,22 @@ from ..utils.interfaces import (
     SourceMetadata,
 )
 from ..utils.logging import get_logger
-from ..schemas.sa2_schema import (
-    SA2BoundaryData,
-    SA2GeographicContext,
-    SA2Demographics,
+from schemas.sa2_schema import (
+    SA2Coordinates,
+    SA2GeometryValidation,
+    SA2BoundaryRelationship,
 )
-from ..schemas.seifa_schema import (
-    SEIFAIndex,
+from schemas.seifa_schema import (
+    SEIFAScore,
     SEIFAIndexType,
-    SEIFASummaryData,
+    SEIFAComponent,
 )
-from ..schemas.census_schema import (
-    CensusData,
-    CensusIndicator,
-    CensusTableData,
+from schemas.census_schema import (
+    CensusDemographics,
+    CensusEducation,
+    CensusEmployment,
 )
-from ..schemas.integrated_schema import (
+from schemas.integrated_schema import (
     MasterHealthRecord,
     GeographicHealthMapping,
     UrbanRuralClassification,
