@@ -1,0 +1,279 @@
+# Export format specifications and optimisation settings
+# Australian Health and Geographic Data (AHGD) Export Pipeline
+# British English spelling used throughout
+
+export_formats:
+  parquet:
+    description: "Primary format for data analytics and processing"
+    priority: 1
+    characteristics:
+      binary: true
+      columnar: true
+      self_describing: true
+      compression_friendly: true
+    default_settings:
+      compression: "snappy"
+      row_group_size: 100000
+      use_dictionary: true
+      write_statistics: true
+      coerce_timestamps: "ms"
+    optimal_for:
+      - large_datasets
+      - analytical_workloads
+      - data_pipelines
+      - machine_learning
+    file_extension: ".parquet"
+    mime_type: "application/parquet"
+    
+  csv:
+    description: "Universal text format for maximum compatibility"
+    priority: 2
+    characteristics:
+      binary: false
+      columnar: false
+      self_describing: false
+      compression_friendly: true
+    default_settings:
+      encoding: "utf-8"
+      separator: ","
+      quote_char: '"'
+      escape_char: '"'
+      line_terminator: "\n"
+      float_format: "%.6f"
+      date_format: "%Y-%m-%d %H:%M:%S"
+      na_rep: ""
+    optimal_for:
+      - data_sharing
+      - spreadsheet_import
+      - legacy_systems
+      - manual_inspection
+    file_extension: ".csv"
+    mime_type: "text/csv"
+    
+  json:
+    description: "Structured data format for APIs and web applications"
+    priority: 3
+    characteristics:
+      binary: false
+      columnar: false
+      self_describing: true
+      compression_friendly: true
+    default_settings:
+      orient: "records"
+      date_format: "iso"
+      ensure_ascii: false
+      indent: null  # Compact format
+      include_metadata: true
+    optimal_for:
+      - web_apis
+      - javascript_applications
+      - document_databases
+      - configuration_files
+    file_extension: ".json"
+    mime_type: "application/json"
+    
+  geojson:
+    description: "Geographic data format with geometry information"
+    priority: 4
+    characteristics:
+      binary: false
+      columnar: false
+      self_describing: true
+      compression_friendly: true
+      geographic: true
+    default_settings:
+      coordinate_precision: 6
+      simplify_geometry: true
+      tolerance: 0.0001  # ~10m at equator
+      include_crs: true
+      ensure_ascii: false
+    optimal_for:
+      - gis_applications
+      - web_mapping
+      - spatial_analysis
+      - geographic_visualisation
+    file_extension: ".geojson"
+    mime_type: "application/geo+json"
+    
+  xlsx:
+    description: "Excel format for business users and reporting"
+    priority: 5
+    characteristics:
+      binary: true
+      columnar: false
+      self_describing: false
+      compression_friendly: false
+    default_settings:
+      engine: "openpyxl"
+      sheet_name: "Data"
+      include_header: true
+      freeze_panes: [1, 0]  # Freeze header row
+      auto_filter: true
+    limitations:
+      max_rows: 1048576
+      max_columns: 16384
+      max_cell_characters: 32767
+    optimal_for:
+      - business_reporting
+      - data_presentation
+      - manual_analysis
+      - dashboard_data_sources
+    file_extension: ".xlsx"
+    mime_type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    
+  feather:
+    description: "Fast binary format for R and Python interoperability"
+    priority: 6
+    characteristics:
+      binary: true
+      columnar: true
+      self_describing: true
+      compression_friendly: false
+    default_settings:
+      compression: null  # Feather v1 doesn't support compression
+      compression_level: null
+    optimal_for:
+      - r_python_interop
+      - fast_io
+      - temporary_storage
+      - data_science_workflows
+    file_extension: ".feather"
+    mime_type: "application/feather"
+
+# Australian data specific configurations
+australian_data_optimisations:
+  geographic_codes:
+    # Australian Standard Geographical Classification codes
+    sa2_code:
+      type: "categorical"
+      compression_benefit: "high"
+      format_preference: ["parquet", "csv"]
+    sa3_code:
+      type: "categorical"
+      compression_benefit: "high"
+      format_preference: ["parquet", "csv"]
+    state_code:
+      type: "categorical"
+      compression_benefit: "very_high"
+      format_preference: ["parquet", "csv"]
+    postcode:
+      type: "categorical"
+      compression_benefit: "medium"
+      format_preference: ["parquet", "csv", "json"]
+      
+  coordinates:
+    # Australian coordinate systems
+    gda94_mga_zones:
+      precision: 2  # metres
+      compression: "gzip"
+    gda2020_mga_zones:
+      precision: 2  # metres
+      compression: "gzip"
+    wgs84_decimal_degrees:
+      precision: 6  # ~0.1m precision
+      compression: "brotli"
+      
+  health_indicators:
+    # Common Australian health data patterns
+    aihw_indicators:
+      null_handling: "explicit_missing"
+      compression_benefit: "medium"
+    abs_census_data:
+      null_handling: "zero_default"
+      compression_benefit: "high"
+    pbs_data:
+      temporal_partitioning: "monthly"
+      compression_benefit: "high"
+      
+# Format selection rules
+format_selection_rules:
+  data_size_thresholds:
+    small: # < 10MB
+      recommended: ["csv", "json", "xlsx"]
+      avoid: []
+    medium: # 10MB - 100MB
+      recommended: ["parquet", "csv", "json"]
+      avoid: ["xlsx"]
+    large: # 100MB - 1GB
+      recommended: ["parquet", "feather"]
+      avoid: ["xlsx", "json"]
+    very_large: # > 1GB
+      recommended: ["parquet"]
+      avoid: ["xlsx", "json", "csv"]
+      
+  use_case_recommendations:
+    analytical_processing:
+      primary: "parquet"
+      secondary: ["feather", "csv"]
+    web_delivery:
+      primary: "json"
+      secondary: ["geojson", "csv"]
+    business_reporting:
+      primary: "xlsx"
+      secondary: ["csv", "json"]
+    data_archival:
+      primary: "parquet"
+      secondary: ["csv"]
+    gis_applications:
+      primary: "geojson"
+      secondary: ["parquet", "csv"]
+      
+  compression_recommendations:
+    text_heavy_data:
+      algorithm: "brotli"
+      level: 6
+    numeric_heavy_data:
+      algorithm: "snappy"
+      level: 1
+    mixed_data:
+      algorithm: "gzip"
+      level: 6
+    geographic_data:
+      algorithm: "gzip"
+      level: 7
+      
+# Quality requirements by format
+quality_requirements:
+  all_formats:
+    data_integrity: "strict"
+    encoding: "utf-8"
+    null_handling: "preserve"
+    
+  parquet:
+    schema_validation: "strict"
+    statistics_generation: "required"
+    metadata_preservation: "full"
+    
+  csv:
+    delimiter_consistency: "required"
+    quote_escaping: "proper"
+    header_validation: "required"
+    
+  json:
+    syntax_validation: "strict"
+    unicode_handling: "proper"
+    nested_structure: "preserve"
+    
+  geojson:
+    geometry_validation: "strict"
+    crs_specification: "required"
+    feature_properties: "preserve"
+    coordinate_precision: "appropriate"
+    
+# Performance targets
+performance_targets:
+  export_time:
+    target_mb_per_second: 50
+    timeout_minutes: 10
+    
+  compression_ratio:
+    minimum_acceptable: 0.7  # 30% compression
+    target: 0.5  # 50% compression
+    
+  file_size_limits:
+    single_file_max_mb: 2048  # 2GB
+    total_export_max_gb: 10
+    
+  memory_usage:
+    max_memory_multiplier: 3.0  # 3x input data size
+    streaming_threshold_mb: 500

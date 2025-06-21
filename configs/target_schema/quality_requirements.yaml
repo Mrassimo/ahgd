@@ -1,0 +1,473 @@
+# Quality Requirements Configuration for AHGD Target Schema
+# Defines data quality standards, thresholds, and compliance requirements
+
+quality_version: "1.0.0"
+last_updated: "2024-12-21"
+compliance_framework: "australian_health_data_standards"
+
+# Australian Health Data Standards Compliance
+compliance_standards:
+  
+  # Australian Institute of Health and Welfare (AIHW) Standards
+  aihw_standards:
+    standard_version: "2023.1"
+    effective_date: "2023-01-01"
+    scope: ["health_outcomes", "mortality", "morbidity", "healthcare_utilisation"]
+    
+    mandatory_requirements:
+      data_completeness:
+        critical_health_indicators: 95.0
+        mortality_data: 99.0
+        population_denominators: 100.0
+        
+      data_accuracy:
+        cause_of_death_coding: 99.5
+        icd_10_compliance: 100.0
+        age_standardisation: 99.0
+        
+      temporal_consistency:
+        reference_period_alignment: "strict"
+        lag_time_maximum_months: 24
+        update_frequency: "annual"
+        
+    validation_rules:
+      - rule_id: "AIHW_001"
+        description: "ICD-10-AM codes must be valid and current"
+        field: "cause_of_death_codes"
+        validation_type: "code_list_validation"
+        severity: "fatal"
+        
+      - rule_id: "AIHW_002"
+        description: "Age-standardised rates must use ABS standard population"
+        field: "age_standardised_mortality_rates"
+        validation_type: "calculation_method"
+        severity: "error"
+        
+      - rule_id: "AIHW_003"
+        description: "Small area suppression rules for privacy"
+        field: "mortality_counts"
+        validation_type: "privacy_suppression"
+        severity: "fatal"
+  
+  # Australian Bureau of Statistics (ABS) Standards
+  abs_standards:
+    standard_version: "2021"
+    effective_date: "2021-08-10"
+    scope: ["geographic_boundaries", "population_data", "socioeconomic_indicators"]
+    
+    mandatory_requirements:
+      geographic_accuracy:
+        coordinate_precision: 6  # decimal places
+        boundary_topology: "valid"
+        area_calculation_accuracy: 99.9
+        
+      statistical_quality:
+        seifa_index_validity: 100.0
+        population_count_accuracy: 99.5
+        age_group_consistency: 100.0
+        
+      metadata_completeness:
+        data_source_attribution: 100.0
+        collection_methodology: 100.0
+        quality_indicators: 100.0
+        
+    validation_rules:
+      - rule_id: "ABS_001"
+        description: "SA2 codes must be 9 digits and valid"
+        field: "sa2_code"
+        validation_type: "format_and_lookup"
+        severity: "fatal"
+        
+      - rule_id: "ABS_002"
+        description: "Geographic hierarchy must be consistent"
+        field: "geographic_hierarchy"
+        validation_type: "hierarchical_consistency"
+        severity: "error"
+        
+      - rule_id: "ABS_003"
+        description: "SEIFA deciles must align with scores"
+        field: "seifa_scores_and_deciles"
+        validation_type: "mathematical_consistency"
+        severity: "warning"
+  
+  # Medicare and PBS Standards
+  medicare_standards:
+    standard_version: "2023"
+    effective_date: "2023-01-01"
+    scope: ["healthcare_utilisation", "pharmaceutical_data", "provider_data"]
+    
+    mandatory_requirements:
+      privacy_compliance:
+        individual_de_identification: 100.0
+        small_cell_suppression: 100.0
+        statistical_disclosure_control: 100.0
+        
+      data_integrity:
+        service_classification_accuracy: 99.0
+        provider_number_validity: 100.0
+        benefit_calculation_accuracy: 99.9
+        
+    validation_rules:
+      - rule_id: "MED_001"
+        description: "No individual-level identifiers permitted"
+        field: "all_fields"
+        validation_type: "privacy_check"
+        severity: "fatal"
+        
+      - rule_id: "MED_002"
+        description: "MBS item numbers must be valid and current"
+        field: "mbs_item_numbers"
+        validation_type: "code_list_validation"
+        severity: "error"
+
+# Data Completeness Requirements by Field
+completeness_requirements:
+  
+  # Critical Fields (100% completeness required)
+  critical_fields:
+    primary_identifiers:
+      - field: "sa2_code"
+        threshold: 100.0
+        business_justification: "Primary key for all analyses"
+        
+      - field: "sa2_name"
+        threshold: 100.0
+        business_justification: "Essential for reporting and identification"
+        
+    geographic_essentials:
+      - field: "geographic_hierarchy.sa3_code"
+        threshold: 100.0
+        business_justification: "Required for aggregation and comparison"
+        
+      - field: "geographic_hierarchy.state_code"
+        threshold: 100.0
+        business_justification: "Essential for state-level analysis"
+        
+      - field: "boundary_data.area_sq_km"
+        threshold: 100.0
+        business_justification: "Required for density calculations"
+  
+  # High Priority Fields (≥95% completeness required)
+  high_priority_fields:
+    population_data:
+      - field: "total_population"
+        threshold: 95.0
+        business_justification: "Core denominator for all rate calculations"
+        
+      - field: "population_density_per_sq_km"
+        threshold: 95.0
+        business_justification: "Key urbanisation indicator"
+        
+    socioeconomic_core:
+      - field: "seifa_scores.IRSD"
+        threshold: 95.0
+        business_justification: "Primary disadvantage measure"
+        
+      - field: "seifa_deciles.IRSD"
+        threshold: 95.0
+        business_justification: "Essential for equity analysis"
+        
+    health_outcomes_core:
+      - field: "mortality_indicators.all_cause_mortality_rate"
+        threshold: 95.0
+        business_justification: "Primary health outcome indicator"
+  
+  # Medium Priority Fields (≥90% completeness required)
+  medium_priority_fields:
+    demographic_detail:
+      - field: "median_age"
+        threshold: 90.0
+        business_justification: "Important population characteristic"
+        
+      - field: "demographic_profile.age_groups"
+        threshold: 90.0
+        business_justification: "Required for age-specific analysis"
+        
+    health_services:
+      - field: "gp_services_per_1000"
+        threshold: 90.0
+        business_justification: "Key access indicator"
+        
+      - field: "bulk_billing_rate"
+        threshold: 90.0
+        business_justification: "Important affordability measure"
+        
+    environmental:
+      - field: "air_quality_index"
+        threshold: 90.0
+        business_justification: "Environmental health determinant"
+  
+  # Low Priority Fields (≥80% completeness required)
+  low_priority_fields:
+    risk_factors:
+      - field: "smoking_prevalence"
+        threshold: 80.0
+        business_justification: "Modelled data with inherent uncertainty"
+        
+      - field: "obesity_prevalence"
+        threshold: 80.0
+        business_justification: "Survey-based estimates"
+        
+    specialised_health:
+      - field: "mental_health_indicators"
+        threshold: 80.0
+        business_justification: "Limited data availability in some areas"
+
+# Data Accuracy Requirements
+accuracy_requirements:
+  
+  # Numeric Data Accuracy
+  numeric_accuracy:
+    population_counts:
+      tolerance_percent: 2.0
+      validation_method: "cross_validation_with_abs"
+      benchmark_source: "abs_erp"
+      
+    geographic_measurements:
+      coordinate_accuracy_metres: 100.0
+      area_calculation_tolerance_percent: 1.0
+      distance_calculation_tolerance_metres: 50.0
+      
+    health_rates:
+      age_standardisation_tolerance_percent: 5.0
+      confidence_interval_coverage: 95.0
+      outlier_detection_threshold: 3.0
+      
+    financial_data:
+      currency_precision: 2  # decimal places
+      inflation_adjustment_required: true
+      reference_year: 2023
+  
+  # Categorical Data Accuracy
+  categorical_accuracy:
+    classification_systems:
+      icd_10_am_compliance: 100.0
+      abs_classification_compliance: 100.0
+      snomed_ct_compliance: 95.0
+      
+    geographic_classifications:
+      remoteness_area_accuracy: 100.0
+      urbanisation_classification_accuracy: 99.0
+      
+  # Temporal Data Accuracy
+  temporal_accuracy:
+    date_format_compliance: 100.0
+    reference_period_alignment: 100.0
+    temporal_consistency_validation: 95.0
+
+# Statistical Validation Thresholds
+statistical_validation:
+  
+  # Outlier Detection
+  outlier_detection:
+    methods:
+      - method: "iqr"
+        threshold: 3.0
+        action: "flag_and_investigate"
+        applicable_fields: ["population_density", "mortality_rates", "income_measures"]
+        
+      - method: "zscore"
+        threshold: 3.5
+        action: "flag_and_investigate"
+        applicable_fields: ["health_service_rates", "prevalence_rates"]
+        
+      - method: "modified_zscore"
+        threshold: 3.5
+        action: "flag_and_investigate"
+        applicable_fields: ["survey_estimates", "modelled_indicators"]
+  
+  # Distribution Validation
+  distribution_validation:
+    population_data:
+      expected_distribution: "log_normal"
+      test_method: "kolmogorov_smirnov"
+      p_value_threshold: 0.05
+      
+    mortality_rates:
+      expected_distribution: "poisson"
+      test_method: "goodness_of_fit"
+      p_value_threshold: 0.01
+      
+    socioeconomic_indices:
+      expected_distribution: "normal"
+      test_method: "shapiro_wilk"
+      p_value_threshold: 0.05
+  
+  # Correlation Validation
+  correlation_validation:
+    expected_correlations:
+      - field1: "seifa_scores.IRSD"
+        field2: "mortality_indicators.all_cause_mortality_rate"
+        expected_correlation: -0.3  # Negative correlation expected
+        tolerance: 0.1
+        
+      - field1: "population_density_per_sq_km"
+        field2: "gp_services_per_1000"
+        expected_correlation: 0.2  # Positive correlation expected
+        tolerance: 0.15
+        
+      - field1: "smoking_prevalence"
+        field2: "seifa_deciles.IRSD"
+        expected_correlation: -0.25  # Higher disadvantage, higher smoking
+        tolerance: 0.1
+  
+  # Trend Validation
+  trend_validation:
+    temporal_consistency:
+      maximum_annual_change_percent: 20.0
+      trend_reversal_flag_threshold: 3  # Flag if trend reverses 3+ times
+      
+    spatial_consistency:
+      neighbouring_area_correlation_threshold: 0.3
+      spatial_autocorrelation_minimum: 0.1
+
+# Geographic Validation Requirements
+geographic_validation:
+  
+  # Coordinate System Requirements
+  coordinate_systems:
+    primary_crs: "EPSG:4326"  # WGS84
+    supported_projections:
+      - "EPSG:3857"  # Web Mercator
+      - "EPSG:7844"  # GDA2020
+      - "EPSG:4283"  # GDA94
+      
+    transformation_accuracy_metres: 1.0
+    coordinate_precision_decimal_places: 6
+  
+  # Boundary Validation
+  boundary_validation:
+    topology_requirements:
+      geometry_validity: 100.0
+      no_self_intersections: 100.0
+      proper_ring_closure: 100.0
+      
+    coverage_requirements:
+      complete_national_coverage: 100.0
+      no_gaps_between_boundaries: 100.0
+      no_overlaps_between_boundaries: 100.0
+      
+    spatial_relationships:
+      containment_validation: true
+      adjacency_validation: true
+      hierarchy_validation: true
+  
+  # Area and Distance Validation
+  measurement_validation:
+    area_calculations:
+      method: "spherical"
+      precision_decimal_places: 6
+      minimum_area_square_metres: 1.0
+      maximum_area_square_metres: 2500000000.0  # ~2.5M sq km for states
+      
+    distance_calculations:
+      method: "great_circle"
+      precision_metres: 1.0
+      maximum_distance_km: 4000.0  # Australia max distance
+      
+    perimeter_calculations:
+      precision_metres: 1.0
+      coastline_generalisation_tolerance: 100.0
+
+# Quality Scoring Methodology
+quality_scoring:
+  
+  # Overall Quality Score Calculation
+  overall_score:
+    weighting:
+      completeness_score: 0.30
+      accuracy_score: 0.25
+      consistency_score: 0.20
+      validity_score: 0.15
+      timeliness_score: 0.10
+      
+    grade_boundaries:
+      A: 95.0  # Excellent
+      B: 90.0  # Very Good
+      C: 85.0  # Good
+      D: 80.0  # Satisfactory
+      F: 0.0   # Unsatisfactory
+  
+  # Completeness Score
+  completeness_scoring:
+    critical_fields_weight: 0.50
+    high_priority_fields_weight: 0.30
+    medium_priority_fields_weight: 0.15
+    low_priority_fields_weight: 0.05
+    
+    penalty_for_missing_critical: 10.0  # points per missing critical field
+    penalty_for_missing_high: 5.0      # points per missing high priority field
+  
+  # Accuracy Score
+  accuracy_scoring:
+    validation_rules_weight: 0.60
+    cross_validation_weight: 0.25
+    expert_review_weight: 0.15
+    
+    error_severity_weights:
+      fatal: 10.0    # Major penalty
+      error: 5.0     # Moderate penalty
+      warning: 1.0   # Minor penalty
+      info: 0.1      # Minimal penalty
+
+# Compliance Monitoring and Reporting
+compliance_monitoring:
+  
+  # Automated Quality Checks
+  automated_checks:
+    frequency: "daily"
+    check_types:
+      - "schema_compliance"
+      - "data_type_validation"
+      - "range_validation"
+      - "format_validation"
+      - "referential_integrity"
+      
+    alert_thresholds:
+      critical_failure_threshold: 1   # Alert immediately
+      error_accumulation_threshold: 5 # Alert after 5 errors
+      warning_threshold: 20          # Daily summary
+  
+  # Manual Quality Reviews
+  manual_reviews:
+    frequency: "monthly"
+    review_scope:
+      - "statistical_plausibility"
+      - "domain_expert_validation"
+      - "comparative_analysis"
+      - "temporal_trend_analysis"
+      
+    reviewer_qualifications:
+      - "epidemiologist"
+      - "biostatistician" 
+      - "health_data_analyst"
+      - "geographic_information_specialist"
+  
+  # Quality Reporting
+  quality_reporting:
+    report_frequency: "monthly"
+    report_recipients:
+      - "data_governance_committee"
+      - "technical_team_leads"
+      - "business_stakeholders"
+      - "compliance_officers"
+      
+    report_sections:
+      - "executive_summary"
+      - "quality_score_trends"
+      - "compliance_status"
+      - "identified_issues"
+      - "improvement_recommendations"
+      - "risk_assessment"
+  
+  # Continuous Improvement
+  improvement_process:
+    review_cycle: "quarterly"
+    improvement_targets:
+      overall_quality_score_annual_improvement: 2.0  # 2 percentage points
+      critical_error_reduction_target: 50.0         # 50% reduction annually
+      
+    feedback_integration:
+      user_feedback_weighting: 0.30
+      technical_assessment_weighting: 0.40
+      business_impact_weighting: 0.30

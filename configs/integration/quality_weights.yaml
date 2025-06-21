@@ -1,0 +1,404 @@
+# Quality Weighting Schemes Configuration
+# Defines data quality assessment and weighting strategies for integration
+
+# Overall Quality Assessment Framework
+quality_framework:
+  # Quality dimensions and their relative importance
+  quality_dimensions:
+    completeness: 0.30      # Data completeness and coverage
+    accuracy: 0.25          # Data accuracy and validation
+    timeliness: 0.20        # Data currency and relevance
+    consistency: 0.15       # Internal and cross-source consistency  
+    reliability: 0.10       # Source reliability and methodology
+
+  # Quality levels and their numeric scores
+  quality_levels:
+    excellent: 95
+    very_good: 85
+    good: 75
+    adequate: 65
+    poor: 45
+    unacceptable: 25
+
+# Source-Specific Quality Weights
+source_quality_weights:
+  # Australian Bureau of Statistics
+  abs:
+    base_reliability: 0.96
+    data_types:
+      census: 0.98           # Highest quality - comprehensive coverage
+      demographic: 0.95      # High quality population data
+      geographic: 0.97       # Authoritative boundary data
+      economic: 0.90         # Good quality economic indicators
+    
+    quality_factors:
+      completeness: 0.95     # Very comprehensive coverage
+      accuracy: 0.97         # Rigorous collection methods
+      timeliness: 0.85       # Some lag in publication
+      consistency: 0.95      # Excellent standardisation
+      reliability: 0.96      # Authoritative source
+  
+  # Australian Institute of Health and Welfare  
+  aihw:
+    base_reliability: 0.94
+    data_types:
+      health_indicators: 0.94
+      mortality: 0.96        # High quality mortality data
+      morbidity: 0.90        # Good disease surveillance
+      healthcare_utilisation: 0.88
+      
+    quality_factors:
+      completeness: 0.90
+      accuracy: 0.94
+      timeliness: 0.88
+      consistency: 0.92
+      reliability: 0.94
+  
+  # Census Data
+  census:
+    base_reliability: 0.98
+    data_types:
+      population_counts: 0.98
+      demographics: 0.97
+      housing: 0.95
+      socioeconomic: 0.93
+      
+    quality_factors:
+      completeness: 0.96     # Excellent coverage
+      accuracy: 0.97         # Rigorous enumeration
+      timeliness: 0.90       # 5-year cycle
+      consistency: 0.98      # Standardised collection
+      reliability: 0.98      # Gold standard
+  
+  # SEIFA (Socio-Economic Indexes)
+  seifa:
+    base_reliability: 0.98
+    data_types:
+      disadvantage_index: 0.98
+      advantage_index: 0.98
+      economic_resources: 0.97
+      education_occupation: 0.97
+      
+    quality_factors:
+      completeness: 0.98
+      accuracy: 0.97
+      timeliness: 0.90       # Based on census cycle
+      consistency: 0.98
+      reliability: 0.98
+  
+  # Health Indicators (various sources)
+  health_indicators:
+    base_reliability: 0.90
+    data_types:
+      life_expectancy: 0.95
+      mortality_rates: 0.93
+      disease_prevalence: 0.85
+      risk_factors: 0.80
+      healthcare_access: 0.85
+      
+    quality_factors:
+      completeness: 0.85
+      accuracy: 0.88
+      timeliness: 0.82
+      consistency: 0.80
+      reliability: 0.90
+  
+  # Medicare/PBS Data
+  medicare_pbs:
+    base_reliability: 0.85
+    data_types:
+      gp_services: 0.90
+      specialist_services: 0.88
+      bulk_billing: 0.92
+      prescriptions: 0.85
+      
+    quality_factors:
+      completeness: 0.88     # Good coverage but not universal
+      accuracy: 0.90         # Accurate billing data
+      timeliness: 0.95       # Near real-time
+      consistency: 0.85      # Some coding variations
+      reliability: 0.85      # Administrative data limitations
+  
+  # Geographic Boundaries
+  geographic_boundaries:
+    base_reliability: 0.99
+    data_types:
+      statistical_areas: 0.99
+      administrative_boundaries: 0.98
+      coordinates: 0.99
+      area_calculations: 0.97
+      
+    quality_factors:
+      completeness: 0.99
+      accuracy: 0.98
+      timeliness: 0.95
+      consistency: 0.99
+      reliability: 0.99
+  
+  # Environmental Data
+  environmental:
+    base_reliability: 0.80
+    data_types:
+      air_quality: 0.85
+      green_space: 0.75
+      noise_pollution: 0.70
+      water_quality: 0.85
+      
+    quality_factors:
+      completeness: 0.70     # Patchy coverage
+      accuracy: 0.85         # Good measurement quality
+      timeliness: 0.85       # Regular monitoring
+      consistency: 0.75      # Variable methods
+      reliability: 0.80      # Emerging data source
+
+# Field-Specific Quality Weights
+field_quality_weights:
+  # Population and Demographics
+  total_population:
+    preferred_sources: ["census", "abs"]
+    quality_requirements:
+      minimum_completeness: 0.95
+      minimum_accuracy: 0.90
+    source_weights:
+      census: 1.0
+      abs: 0.95
+      health_indicators: 0.80
+      
+  demographic_profile:
+    preferred_sources: ["census", "abs"]
+    quality_requirements:
+      minimum_completeness: 0.90
+      minimum_accuracy: 0.85
+    source_weights:
+      census: 1.0
+      abs: 0.95
+      
+  # Health Indicators
+  life_expectancy:
+    preferred_sources: ["aihw", "health_indicators", "abs"]
+    quality_requirements:
+      minimum_completeness: 0.80
+      minimum_accuracy: 0.85
+    source_weights:
+      aihw: 1.0
+      health_indicators: 0.90
+      abs: 0.95
+      
+  mortality_rates:
+    preferred_sources: ["aihw", "health_indicators", "abs"]
+    quality_requirements:
+      minimum_completeness: 0.85
+      minimum_accuracy: 0.90
+    source_weights:
+      aihw: 1.0
+      health_indicators: 0.85
+      abs: 0.90
+      
+  disease_prevalence:
+    preferred_sources: ["health_indicators", "aihw"]
+    quality_requirements:
+      minimum_completeness: 0.75
+      minimum_accuracy: 0.80
+    source_weights:
+      health_indicators: 1.0
+      aihw: 0.95
+      medicare_pbs: 0.70
+      
+  # Healthcare Services
+  gp_services_per_1000:
+    preferred_sources: ["medicare_pbs", "health_indicators"]
+    quality_requirements:
+      minimum_completeness: 0.80
+      minimum_accuracy: 0.85
+    source_weights:
+      medicare_pbs: 1.0
+      health_indicators: 0.80
+      
+  bulk_billing_rate:
+    preferred_sources: ["medicare_pbs"]
+    quality_requirements:
+      minimum_completeness: 0.85
+      minimum_accuracy: 0.90
+    source_weights:
+      medicare_pbs: 1.0
+      health_indicators: 0.70
+      
+  # Socioeconomic Indicators
+  seifa_scores:
+    preferred_sources: ["seifa", "abs"]
+    quality_requirements:
+      minimum_completeness: 0.95
+      minimum_accuracy: 0.95
+    source_weights:
+      seifa: 1.0
+      abs: 0.98
+      
+  # Geographic Data
+  boundary_data:
+    preferred_sources: ["geographic_boundaries", "abs"]
+    quality_requirements:
+      minimum_completeness: 0.95
+      minimum_accuracy: 0.95
+    source_weights:
+      geographic_boundaries: 1.0
+      abs: 0.98
+      
+  geographic_hierarchy:
+    preferred_sources: ["abs", "geographic_boundaries"]
+    quality_requirements:
+      minimum_completeness: 0.98
+      minimum_accuracy: 0.98
+    source_weights:
+      abs: 1.0
+      geographic_boundaries: 0.98
+
+# Temporal Quality Adjustments
+temporal_quality:
+  # Data age impact on quality scores
+  age_decay_functions:
+    # Census and SEIFA data (5-year cycle)
+    census_cycle:
+      half_life_years: 2.5
+      minimum_quality: 0.8
+      applicable_sources: ["census", "seifa"]
+      
+    # Health indicators (annual updates)
+    annual_health:
+      half_life_years: 1.0
+      minimum_quality: 0.6
+      applicable_sources: ["health_indicators", "aihw"]
+      
+    # Administrative data (quarterly updates)
+    administrative:
+      half_life_years: 0.5
+      minimum_quality: 0.7
+      applicable_sources: ["medicare_pbs"]
+      
+    # Geographic boundaries (stable)
+    geographic:
+      half_life_years: 5.0
+      minimum_quality: 0.9
+      applicable_sources: ["geographic_boundaries"]
+  
+  # Reference dates for quality assessment
+  reference_dates:
+    census: "2021-08-10"      # Census night
+    seifa: "2021-12-31"       # SEIFA release reference
+    health_indicators: "2021-12-31"
+    medicare_pbs: "2021-12-31"
+    geographic_boundaries: "2021-07-01"
+
+# Completeness Assessment
+completeness_assessment:
+  # Expected data availability by source type
+  expected_coverage:
+    census: 0.98              # Near complete coverage
+    seifa: 0.99               # All areas with population
+    health_indicators: 0.85   # Good but not complete
+    medicare_pbs: 0.80        # Administrative coverage
+    geographic_boundaries: 0.99
+    environmental: 0.60       # Limited coverage
+  
+  # Critical fields that must be present
+  critical_fields:
+    - sa2_code
+    - sa2_name
+    - total_population
+    - geographic_hierarchy
+    - boundary_data
+    
+  # Important fields (high impact on quality if missing)
+  important_fields:
+    - seifa_scores
+    - life_expectancy
+    - gp_services_per_1000
+    - bulk_billing_rate
+    
+  # Completeness scoring weights
+  field_importance_weights:
+    critical: 0.50
+    important: 0.30
+    standard: 0.20
+
+# Accuracy Assessment
+accuracy_assessment:
+  # Validation rules for accuracy scoring
+  validation_rules:
+    # Range validation
+    percentage_fields:
+      valid_range: [0, 100]
+      penalty_factor: 0.8    # 20% penalty for out of range
+      
+    population_fields:
+      valid_range: [0, 50000] # Reasonable for SA2
+      penalty_factor: 0.9
+      
+    rate_fields:
+      valid_range: [0, 1000]  # Per 1000 population
+      penalty_factor: 0.8
+      
+  # Cross-validation checks
+  cross_validation:
+    population_consistency:
+      fields: ["total_population", "male_population", "female_population"]
+      tolerance: 0.01         # 1% tolerance
+      weight: 0.3
+      
+    hierarchy_consistency:
+      fields: ["sa2_code", "sa3_code", "sa4_code"]
+      strict: true
+      weight: 0.4
+      
+    seifa_consistency:
+      fields: ["seifa_scores", "seifa_deciles"] 
+      correlation_threshold: 0.8
+      weight: 0.3
+
+# Integration Quality Scoring
+integration_quality:
+  # Overall quality calculation method
+  calculation_method: "weighted_average"
+  
+  # Component weights for final quality score
+  component_weights:
+    source_quality: 0.40
+    completeness: 0.25
+    accuracy: 0.20
+    consistency: 0.15
+    
+  # Quality grade thresholds
+  quality_grades:
+    A: 90  # Excellent
+    B: 80  # Very Good  
+    C: 70  # Good
+    D: 60  # Adequate
+    F: 0   # Poor
+    
+  # Fitness for purpose assessment
+  fitness_thresholds:
+    excellent: 90
+    good: 75
+    adequate: 60
+    poor: 45
+    unfit: 0
+
+# Quality Monitoring and Alerting
+quality_monitoring:
+  # Thresholds for quality alerts
+  alert_thresholds:
+    critical_quality_drop: 0.20  # 20% drop in quality
+    missing_critical_source: true
+    validation_failure_rate: 0.10  # 10% validation failures
+    
+  # Quality trend monitoring
+  trend_monitoring:
+    enabled: true
+    window_size: 5           # Monitor last 5 processing runs
+    significant_change: 0.10  # 10% change is significant
+    
+  # Reporting configuration
+  quality_reporting:
+    generate_reports: true
+    report_frequency: "monthly"
+    include_trends: true
+    include_recommendations: true

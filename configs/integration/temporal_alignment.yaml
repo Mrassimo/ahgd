@@ -1,0 +1,408 @@
+# Temporal Alignment Configuration
+# Rules and parameters for aligning data from different time periods
+
+# Global Temporal Configuration
+temporal_settings:
+  # Primary reference date for data alignment (Census 2021)
+  reference_date: "2021-08-10"
+  
+  # Default alignment tolerance (days)
+  default_tolerance_days: 365
+  
+  # Extended tolerance for stable indicators (days)
+  extended_tolerance_days: 1095  # 3 years
+  
+  # Strict tolerance for volatile indicators (days)
+  strict_tolerance_days: 90
+  
+  # Default alignment strategy
+  default_alignment_strategy: "nearest_available"
+  
+  # Enable temporal quality adjustments
+  temporal_quality_enabled: true
+
+# Data Source Temporal Characteristics
+source_temporal_profiles:
+  # Australian Bureau of Statistics - Census
+  census:
+    collection_frequency: "5_years"
+    reference_date: "2021-08-10"
+    data_currency_period: 1825    # 5 years
+    temporal_stability: "high"
+    alignment_priority: 1
+    
+  # SEIFA - Socio-Economic Indexes
+  seifa:
+    collection_frequency: "5_years"
+    reference_date: "2021-12-31"  # Based on Census 2021
+    data_currency_period: 1825
+    temporal_stability: "high"
+    alignment_priority: 2
+    
+  # Health Indicators
+  health_indicators:
+    collection_frequency: "annual"
+    reference_date: "2021-12-31"
+    data_currency_period: 365
+    temporal_stability: "medium"
+    alignment_priority: 3
+    
+  # AIHW Data
+  aihw:
+    collection_frequency: "annual"
+    reference_date: "2021-12-31"
+    data_currency_period: 365
+    temporal_stability: "medium"
+    alignment_priority: 3
+    
+  # Medicare/PBS Data
+  medicare_pbs:
+    collection_frequency: "quarterly"
+    reference_date: "2021-12-31"
+    data_currency_period: 90
+    temporal_stability: "low"
+    alignment_priority: 4
+    
+  # Geographic Boundaries
+  geographic_boundaries:
+    collection_frequency: "irregular"
+    reference_date: "2021-07-01"
+    data_currency_period: 1825    # Stable boundaries
+    temporal_stability: "very_high"
+    alignment_priority: 1
+    
+  # Environmental Data
+  environmental:
+    collection_frequency: "monthly"
+    reference_date: "2021-12-31"
+    data_currency_period: 30
+    temporal_stability: "low"
+    alignment_priority: 5
+
+# Field-Specific Alignment Strategies
+field_alignment_strategies:
+  # Population and Demographics (stable, use exact match with census)
+  total_population:
+    strategy: "exact_match"
+    tolerance_days: 30
+    fallback_strategy: "interpolation"
+    preferred_sources: ["census"]
+    
+  demographic_profile:
+    strategy: "exact_match"
+    tolerance_days: 30
+    fallback_strategy: "forward_fill"
+    preferred_sources: ["census"]
+    
+  male_population:
+    strategy: "exact_match"
+    tolerance_days: 30
+    fallback_strategy: "interpolation"
+    preferred_sources: ["census"]
+    
+  female_population:
+    strategy: "exact_match"
+    tolerance_days: 30
+    fallback_strategy: "interpolation"
+    preferred_sources: ["census"]
+    
+  # SEIFA Scores (stable, based on census)
+  seifa_scores:
+    strategy: "forward_fill"
+    tolerance_days: 365
+    fallback_strategy: "nearest_available"
+    preferred_sources: ["seifa"]
+    
+  seifa_deciles:
+    strategy: "forward_fill"
+    tolerance_days: 365
+    fallback_strategy: "nearest_available"
+    preferred_sources: ["seifa"]
+    
+  # Health Outcomes (semi-stable, interpolation appropriate)
+  life_expectancy:
+    strategy: "interpolation"
+    tolerance_days: 730
+    fallback_strategy: "nearest_available"
+    seasonal_adjustment: false
+    
+  mortality_rates:
+    strategy: "seasonal_adjustment"
+    tolerance_days: 365
+    fallback_strategy: "interpolation"
+    seasonal_pattern: "mortality_winter_peak"
+    
+  disease_prevalence:
+    strategy: "interpolation"
+    tolerance_days: 365
+    fallback_strategy: "forward_fill"
+    
+  # Healthcare Services (dynamic, use recent data)
+  gp_services_per_1000:
+    strategy: "nearest_available"
+    tolerance_days: 180
+    fallback_strategy: "interpolation"
+    preferred_sources: ["medicare_pbs"]
+    
+  specialist_services_per_1000:
+    strategy: "nearest_available"
+    tolerance_days: 180
+    fallback_strategy: "interpolation"
+    preferred_sources: ["medicare_pbs"]
+    
+  bulk_billing_rate:
+    strategy: "nearest_available"
+    tolerance_days: 90
+    fallback_strategy: "forward_fill"
+    preferred_sources: ["medicare_pbs"]
+    
+  # Risk Factors (semi-stable, gradual change)
+  smoking_prevalence:
+    strategy: "interpolation"
+    tolerance_days: 730
+    fallback_strategy: "nearest_available"
+    
+  obesity_prevalence:
+    strategy: "interpolation"
+    tolerance_days: 730
+    fallback_strategy: "nearest_available"
+    
+  # Geographic Data (very stable)
+  boundary_data:
+    strategy: "forward_fill"
+    tolerance_days: 1825
+    fallback_strategy: "nearest_available"
+    
+  geographic_hierarchy:
+    strategy: "exact_match"
+    tolerance_days: 1825
+    fallback_strategy: "forward_fill"
+    
+  # Environmental (seasonal, variable)
+  air_quality_index:
+    strategy: "seasonal_adjustment"
+    tolerance_days: 90
+    fallback_strategy: "nearest_available"
+    seasonal_pattern: "air_quality_seasonal"
+
+# Seasonal Adjustment Patterns
+seasonal_patterns:
+  # Mortality patterns (higher in winter)
+  mortality_winter_peak:
+    type: "monthly_multipliers"
+    pattern:
+      january: 1.15
+      february: 1.12
+      march: 1.08
+      april: 1.02
+      may: 0.95
+      june: 0.90
+      july: 0.88
+      august: 0.90
+      september: 0.95
+      october: 1.00
+      november: 1.05
+      december: 1.10
+    confidence: 0.85
+    
+  # Respiratory conditions (winter peak)
+  respiratory_winter_peak:
+    type: "monthly_multipliers"
+    pattern:
+      january: 1.30
+      february: 1.25
+      march: 1.15
+      april: 1.00
+      may: 0.85
+      june: 0.75
+      july: 0.70
+      august: 0.75
+      september: 0.85
+      october: 0.95
+      november: 1.10
+      december: 1.25
+    confidence: 0.90
+    
+  # Air quality (bushfire season impact)
+  air_quality_seasonal:
+    type: "monthly_multipliers"
+    pattern:
+      january: 1.20    # Bushfire season
+      february: 1.15   # Bushfire season
+      march: 1.05
+      april: 0.95
+      may: 0.90
+      june: 0.85      # Winter - better air quality
+      july: 0.85
+      august: 0.90
+      september: 0.95
+      october: 1.00
+      november: 1.10
+      december: 1.15
+    confidence: 0.75
+    
+  # Mental health (seasonal affective patterns)
+  mental_health_seasonal:
+    type: "monthly_multipliers"
+    pattern:
+      january: 0.95
+      february: 0.95
+      march: 1.00
+      april: 1.05
+      may: 1.10      # Autumn increase
+      june: 1.15     # Winter peak
+      july: 1.15     # Winter peak
+      august: 1.10
+      september: 1.00
+      october: 0.95
+      november: 0.95
+      december: 1.00  # Holiday stress
+    confidence: 0.70
+
+# Interpolation Configuration
+interpolation_settings:
+  # Linear interpolation parameters
+  linear_interpolation:
+    max_gap_days: 730        # Maximum gap for interpolation
+    confidence_decay: 0.1    # Confidence reduction per year
+    min_confidence: 0.3      # Minimum confidence for interpolation
+    
+  # Spatial interpolation (for missing areas)
+  spatial_interpolation:
+    enabled: true
+    method: "inverse_distance_weighting"
+    max_distance_km: 100
+    min_neighbours: 3
+    
+  # Demographic similarity interpolation
+  demographic_interpolation:
+    enabled: true
+    similarity_threshold: 0.8
+    factors: ["population_size", "age_distribution", "seifa_score"]
+    
+# Temporal Quality Adjustment
+quality_adjustments:
+  # Data age impact on quality scores
+  age_quality_decay:
+    # Exponential decay function: quality = base_quality * exp(-age_years / half_life)
+    census_data:
+      half_life_years: 2.5
+      minimum_quality: 0.8
+      
+    annual_health_data:
+      half_life_years: 1.0
+      minimum_quality: 0.6
+      
+    quarterly_admin_data:
+      half_life_years: 0.5
+      minimum_quality: 0.7
+      
+    monthly_environmental:
+      half_life_years: 0.25
+      minimum_quality: 0.5
+  
+  # Interpolation confidence adjustments
+  interpolation_confidence:
+    linear_interpolation: 0.8
+    seasonal_adjustment: 0.9
+    forward_fill: 0.7
+    backward_fill: 0.6
+    spatial_interpolation: 0.6
+
+# Data Collection Periods
+collection_periods:
+  # Standard reporting periods
+  census_2021:
+    start_date: "2021-08-10"
+    end_date: "2021-08-10"
+    data_reference_period: "2021"
+    
+  financial_year_2021:
+    start_date: "2020-07-01"
+    end_date: "2021-06-30"
+    data_reference_period: "2020-21"
+    
+  calendar_year_2021:
+    start_date: "2021-01-01"
+    end_date: "2021-12-31"
+    data_reference_period: "2021"
+    
+  # Health data collection periods
+  health_survey_2021:
+    start_date: "2021-01-01"
+    end_date: "2021-12-31"
+    data_reference_period: "2021"
+    
+  medicare_quarterly_2021_q4:
+    start_date: "2021-10-01"
+    end_date: "2021-12-31"
+    data_reference_period: "2021-Q4"
+
+# Temporal Validation Rules
+validation_rules:
+  # Maximum allowed temporal gaps
+  max_temporal_gaps:
+    critical_indicators: 730    # 2 years
+    important_indicators: 1095  # 3 years
+    standard_indicators: 1825   # 5 years
+    
+  # Minimum data currency requirements
+  currency_requirements:
+    population_data: 1825       # Census cycle
+    health_outcomes: 1095       # 3 years max
+    service_utilisation: 730    # 2 years max
+    administrative_data: 365    # 1 year max
+    
+  # Temporal consistency checks
+  consistency_checks:
+    # Check for unrealistic temporal changes
+    max_annual_change_rates:
+      population_growth: 0.05   # 5% annual change max
+      mortality_rate: 0.20      # 20% change max
+      service_rates: 0.30       # 30% change max
+      
+    # Flag significant temporal discontinuities
+    discontinuity_thresholds:
+      population_jump: 0.10     # 10% sudden change
+      rate_jump: 0.25           # 25% sudden change
+
+# Processing Configuration
+processing_settings:
+  # Batch processing for temporal alignment
+  batch_processing:
+    enabled: true
+    batch_size: 1000
+    parallel_processing: true
+    
+  # Caching for performance
+  temporal_caching:
+    enabled: true
+    cache_duration_hours: 24
+    cache_size_mb: 512
+    
+  # Progress monitoring
+  progress_monitoring:
+    enabled: true
+    report_interval: 100        # Report every 100 records
+    
+# Output Configuration
+output_settings:
+  # Include temporal metadata in output
+  include_temporal_metadata: true
+  
+  # Temporal metadata fields
+  temporal_metadata_fields:
+    - "data_reference_date"
+    - "alignment_method"
+    - "temporal_quality_score"
+    - "data_age_days"
+    - "interpolation_applied"
+    - "seasonal_adjustment_applied"
+    
+  # Temporal quality flags
+  quality_flags:
+    - "recent_data"           # Data within 1 year
+    - "interpolated_data"     # Interpolation applied
+    - "seasonal_adjusted"     # Seasonal adjustment applied
+    - "aged_data"            # Data older than 3 years
+    - "temporal_gap_filled"   # Gap filling applied

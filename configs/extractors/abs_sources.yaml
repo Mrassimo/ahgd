@@ -1,0 +1,357 @@
+# ABS Data Source Configurations
+# Configuration for Australian Bureau of Statistics data sources
+
+abs:
+  base_url: "https://www.abs.gov.au"
+  api_version: "2021"
+  timeout_seconds: 120  # Longer timeout for large geographic files
+  retry_attempts: 3
+  batch_size: 500  # Smaller batches for geographic data
+  coordinate_system: "GDA2020"  # Australian Geodetic Datum 2020
+  
+  # Geographic boundaries (ASGS - Australian Statistical Geography Standard)
+  geographic:
+    asgs_edition: "3"  # ASGS Edition 3 (2021)
+    base_url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3"
+    
+    # SA2 boundaries
+    sa2:
+      dataset_id: "sa2-2021"
+      file_name: "1270055001_sa2_2021_aust_shape.zip"
+      download_url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/digital-boundary-files"
+      format: "shapefile"
+      crs: "EPSG:7844"  # GDA2020 / MGA
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE21", "SA2_MAIN21", "SA2_CODE_2021"]
+        sa2_name: ["SA2_NAME21", "SA2_NAME"]
+        sa3_code: ["SA3_CODE21", "SA3_CODE"]
+        sa3_name: ["SA3_NAME21", "SA3_NAME"]
+        sa4_code: ["SA4_CODE21", "SA4_CODE"]
+        sa4_name: ["SA4_NAME21", "SA4_NAME"]
+        state_code: ["STE_CODE21", "STATE_CODE"]
+        state_name: ["STE_NAME21", "STATE_NAME"]
+        area_sq_km: ["AREASQKM21", "AREA_SQKM"]
+        geometry: ["geometry", "GEOMETRY"]
+      
+      validation:
+        required_fields: ["sa2_code", "sa2_name", "geometry"]
+        sa2_code_format: "^\\d{9}$"
+        area_bounds: [0.001, 100000]  # sq km
+        geometry_type: ["Polygon", "MultiPolygon"]
+      
+      # File processing options
+      processing:
+        simplify_tolerance: 0.0001  # Degrees for geometry simplification
+        validate_geometry: true
+        repair_invalid_geometry: true
+        calculate_centroids: true
+    
+    # SA3 boundaries
+    sa3:
+      dataset_id: "sa3-2021"
+      file_name: "1270055001_sa3_2021_aust_shape.zip"
+      format: "shapefile"
+      
+      field_mappings:
+        sa3_code: ["SA3_CODE21", "SA3_CODE"]
+        sa3_name: ["SA3_NAME21", "SA3_NAME"]
+        sa4_code: ["SA4_CODE21", "SA4_CODE"]
+        sa4_name: ["SA4_NAME21", "SA4_NAME"]
+        state_code: ["STE_CODE21", "STATE_CODE"]
+        state_name: ["STE_NAME21", "STATE_NAME"]
+        area_sq_km: ["AREASQKM21", "AREA_SQKM"]
+      
+      validation:
+        required_fields: ["sa3_code", "sa3_name"]
+        sa3_code_format: "^\\d{5}$"
+    
+    # SA4 boundaries  
+    sa4:
+      dataset_id: "sa4-2021"
+      file_name: "1270055001_sa4_2021_aust_shape.zip"
+      format: "shapefile"
+      
+      field_mappings:
+        sa4_code: ["SA4_CODE21", "SA4_CODE"]
+        sa4_name: ["SA4_NAME21", "SA4_NAME"]
+        state_code: ["STE_CODE21", "STATE_CODE"]
+        state_name: ["STE_NAME21", "STATE_NAME"]
+        area_sq_km: ["AREASQKM21", "AREA_SQKM"]
+      
+      validation:
+        required_fields: ["sa4_code", "sa4_name"]
+        sa4_code_format: "^\\d{3}$"
+    
+    # State/Territory boundaries
+    state:
+      dataset_id: "ste-2021"
+      file_name: "1270055001_ste_2021_aust_shape.zip"
+      format: "shapefile"
+      
+      field_mappings:
+        state_code: ["STE_CODE21", "STATE_CODE"]
+        state_name: ["STE_NAME21", "STATE_NAME"]
+        area_sq_km: ["AREASQKM21", "AREA_SQKM"]
+      
+      validation:
+        required_fields: ["state_code", "state_name"]
+        state_code_format: "^[1-9]$"
+
+  # Census data (2021 Census)
+  census:
+    base_url: "https://www.abs.gov.au/census/find-census-data/datapacks"
+    census_year: 2021
+    reference_date: "2021-08-10"
+    
+    # General Community Profile (G01) - Basic demographics
+    general_profile:
+      table_id: "G01"
+      file_name: "2021Census_G01_AUS_SA2.csv"
+      download_url: "https://www.abs.gov.au/census/find-census-data/datapacks"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE_2021", "SA2_MAINCODE_2021"]
+        total_population: ["Tot_P_P", "Total_Population_Persons"]
+        male_population: ["Tot_P_M", "Total_Population_Males"]
+        female_population: ["Tot_P_F", "Total_Population_Females"]
+        median_age: ["Median_age_persons", "Median_Age_P"]
+        
+        # Age groups
+        age_0_4: ["Age_0_4_yr_P"]
+        age_5_9: ["Age_5_9_yr_P"]
+        age_10_14: ["Age_10_14_yr_P"]
+        age_15_19: ["Age_15_19_yr_P"]
+        age_20_24: ["Age_20_24_yr_P"]
+        age_25_34: ["Age_25_34_yr_P"]
+        age_35_44: ["Age_35_44_yr_P"]
+        age_45_54: ["Age_45_54_yr_P"]
+        age_55_64: ["Age_55_64_yr_P"]
+        age_65_74: ["Age_65_74_yr_P"]
+        age_75_84: ["Age_75_84_yr_P"]
+        age_85_plus: ["Age_85ov_P"]
+      
+      validation:
+        required_fields: ["sa2_code", "total_population"]
+        population_bounds: [0, 50000]  # Reasonable SA2 population range
+        age_consistency: true  # Check age groups sum to total
+    
+    # Income and Work (G17A) - Employment and income
+    income_work:
+      table_id: "G17A"
+      file_name: "2021Census_G17A_AUS_SA2.csv"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE_2021"]
+        median_household_income: ["Median_tot_hhd_inc_weekly"]
+        median_family_income: ["Median_tot_fam_inc_weekly"]
+        median_personal_income: ["Median_tot_prsnl_inc_weekly"]
+        unemployment_rate: ["Unemployment_rate_P"]
+        labour_force_participation: ["Labour_force_participation_rate_P"]
+      
+      validation:
+        required_fields: ["sa2_code"]
+        income_bounds: [0, 10000]  # Weekly income bounds
+        rate_bounds: [0, 100]  # Percentage bounds
+    
+    # Education and Qualifications (G18) - Education levels
+    education:
+      table_id: "G18"
+      file_name: "2021Census_G18_AUS_SA2.csv"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE_2021"]
+        no_qualification: ["P_No_qual_prsnl_15ov"]
+        postgraduate_degree: ["P_PGrad_Deg_and_PGrad_Dip_level"]
+        bachelor_degree: ["P_Bach_Deg_level"]
+        certificate_diploma: ["P_Cert_I_II_III_and_IV_level"]
+        year_12_equivalent: ["P_Yr_12_equiv"]
+      
+      validation:
+        required_fields: ["sa2_code"]
+        education_consistency: true  # Check education levels sum appropriately
+    
+    # Country of Birth and Language (G09) - Cultural diversity
+    cultural_diversity:
+      table_id: "G09"
+      file_name: "2021Census_G09_AUS_SA2.csv"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE_2021"]
+        born_overseas: ["Born_elsewhere_P"]
+        indigenous_population: ["P_Tot_Aboriginal_Torres_Strait_Islander"]
+        english_only_home: ["P_Eng_only"]
+        non_english_home: ["P_Other_Lang"]
+      
+      validation:
+        required_fields: ["sa2_code"]
+        population_consistency: true
+
+  # SEIFA (Socio-Economic Indexes for Areas) 2021
+  seifa:
+    base_url: "https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia"
+    seifa_year: 2021
+    reference_date: "2021-08-10"
+    
+    dataset_file: "seifa_2021_sa2.csv"
+    download_url: "https://www.abs.gov.au/statistics/people/people-and-communities/socio-economic-indexes-areas-seifa-australia/latest-release"
+    
+    field_mappings:
+      sa2_code: ["SA2_CODE_2021", "SA2_MAINCODE_2021"]
+      sa2_name: ["SA2_NAME_2021"]
+      
+      # Index of Relative Socio-economic Disadvantage (IRSD)
+      irsd_score: ["IRSD_SCORE", "Score_IRSD"]
+      irsd_decile: ["IRSD_DECILE", "Decile_IRSD"]
+      irsd_percentile: ["IRSD_PERCENTILE", "Percentile_IRSD"]
+      
+      # Index of Relative Socio-economic Advantage and Disadvantage (IRSAD)
+      irsad_score: ["IRSAD_SCORE", "Score_IRSAD"]
+      irsad_decile: ["IRSAD_DECILE", "Decile_IRSAD"]
+      irsad_percentile: ["IRSAD_PERCENTILE", "Percentile_IRSAD"]
+      
+      # Index of Economic Resources (IER)
+      ier_score: ["IER_SCORE", "Score_IER"]
+      ier_decile: ["IER_DECILE", "Decile_IER"]
+      ier_percentile: ["IER_PERCENTILE", "Percentile_IER"]
+      
+      # Index of Education and Occupation (IEO)
+      ieo_score: ["IEO_SCORE", "Score_IEO"]
+      ieo_decile: ["IEO_DECILE", "Decile_IEO"]
+      ieo_percentile: ["IEO_PERCENTILE", "Percentile_IEO"]
+    
+    validation:
+      required_fields: ["sa2_code", "irsd_score", "irsad_score"]
+      score_bounds: [400, 1400]  # Typical SEIFA score range
+      decile_bounds: [1, 10]
+      percentile_bounds: [1, 100]
+    
+    index_definitions:
+      IRSD:
+        name: "Index of Relative Socio-economic Disadvantage"
+        description: "Summarises a range of information about the economic and social conditions of people and households within an area"
+        interpretation: "Low scores indicate relatively greater disadvantage"
+      
+      IRSAD:
+        name: "Index of Relative Socio-economic Advantage and Disadvantage"
+        description: "Includes both advantage and disadvantage measures"
+        interpretation: "Low scores indicate disadvantage, high scores indicate advantage"
+      
+      IER:
+        name: "Index of Economic Resources"
+        description: "Focuses on the economic resources of households and individuals"
+        interpretation: "High scores indicate relatively greater access to economic resources"
+      
+      IEO:
+        name: "Index of Education and Occupation"
+        description: "Focuses on the educational and occupational characteristics of communities"
+        interpretation: "High scores indicate relatively higher qualified and skilled communities"
+
+  # Postcode to SA2 correspondence
+  postcode_correspondence:
+    dataset_id: "postcode-sa2-2021"
+    file_name: "1270055001_CG_POSTCODE_2021_SA2_2021.csv"
+    download_url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3/jul2021-jun2026/access-and-downloads/correspondences"
+    
+    field_mappings:
+      postcode: ["POSTCODE_2021", "POA_CODE_2021"]
+      sa2_code: ["SA2_CODE_2021", "SA2_MAIN_2021"]
+      sa2_name: ["SA2_NAME_2021"]
+      correspondence_ratio: ["RATIO"]  # Population or area ratio for multi-SA2 postcodes
+    
+    validation:
+      required_fields: ["postcode", "sa2_code"]
+      postcode_format: "^\\d{4}$"
+      sa2_code_format: "^\\d{9}$"
+      ratio_bounds: [0, 1]
+
+# Data processing configuration
+processing:
+  geographic:
+    # Coordinate system transformations
+    input_crs: "EPSG:7844"   # GDA2020
+    output_crs: "EPSG:4326"  # WGS84 for web applications
+    
+    # Geometry processing
+    simplification:
+      tolerance_degrees: 0.0001
+      preserve_topology: true
+      
+    validation:
+      fix_invalid_geometry: true
+      remove_duplicate_vertices: true
+      snap_tolerance: 0.000001
+    
+    # Area calculations
+    area_calculation_crs: "EPSG:3577"  # Australian Albers for accurate area calculation
+  
+  census:
+    # Data cleaning
+    missing_value_codes: ["NA", "N/A", "null", "", "Not stated", "Not applicable"]
+    
+    # Derived calculations
+    calculate_rates: true
+    calculate_percentages: true
+    derive_age_groups: true
+    
+    # Quality checks
+    population_consistency_check: true
+    age_sum_tolerance: 5  # Allow small discrepancies in age group totals
+
+# Quality standards and validation
+quality_standards:
+  completeness_threshold: 90  # Minimum completeness percentage
+  accuracy_threshold: 99      # High accuracy for official statistics
+  geographic_coverage: 100    # All SA2s must be included
+  
+  # Australian statistical standards compliance
+  australian_standards:
+    - "Australian Statistical Geography Standard (ASGS)"
+    - "Australian Standard Classification of Countries (SACC)"
+    - "Standard Australian Classification of Languages (ASCL)"
+    - "Australian and New Zealand Standard Classification of Occupations (ANZSCO)"
+
+# Target schema compatibility
+target_schema:
+  geographic_boundary:
+    - geographic_id
+    - geographic_level
+    - geographic_name
+    - area_square_km
+    - boundary_geometry
+    - coordinate_system
+    - geographic_hierarchy
+    - urbanisation
+    - remoteness_category
+  
+  census_data:
+    - geographic_id
+    - census_year
+    - total_population
+    - population_by_age_sex
+    - median_age
+    - median_household_income
+    - unemployment_rate
+    - indigenous_population_count
+  
+  seifa_index:
+    - geographic_id
+    - seifa_year
+    - index_type
+    - score
+    - decile
+    - percentile
+
+# Error handling
+error_handling:
+  max_file_size_mb: 500  # Maximum file size for download
+  download_timeout_seconds: 300
+  extraction_timeout_seconds: 600
+  
+  geometry_errors:
+    action: "repair"  # "repair", "skip", "fail"
+    log_level: "warning"
+  
+  data_errors:
+    missing_sa2_action: "log_warning"
+    invalid_values_action: "set_null"

@@ -1,0 +1,357 @@
+# BOM Data Source Configurations
+# Configuration for Bureau of Meteorology data sources
+
+bom:
+  base_url: "http://www.bom.gov.au"
+  api_version: "v1"
+  timeout_seconds: 60
+  retry_attempts: 3
+  batch_size: 1000
+  
+  # Authentication (if required)
+  authentication:
+    type: "none"  # BOM data is generally publicly available
+    
+  # Climate data
+  climate:
+    base_url: "http://www.bom.gov.au/climate/data"
+    data_formats: ["csv", "json"]
+    update_frequency: "daily"
+    
+    # Daily weather observations
+    daily_weather:
+      endpoint: "/observations/daily"
+      data_type: "daily"
+      
+      field_mappings:
+        station_id: ["STATION_ID", "station_number", "Bureau_Station_Number"]
+        station_name: ["STATION_NAME", "station_name", "Station_Name"]
+        date: ["DATE", "YYYY-MM-DD", "Date"]
+        latitude: ["LATITUDE", "lat", "Latitude"]
+        longitude: ["LONGITUDE", "lon", "Longitude"]
+        elevation: ["ELEVATION", "elevation_m", "Height_m"]
+        
+        # Temperature measurements
+        temperature_max: ["TMAX", "maximum_temperature", "Maximum_temperature_C"]
+        temperature_min: ["TMIN", "minimum_temperature", "Minimum_temperature_C"]
+        temperature_9am: ["T9AM", "temperature_9am", "Temperature_9am_C"]
+        temperature_3pm: ["T3PM", "temperature_3pm", "Temperature_3pm_C"]
+        
+        # Precipitation
+        rainfall: ["RAINFALL", "precipitation", "Rainfall_mm"]
+        
+        # Humidity
+        humidity_9am: ["HUMIDITY_9AM", "relative_humidity_9am", "Relative_humidity_9am_%"]
+        humidity_3pm: ["HUMIDITY_3PM", "relative_humidity_3pm", "Relative_humidity_3pm_%"]
+        
+        # Wind
+        wind_speed_9am: ["WIND_SPEED_9AM", "wind_speed_9am_kmh"]
+        wind_speed_3pm: ["WIND_SPEED_3PM", "wind_speed_3pm_kmh"]
+        wind_direction_9am: ["WIND_DIR_9AM", "wind_direction_9am"]
+        wind_direction_3pm: ["WIND_DIR_3PM", "wind_direction_3pm"]
+        
+        # Pressure
+        pressure_msl_9am: ["PRESSURE_9AM", "msl_pressure_9am_hpa"]
+        pressure_msl_3pm: ["PRESSURE_3PM", "msl_pressure_3pm_hpa"]
+        
+        # Solar and evaporation
+        solar_exposure: ["SOLAR_EXPOSURE", "daily_global_solar_exposure_mj"]
+        evaporation: ["EVAPORATION", "evaporation_mm"]
+        
+        # Quality codes
+        quality_max_temp: ["Q_TMAX", "quality_maximum_temperature"]
+        quality_min_temp: ["Q_TMIN", "quality_minimum_temperature"]
+        quality_rainfall: ["Q_RAINFALL", "quality_rainfall"]
+      
+      validation:
+        required_fields: ["station_id", "date"]
+        date_format: "YYYY-MM-DD"
+        temperature_bounds: [-20, 60]  # Celsius, reasonable for Australia
+        rainfall_bounds: [0, 1000]     # mm per day
+        humidity_bounds: [0, 100]      # percentage
+        wind_speed_bounds: [0, 200]    # km/h
+        pressure_bounds: [900, 1100]   # hPa
+        
+      # Quality control
+      quality_control:
+        check_extreme_values: true
+        check_missing_patterns: true
+        flag_suspicious_changes: true
+        
+        # Quality flags
+        quality_flags:
+          Y: "Quality controlled data"
+          N: "Not quality controlled"
+          W: "Uncertain quality"
+          S: "Substitute value"
+          I: "Incomplete"
+    
+    # Monthly climate summaries
+    monthly_climate:
+      endpoint: "/climate/monthly"
+      data_type: "monthly"
+      
+      field_mappings:
+        station_id: ["STATION_ID", "Bureau_Station_Number"]
+        year: ["YEAR", "Year"]
+        month: ["MONTH", "Month"]
+        mean_max_temp: ["MEAN_TMAX", "Mean_maximum_temperature_C"]
+        mean_min_temp: ["MEAN_TMIN", "Mean_minimum_temperature_C"]
+        total_rainfall: ["TOTAL_RAINFALL", "Total_rainfall_mm"]
+        days_rain_ge_1mm: ["DAYS_RAIN_1MM", "Days_of_rain_ge_1mm"]
+        mean_relative_humidity: ["MEAN_RH", "Mean_relative_humidity_%"]
+      
+      validation:
+        required_fields: ["station_id", "year", "month"]
+        year_range: [1900, 2030]
+        month_range: [1, 12]
+    
+    # Climate normals (30-year averages)
+    climate_normals:
+      reference_period: "1991-2020"
+      endpoint: "/climate/normals"
+      
+      field_mappings:
+        station_id: ["STATION_ID"]
+        month: ["MONTH"]
+        normal_max_temp: ["NORMAL_TMAX"]
+        normal_min_temp: ["NORMAL_TMIN"]
+        normal_rainfall: ["NORMAL_RAINFALL"]
+        normal_humidity_9am: ["NORMAL_RH_9AM"]
+        normal_humidity_3pm: ["NORMAL_RH_3PM"]
+
+  # Weather stations
+  stations:
+    base_url: "http://www.bom.gov.au/climate/data/stations"
+    
+    # Station metadata
+    station_list:
+      endpoint: "/stations.txt"
+      file_format: "txt"
+      
+      field_mappings:
+        station_id: ["Bureau_Station_Number", "Station_Number"]
+        station_name: ["Station_Name"]
+        latitude: ["Latitude", "Lat"]
+        longitude: ["Longitude", "Lon"]
+        elevation: ["Height_m", "Elevation"]
+        state: ["State"]
+        start_date: ["Start", "Start_Date"]
+        end_date: ["End", "End_Date"]
+        years_data: ["Years", "Years_of_Data"]
+        percentage_complete: ["%", "Percentage_Complete"]
+        
+      validation:
+        required_fields: ["station_id", "station_name", "latitude", "longitude"]
+        latitude_bounds: [-45, -10]   # Australia latitude range
+        longitude_bounds: [110, 155]  # Australia longitude range
+        elevation_bounds: [-10, 3000] # metres
+    
+    # Station selection for SA2 mapping
+    station_selection:
+      # Priority stations (high quality, long records, good coverage)
+      priority_stations:
+        - "066062"  # Sydney Observatory Hill
+        - "086071"  # Melbourne Regional Office
+        - "040913"  # Brisbane Aero
+        - "023090"  # Adelaide (West Terrace)
+        - "009021"  # Perth Airport
+        - "091104"  # Hobart (Ellerslie Road)
+        - "014015"  # Darwin Airport
+        - "070351"  # Canberra Airport
+      
+      # Selection criteria for automatic station mapping
+      selection_criteria:
+        min_years_data: 10
+        min_percentage_complete: 80
+        max_distance_km: 50  # Maximum distance from SA2 centroid
+        prefer_active_stations: true
+        
+      # Data quality requirements
+      quality_requirements:
+        temperature_completeness: 85
+        rainfall_completeness: 85
+        humidity_completeness: 70
+        wind_completeness: 70
+
+  # Air quality data (if available)
+  air_quality:
+    base_url: "http://www.bom.gov.au/environment/activities/airquality"
+    
+    # Air quality measurements
+    measurements:
+      field_mappings:
+        station_id: ["SITE_ID", "Station_ID"]
+        measurement_date: ["DATE", "Measurement_Date"]
+        pm25: ["PM2.5", "PM25_ug_m3"]
+        pm10: ["PM10", "PM10_ug_m3"]
+        no2: ["NO2", "Nitrogen_Dioxide_ug_m3"]
+        o3: ["O3", "Ozone_ug_m3"]
+        so2: ["SO2", "Sulfur_Dioxide_ug_m3"]
+        co: ["CO", "Carbon_Monoxide_mg_m3"]
+        
+      validation:
+        required_fields: ["station_id", "measurement_date"]
+        pm25_bounds: [0, 500]     # µg/m³
+        pm10_bounds: [0, 1000]    # µg/m³
+        no2_bounds: [0, 500]      # µg/m³
+        o3_bounds: [0, 500]       # µg/m³
+        
+      # Air quality index calculation
+      aqi_calculation:
+        method: "australian_aqi"
+        categories:
+          very_good: [0, 33]
+          good: [34, 66]
+          fair: [67, 99]
+          poor: [100, 149]
+          very_poor: [150, 200]
+          hazardous: [201, 999]
+
+  # UV Index data
+  uv_index:
+    base_url: "http://www.bom.gov.au/uv"
+    
+    field_mappings:
+      location: ["LOCATION", "City"]
+      date: ["DATE", "Date"]
+      uv_index_max: ["UV_INDEX_MAX", "Max_UV_Index"]
+      uv_category: ["UV_CATEGORY", "UV_Alert_Category"]
+      sun_protection_times: ["SUN_PROTECTION", "Sun_Protection_Times"]
+      
+    validation:
+      required_fields: ["location", "date", "uv_index_max"]
+      uv_index_bounds: [0, 16]
+      
+    uv_categories:
+      low: [1, 2]
+      moderate: [3, 5]
+      high: [6, 7]
+      very_high: [8, 10]
+      extreme: [11, 16]
+
+# SA2 mapping and spatial interpolation
+spatial_mapping:
+  # Method for assigning weather data to SA2 areas
+  assignment_method: "nearest_station"  # "nearest_station", "inverse_distance", "kriging"
+  
+  # Nearest station method
+  nearest_station:
+    max_distance_km: 100  # Maximum distance to consider a station
+    quality_weight: 0.3   # Weight given to data quality vs distance
+    
+  # Inverse distance weighting
+  inverse_distance:
+    power: 2              # Distance decay power
+    max_stations: 5       # Maximum stations to include
+    max_distance_km: 200
+    
+  # Quality control for spatial assignment
+  quality_control:
+    min_stations_required: 1
+    check_elevation_difference: true
+    max_elevation_diff_m: 500
+    coastal_inland_classification: true
+
+# Health-relevant climate indicators
+health_indicators:
+  # Heat stress indicators
+  heat_stress:
+    temperature_thresholds:
+      mild_heat_stress: 30    # °C
+      moderate_heat_stress: 35
+      severe_heat_stress: 40
+      extreme_heat_stress: 45
+      
+    # Heat wave definition
+    heat_wave:
+      duration_days: 3
+      temperature_threshold: 35
+      
+  # Cold stress indicators  
+  cold_stress:
+    temperature_thresholds:
+      mild_cold_stress: 5     # °C
+      moderate_cold_stress: 0
+      severe_cold_stress: -5
+      
+  # Air quality health indicators
+  air_quality_health:
+    pm25_thresholds:
+      good: 12              # µg/m³ (WHO guideline)
+      moderate: 25
+      unhealthy_sensitive: 35
+      unhealthy: 55
+      very_unhealthy: 150
+      hazardous: 250
+      
+  # UV exposure indicators
+  uv_exposure:
+    high_uv_threshold: 6    # UV Index
+    sun_protection_required_threshold: 3
+    
+  # Humidity and comfort
+  comfort_indices:
+    heat_index_calculation: true
+    apparent_temperature_calculation: true
+    humidex_calculation: true
+
+# Data quality and validation
+quality_standards:
+  completeness_threshold: 75  # Minimum completeness for climate data
+  accuracy_threshold: 95      # Minimum accuracy percentage
+  spatial_coverage: 90        # Percentage of SA2s with weather data
+  
+  # Australian meteorological standards
+  australian_standards:
+    - "Bureau of Meteorology Data Standards"
+    - "World Meteorological Organization (WMO) Standards"
+    - "Australian/New Zealand Standard AS/NZS ISO 14001"
+
+# Target schema compatibility
+target_schema:
+  climate_data:
+    - station_id
+    - measurement_date
+    - latitude
+    - longitude
+    - temperature_max_celsius
+    - temperature_min_celsius
+    - rainfall_mm
+    - relative_humidity_percent
+    - wind_speed_kmh
+    - data_source_id
+    - extraction_timestamp
+    
+  weather_station:
+    - station_id
+    - station_name
+    - latitude
+    - longitude
+    - elevation_metres
+    - operational_status
+    - nearest_sa2_code
+    - distance_to_sa2_km
+    
+  environmental_indicator:
+    - geographic_id
+    - indicator_type
+    - measurement_date
+    - air_quality_index
+    - uv_index_max
+    - heat_stress_indicator
+    - data_source_id
+
+# Error handling
+error_handling:
+  missing_data_handling: "interpolate"  # "interpolate", "flag", "exclude"
+  extreme_value_handling: "flag"       # "flag", "exclude", "cap"
+  
+  station_errors:
+    inactive_station_action: "log_warning"
+    missing_coordinates_action: "exclude"
+    
+  data_errors:
+    out_of_range_action: "flag_and_include"
+    missing_dates_action: "interpolate_short_gaps"
+    max_gap_days: 7  # Maximum gap to interpolate

@@ -1,0 +1,393 @@
+# Compression algorithms and levels by format
+# Australian Health and Geographic Data (AHGD) Export Pipeline
+# British English spelling used throughout
+
+compression_algorithms:
+  gzip:
+    description: "Widely supported general-purpose compression"
+    characteristics:
+      speed: "medium"
+      compression_ratio: "good"
+      cpu_usage: "medium"
+      memory_usage: "low"
+      compatibility: "universal"
+    levels:
+      min: 1
+      max: 9
+      default: 6
+      fast: 1
+      balanced: 6
+      best: 9
+    optimal_for:
+      - text_data
+      - csv_files
+      - json_files
+      - general_purpose
+    file_extension: ".gz"
+    
+  brotli:
+    description: "Modern compression with excellent text compression"
+    characteristics:
+      speed: "slow"
+      compression_ratio: "excellent"
+      cpu_usage: "high"
+      memory_usage: "medium"
+      compatibility: "modern"
+    levels:
+      min: 1
+      max: 11
+      default: 6
+      fast: 3
+      balanced: 6
+      best: 11
+    optimal_for:
+      - web_delivery
+      - json_data
+      - text_heavy_data
+      - api_responses
+    file_extension: ".br"
+    
+  lz4:
+    description: "Ultra-fast compression for time-critical applications"
+    characteristics:
+      speed: "very_fast"
+      compression_ratio: "fair"
+      cpu_usage: "low"
+      memory_usage: "low"
+      compatibility: "good"
+    levels:
+      min: 1
+      max: 12
+      default: 3
+      fast: 1
+      balanced: 3
+      best: 9
+    optimal_for:
+      - large_datasets
+      - real_time_processing
+      - temporary_storage
+      - streaming_data
+    file_extension: ".lz4"
+    
+  snappy:
+    description: "Fast compression optimised for speed over ratio"
+    characteristics:
+      speed: "very_fast"
+      compression_ratio: "fair"
+      cpu_usage: "very_low"
+      memory_usage: "low"
+      compatibility: "good"
+    levels:
+      min: 1
+      max: 1  # Snappy has no compression levels
+      default: 1
+      fast: 1
+      balanced: 1
+      best: 1
+    optimal_for:
+      - parquet_files
+      - column_stores
+      - big_data_processing
+      - hadoop_ecosystem
+    file_extension: ".snappy"
+    
+  zstd:
+    description: "Modern compression balancing speed and ratio"
+    characteristics:
+      speed: "fast"
+      compression_ratio: "very_good"
+      cpu_usage: "medium"
+      memory_usage: "medium"
+      compatibility: "modern"
+    levels:
+      min: 1
+      max: 22
+      default: 3
+      fast: 1
+      balanced: 3
+      best: 19
+    optimal_for:
+      - mixed_workloads
+      - archival_storage
+      - database_backups
+      - container_images
+    file_extension: ".zst"
+
+# Format-specific compression recommendations
+format_compression_matrix:
+  parquet:
+    recommended_algorithms:
+      primary: "snappy"
+      secondary: ["gzip", "lz4"]
+      avoid: ["brotli"]  # Parquet handles this internally
+    use_cases:
+      analytical_workloads: "snappy"
+      storage_optimised: "gzip"
+      streaming_data: "lz4"
+    integration:
+      built_in: true
+      external_compression: false
+      
+  csv:
+    recommended_algorithms:
+      primary: "gzip"
+      secondary: ["brotli", "lz4"]
+      avoid: []
+    use_cases:
+      web_delivery: "brotli"
+      general_purpose: "gzip"
+      fast_processing: "lz4"
+    integration:
+      built_in: false
+      external_compression: true
+      
+  json:
+    recommended_algorithms:
+      primary: "brotli"
+      secondary: ["gzip", "zstd"]
+      avoid: ["snappy"]  # Poor for text
+    use_cases:
+      api_responses: "brotli"
+      configuration_files: "gzip"
+      document_storage: "zstd"
+    integration:
+      built_in: false
+      external_compression: true
+      
+  geojson:
+    recommended_algorithms:
+      primary: "gzip"
+      secondary: ["brotli", "zstd"]
+      avoid: ["snappy"]
+    use_cases:
+      web_mapping: "brotli"
+      data_archival: "gzip"
+      tile_servers: "gzip"
+    integration:
+      built_in: false
+      external_compression: true
+      
+  xlsx:
+    recommended_algorithms:
+      primary: null  # Excel files are already compressed
+      secondary: ["gzip"]
+      avoid: ["brotli", "lz4", "snappy"]
+    use_cases:
+      additional_compression: "gzip"
+    integration:
+      built_in: true
+      external_compression: false
+      
+  feather:
+    recommended_algorithms:
+      primary: "lz4"
+      secondary: ["snappy", "zstd"]
+      avoid: ["brotli"]
+    use_cases:
+      fast_io: "lz4"
+      balanced: "snappy"
+      storage_optimised: "zstd"
+    integration:
+      built_in: false  # Feather v1
+      external_compression: true
+
+# Data characteristic based recommendations
+data_based_compression:
+  text_heavy:
+    description: "Data with high proportion of text columns"
+    threshold_text_ratio: 0.6
+    recommended:
+      primary: "brotli"
+      level: 6
+      secondary: "gzip"
+      level_secondary: 7
+    reasoning: "Text data compresses very well with dictionary-based algorithms"
+    
+  numeric_heavy:
+    description: "Data with high proportion of numeric columns"
+    threshold_numeric_ratio: 0.7
+    recommended:
+      primary: "snappy"
+      level: 1
+      secondary: "lz4"
+      level_secondary: 3
+    reasoning: "Numeric data benefits from fast compression for processing speed"
+    
+  geographic_data:
+    description: "Data containing coordinates or spatial information"
+    indicators: ["latitude", "longitude", "geometry", "coordinates"]
+    recommended:
+      primary: "gzip"
+      level: 6
+      secondary: "brotli"
+      level_secondary: 6
+    reasoning: "Geographic data has patterns that compress well with general algorithms"
+    
+  categorical_heavy:
+    description: "Data with many repeated categorical values"
+    threshold_categorical_ratio: 0.5
+    recommended:
+      primary: "gzip"
+      level: 7
+      secondary: "zstd"
+      level_secondary: 5
+    reasoning: "Categorical data has high redundancy, benefits from good compression"
+    
+  mixed_data:
+    description: "Balanced mix of data types"
+    recommended:
+      primary: "gzip"
+      level: 6
+      secondary: "zstd"
+      level_secondary: 3
+    reasoning: "General-purpose compression works well for varied data"
+
+# Size-based compression strategy
+size_based_compression:
+  small_files: # < 10MB
+    threshold_mb: 10
+    strategy: "quality_over_speed"
+    recommended:
+      primary: "brotli"
+      level: 8
+    reasoning: "Small files can afford slower compression for better ratios"
+    
+  medium_files: # 10MB - 100MB
+    threshold_mb: 100
+    strategy: "balanced"
+    recommended:
+      primary: "gzip"
+      level: 6
+    reasoning: "Balanced approach for medium-sized datasets"
+    
+  large_files: # 100MB - 1GB
+    threshold_mb: 1000
+    strategy: "speed_over_quality"
+    recommended:
+      primary: "lz4"
+      level: 3
+    reasoning: "Large files benefit from fast compression"
+    
+  very_large_files: # > 1GB
+    threshold_mb: 1000
+    strategy: "ultra_fast"
+    recommended:
+      primary: "snappy"
+      level: 1
+    reasoning: "Very large files require minimal compression overhead"
+
+# Australian health data specific settings
+australian_health_data_compression:
+  aihw_indicators:
+    description: "Australian Institute of Health and Welfare indicators"
+    typical_characteristics:
+      null_ratio: 0.15
+      categorical_ratio: 0.4
+      numeric_ratio: 0.45
+    recommended_compression:
+      algorithm: "gzip"
+      level: 6
+      
+  abs_census:
+    description: "Australian Bureau of Statistics census data"
+    typical_characteristics:
+      null_ratio: 0.05
+      categorical_ratio: 0.6
+      numeric_ratio: 0.35
+    recommended_compression:
+      algorithm: "gzip"
+      level: 7
+      
+  pbs_data:
+    description: "Pharmaceutical Benefits Scheme data"
+    typical_characteristics:
+      temporal_patterns: true
+      categorical_ratio: 0.5
+      numeric_ratio: 0.4
+    recommended_compression:
+      algorithm: "zstd"
+      level: 5
+      
+  geographic_boundaries:
+    description: "Statistical area boundaries and coordinates"
+    typical_characteristics:
+      coordinate_precision: 6
+      geometry_complexity: "medium"
+    recommended_compression:
+      algorithm: "gzip"
+      level: 6
+
+# Performance tuning
+performance_tuning:
+  cpu_optimization:
+    low_cpu_environments:
+      preferred_algorithms: ["snappy", "lz4"]
+      avoid_algorithms: ["brotli"]
+      max_compression_level: 3
+      
+    high_cpu_environments:
+      preferred_algorithms: ["brotli", "zstd"]
+      max_compression_level: 9
+      parallel_compression: true
+      
+  memory_optimization:
+    low_memory_environments:
+      preferred_algorithms: ["gzip", "snappy"]
+      avoid_algorithms: ["brotli", "zstd"]
+      streaming_compression: true
+      
+    high_memory_environments:
+      buffer_size_mb: 64
+      parallel_streams: 4
+      
+  storage_optimization:
+    network_delivery:
+      priority: "compression_ratio"
+      preferred_algorithms: ["brotli", "gzip"]
+      
+    local_storage:
+      priority: "speed"
+      preferred_algorithms: ["lz4", "snappy"]
+      
+    archival_storage:
+      priority: "maximum_compression"
+      preferred_algorithms: ["brotli", "zstd"]
+      levels: [9, 19]
+
+# Quality assurance
+compression_quality_checks:
+  integrity_verification:
+    enabled: true
+    method: "checksum"
+    algorithm: "sha256"
+    
+  compression_ratio_validation:
+    minimum_ratio: 0.1  # 90% compression
+    expected_ratio: 0.5  # 50% compression
+    warning_threshold: 0.8  # 20% compression
+    
+  performance_validation:
+    max_compression_time_seconds: 300
+    max_memory_usage_multiplier: 2.0
+    
+  compatibility_checks:
+    verify_decompression: true
+    cross_platform_compatibility: true
+    
+# Monitoring and metrics
+compression_monitoring:
+  metrics_collection:
+    compression_ratios: true
+    compression_times: true
+    memory_usage: true
+    cpu_usage: true
+    
+  reporting:
+    daily_summary: true
+    algorithm_performance: true
+    optimization_recommendations: true
+    
+  alerting:
+    poor_compression_ratio: 0.9  # < 10% compression
+    slow_compression: 600  # > 10 minutes
+    high_memory_usage: 5.0  # > 5x input size

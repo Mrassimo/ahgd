@@ -1,0 +1,332 @@
+# Coordinate System Configuration for AHGD Geographic Pipeline
+#
+# This file defines all supported coordinate systems for Australia and their
+# transformation parameters. All systems are configured to transform to GDA2020
+# as the standard output coordinate system.
+
+# Default coordinate system settings
+default_settings:
+  target_system: "GDA2020"
+  precision_decimal_places: 8
+  required_accuracy_metres: 1.0
+  enable_datum_transformation: true
+  include_territories: true
+  strict_validation: true
+
+# Supported coordinate systems
+coordinate_systems:
+  
+  # Current Australian standard (2020+)
+  GDA2020:
+    epsg_code: 7844
+    datum: "Geocentric Datum of Australia 2020"
+    ellipsoid: "GRS 1980"
+    authority: "ICSM"
+    official_since: "2020-01-01"
+    status: "current"
+    description: "Official Australian coordinate system since 2020"
+    transformation_accuracy_metres: 0.0  # No transformation needed
+    
+  # Previous Australian standard (1994-2020)
+  GDA94:
+    epsg_code: 4283
+    datum: "Geocentric Datum of Australia 1994"
+    ellipsoid: "GRS 1980"
+    authority: "ICSM"
+    official_until: "2020-01-01"
+    status: "legacy"
+    description: "Previous Australian standard, superseded by GDA2020"
+    transformation_accuracy_metres: 0.01
+    
+    # 7-parameter Helmert transformation to GDA2020
+    transformation_parameters:
+      method: "helmert_7_parameter"
+      tx: 0.06155      # Translation X (metres)
+      ty: -0.01087     # Translation Y (metres)
+      tz: -0.04019     # Translation Z (metres)
+      rx: -0.0394924   # Rotation X (arc seconds)
+      ry: -0.0327221   # Rotation Y (arc seconds)
+      rz: -0.0328979   # Rotation Z (arc seconds)
+      ds: -0.009994    # Scale difference (ppm)
+      
+  # International standard (very close to GDA2020)
+  WGS84:
+    epsg_code: 4326
+    datum: "World Geodetic System 1984"
+    ellipsoid: "WGS 84"
+    authority: "EPSG"
+    status: "international"
+    description: "Global GPS coordinate system, essentially identical to GDA2020"
+    transformation_accuracy_metres: 0.05
+    
+    # Minimal transformation to GDA2020 (nearly identical)
+    transformation_parameters:
+      method: "helmert_7_parameter"
+      tx: 0.0
+      ty: 0.0
+      tz: 0.0
+      rx: 0.0
+      ry: 0.0
+      rz: 0.0
+      ds: 0.0
+      
+  # Legacy Australian systems
+  AGD66:
+    epsg_code: 4202
+    datum: "Australian Geodetic Datum 1966"
+    ellipsoid: "Australian National Spheroid"
+    authority: "ICSM"
+    status: "legacy"
+    description: "Historical Australian datum, large differences from GDA2020"
+    transformation_accuracy_metres: 5.0
+    
+    # Regional transformation parameters (national average)
+    transformation_parameters:
+      method: "multiple_regression"
+      # These are simplified parameters - actual transformation requires regional grids
+      tx: -117.763     # metres
+      ty: -51.510      # metres
+      tz: 139.061      # metres
+      rx: -0.292       # arc seconds
+      ry: -0.443       # arc seconds
+      rz: -0.277       # arc seconds
+      ds: -0.191       # ppm
+      
+  AGD84:
+    epsg_code: 4203
+    datum: "Australian Geodetic Datum 1984"
+    ellipsoid: "Australian National Spheroid"
+    authority: "ICSM"
+    status: "legacy"
+    description: "Improved version of AGD66, still significant differences from GDA2020"
+    transformation_accuracy_metres: 3.0
+    
+    # Regional transformation parameters
+    transformation_parameters:
+      method: "multiple_regression"
+      tx: -116.0       # metres
+      ty: -50.2        # metres
+      tz: 141.3        # metres
+      rx: -0.23        # arc seconds
+      ry: -0.39        # arc seconds
+      rz: -0.34        # arc seconds
+      ds: 0.07         # ppm
+
+# Map Grid of Australia (MGA) zones
+mga_zones:
+  
+  # Zone definitions with bounds and applicable states
+  zones:
+    49:
+      central_meridian: 117
+      bounds: [114, 120]
+      states: ["WA"]
+      epsg_code_gda2020: 7849
+      epsg_code_gda94: 28349
+      description: "Western Australia (western)"
+      
+    50:
+      central_meridian: 123
+      bounds: [120, 126]
+      states: ["WA"]
+      epsg_code_gda2020: 7850
+      epsg_code_gda94: 28350
+      description: "Western Australia (central)"
+      
+    51:
+      central_meridian: 129
+      bounds: [126, 132]
+      states: ["WA", "NT", "SA"]
+      epsg_code_gda2020: 7851
+      epsg_code_gda94: 28351
+      description: "Western Australia (eastern), Northern Territory (western), South Australia (western)"
+      
+    52:
+      central_meridian: 135
+      bounds: [132, 138]
+      states: ["NT", "SA"]
+      epsg_code_gda2020: 7852
+      epsg_code_gda94: 28352
+      description: "Northern Territory (central), South Australia (central)"
+      
+    53:
+      central_meridian: 141
+      bounds: [138, 144]
+      states: ["SA", "VIC", "NSW"]
+      epsg_code_gda2020: 7853
+      epsg_code_gda94: 28353
+      description: "South Australia (eastern), Victoria (western), New South Wales (western)"
+      
+    54:
+      central_meridian: 147
+      bounds: [144, 150]
+      states: ["VIC", "NSW", "QLD", "TAS"]
+      epsg_code_gda2020: 7854
+      epsg_code_gda94: 28354
+      description: "Victoria (eastern), New South Wales (central), Queensland (southern), Tasmania"
+      
+    55:
+      central_meridian: 153
+      bounds: [150, 156]
+      states: ["NSW", "QLD", "TAS"]
+      epsg_code_gda2020: 7855
+      epsg_code_gda94: 28355
+      description: "New South Wales (eastern), Queensland (central), Tasmania (eastern)"
+      
+    56:
+      central_meridian: 159
+      bounds: [156, 162]
+      states: ["QLD", "OT"]
+      epsg_code_gda2020: 7856
+      epsg_code_gda94: 28356
+      description: "Queensland (eastern), Other Territories"
+
+  # MGA zone selection rules
+  selection_rules:
+    auto_determine: true
+    prefer_gda2020: true
+    overlap_resolution: "longitude_center"  # longitude_center, area_majority, user_preference
+    
+# Transformation quality requirements
+quality_requirements:
+  
+  # Accuracy requirements by use case
+  accuracy_requirements:
+    surveying: 0.01          # 1cm
+    engineering: 0.1         # 10cm
+    mapping: 1.0             # 1m
+    navigation: 10.0         # 10m
+    general: 100.0           # 100m
+    
+  # Validation tolerances
+  validation_tolerances:
+    coordinate_range_check: true
+    australian_bounds_check: true
+    mga_zone_consistency_check: true
+    transformation_round_trip_test: true
+    maximum_round_trip_error_metres: 1.0
+    
+  # Error handling
+  error_handling:
+    invalid_coordinates: "error"     # error, warn, skip
+    outside_australian_bounds: "warn"  # error, warn, skip
+    transformation_failure: "error"  # error, warn, skip
+    precision_loss: "warn"          # error, warn, skip
+
+# Australian geographic bounds
+geographic_bounds:
+  
+  # Mainland Australia
+  mainland:
+    min_longitude: 112.5
+    max_longitude: 154.0
+    min_latitude: -39.5
+    max_latitude: -10.0
+    description: "Continental Australia excluding territories"
+    
+  # All Australian territories
+  all_territories:
+    min_longitude: 96.0    # Cocos (Keeling) Islands
+    max_longitude: 169.0   # Norfolk Island
+    min_latitude: -55.0    # Macquarie Island (Tasmania)
+    max_latitude: -9.0     # Torres Strait Islands (Queensland)
+    description: "All Australian territory including external territories"
+    
+  # State-specific bounds
+  by_state:
+    NSW:
+      min_longitude: 140.999
+      max_longitude: 153.639
+      min_latitude: -37.505
+      max_latitude: -28.157
+      
+    VIC:
+      min_longitude: 140.961
+      max_longitude: 149.976
+      min_latitude: -39.200
+      max_latitude: -33.980
+      
+    QLD:
+      min_longitude: 137.994
+      max_longitude: 153.552
+      min_latitude: -29.178
+      max_latitude: -9.142
+      
+    SA:
+      min_longitude: 129.002
+      max_longitude: 141.003
+      min_latitude: -38.062
+      max_latitude: -25.996
+      
+    WA:
+      min_longitude: 112.921
+      max_longitude: 129.002
+      min_latitude: -35.134
+      max_latitude: -13.689
+      
+    TAS:
+      min_longitude: 143.816
+      max_longitude: 148.477
+      min_latitude: -43.648
+      max_latitude: -39.573
+      
+    NT:
+      min_longitude: 129.002
+      max_longitude: 138.001
+      min_latitude: -26.000
+      max_latitude: -10.962
+      
+    ACT:
+      min_longitude: 148.760
+      max_longitude: 149.399
+      min_latitude: -35.921
+      max_latitude: -35.124
+
+# Performance and caching settings
+performance:
+  enable_transformation_cache: true
+  cache_size_limit: 10000
+  cache_ttl_seconds: 3600
+  
+  # Batch processing
+  batch_size: 1000
+  parallel_processing: true
+  max_workers: 4
+  
+  # Memory management
+  coordinate_precision_limit: 8
+  geometry_simplification_threshold: 10000  # points
+  
+# Logging and monitoring
+logging:
+  log_transformations: true
+  log_validation_failures: true
+  log_performance_metrics: true
+  transformation_sample_rate: 0.1  # Log 10% of transformations
+  
+# Integration settings
+integration:
+  
+  # External services
+  external_services:
+    icsm_transformation_service:
+      enabled: false
+      url: "https://www.icsm.gov.au/gda2020"
+      timeout_seconds: 30
+      
+    geoscience_australia_service:
+      enabled: false
+      url: "https://www.ga.gov.au/scientific-topics/positioning-navigation"
+      timeout_seconds: 30
+      
+  # Reference data sources
+  reference_data:
+    transformation_grids:
+      source: "icsm"
+      update_frequency: "monthly"
+      local_cache: true
+      
+    mga_zone_boundaries:
+      source: "abs"
+      format: "geojson"
+      precision: "high"

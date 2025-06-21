@@ -43,11 +43,18 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-mock>=3.10.0",
     "black>=22.0.0",
     "flake8>=4.0.0",
     "mypy>=0.900",
     "pre-commit>=2.15.0",
     "isort>=5.10.0",
+    "jsonschema>=4.17.0",
+    "memory-profiler>=0.60.0",
+    "psutil>=5.9.0",
+    "scipy>=1.9.0",
 ]
 docs = [
     "sphinx>=4.0.0",
@@ -163,6 +170,15 @@ markers = [
     "database: mark test as requiring database",
     "external: mark test as requiring external resources",
     "memory_intensive: mark test as memory intensive",
+    "target_schema: mark test as target schema compliance test",
+    "data_quality: mark test as data quality standards test",
+    "target_outputs: mark test as target output format test",
+    "pipeline_performance: mark test as pipeline performance test",
+    "tdd: mark test as Test-Driven Development test",
+    "australian_standards: mark test as Australian standards compliance test",
+    "concurrent: mark test as concurrent processing test",
+    "export_validation: mark test as export format validation test",
+    "memory_constraint: mark test as memory usage constraint test",
 ]
 filterwarnings = [
     "error",

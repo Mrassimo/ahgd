@@ -1,0 +1,371 @@
+# Geographic Mappings Configuration for AHGD SA2 Standardisation
+#
+# This file defines mapping rules and correspondence tables for converting
+# various geographic units to the SA2 framework as required by the Australian
+# Bureau of Statistics.
+
+# Default mapping settings
+default_settings:
+  target_geographic_unit: "SA2"
+  allocation_method: "population_weighted"  # population_weighted, area_weighted, equal
+  minimum_allocation_threshold: 0.01  # Ignore allocations less than 1%
+  total_allocation_tolerance: 0.05    # Allow 5% deviation from total allocation = 1.0
+  enable_temporal_mapping: true       # Support time-based correspondence
+  cache_mappings: true
+  validate_mappings: true
+
+# SA2 Framework Configuration
+sa2_framework:
+  total_sa2_count: 2473  # As of 2021 Census
+  code_format: "^\\d{9}$"  # 9-digit numeric code
+  hierarchy_validation: true
+  
+  # SA2 naming conventions
+  naming_rules:
+    max_length: 50
+    allowed_characters: "^[A-Za-z0-9 \\-\\(\\)]+$"
+    standardise_case: "title"  # title, upper, lower, preserve
+    
+  # Population constraints
+  population_constraints:
+    min_population: 3000
+    max_population: 25000
+    target_population: 10000
+
+# Postcode to SA2 Mapping
+postcode_mapping:
+  
+  # Data sources for postcode correspondences
+  data_sources:
+    primary:
+      name: "ABS Postcode to SA2 Correspondence"
+      url: "https://www.abs.gov.au/AUSSTATS/abs@.nsf/DetailsPage/1270.0.55.003July%202021"
+      format: "csv"
+      encoding: "utf-8"
+      update_frequency: "annual"
+      
+    secondary:
+      name: "Australia Post Postcode Database"
+      url: "https://auspost.com.au/business/postcode-data"
+      format: "csv"
+      status: "supplementary"
+      
+  # Mapping methodology
+  methodology:
+    allocation_basis: "population_weighted"
+    population_data_source: "abs_census_2021"
+    mesh_block_level: true  # Use mesh blocks for fine-grained allocation
+    
+  # Quality rules
+  quality_rules:
+    require_full_coverage: true    # Every postcode must map to at least one SA2
+    max_sa2_per_postcode: 50      # Reasonable limit for complex postcodes
+    min_allocation_factor: 0.001   # 0.1% minimum allocation
+    
+  # Validation rules
+  validation_rules:
+    check_allocation_sum: true     # Sum of allocations should equal 1.0
+    check_sa2_validity: true       # All SA2 codes must be valid
+    check_postcode_validity: true  # All postcodes must be valid Australian postcodes
+    
+  # Special cases
+  special_cases:
+    
+    # Large postcodes spanning multiple SA2s
+    multi_sa2_postcodes:
+      strategy: "population_weighted"
+      examples:
+        - postcode: "2000"  # Sydney CBD
+          note: "High density, multiple SA2s"
+        - postcode: "6000"  # Perth CBD  
+          note: "Central business district"
+          
+    # Postcodes with minimal population
+    low_population_postcodes:
+      strategy: "area_weighted"
+      threshold_population: 100
+      
+    # Business-only postcodes
+    business_postcodes:
+      strategy: "employment_weighted"
+      allocation_basis: "employment_count"
+
+# LGA (Local Government Area) to SA2 Mapping
+lga_mapping:
+  
+  # Data sources
+  data_sources:
+    primary:
+      name: "ABS LGA to SA2 Correspondence"
+      url: "https://www.abs.gov.au/AUSSTATS/abs@.nsf/DetailsPage/1270.0.55.003July%202021"
+      format: "csv"
+      
+  # Mapping methodology
+  methodology:
+    allocation_basis: "area_weighted"  # LGAs are administrative boundaries
+    area_calculation: "geodesic"      # Use spherical calculations
+    minimum_overlap_area_sqkm: 0.1   # Ignore very small overlaps
+    
+  # Quality rules
+  quality_rules:
+    require_full_coverage: true
+    max_sa2_per_lga: 200
+    min_allocation_factor: 0.01
+    
+  # Special cases
+  special_cases:
+    
+    # Unincorporated areas
+    unincorporated_areas:
+      strategy: "direct_mapping"
+      sa2_allocation: "remainder"
+      
+    # Cross-state LGAs
+    cross_state_lgas:
+      strategy: "state_aware_allocation"
+      respect_state_boundaries: true
+
+# PHN (Primary Health Network) to SA2 Mapping
+phn_mapping:
+  
+  # Data sources
+  data_sources:
+    primary:
+      name: "Department of Health PHN Boundaries"
+      url: "https://www.health.gov.au/our-work/primary-health-networks"
+      format: "geojson"
+      
+  # Mapping methodology  
+  methodology:
+    allocation_basis: "population_weighted"  # Health services follow population
+    health_service_weighting: true          # Consider health service distribution
+    
+  # PHN-specific rules
+  phn_rules:
+    total_phn_count: 31  # As of 2023
+    coverage_requirement: "complete"  # All of Australia must be covered
+    
+  # Health service allocation factors
+  health_service_factors:
+    gp_services_weight: 0.4
+    hospital_services_weight: 0.3
+    population_density_weight: 0.2
+    accessibility_weight: 0.1
+
+# Statistical Area Hierarchy Mapping
+statistical_area_mapping:
+  
+  # SA1 to SA2 (Direct hierarchical relationship)
+  sa1_to_sa2:
+    methodology: "direct_containment"
+    validation: "code_prefix_check"
+    relationship: "many_to_one"
+    
+  # SA3 to SA2 (Parent to children)  
+  sa3_to_sa2:
+    methodology: "hierarchical_decomposition"
+    allocation_basis: "equal"  # SA3s are designed to contain whole SA2s
+    relationship: "one_to_many"
+    
+  # SA4 to SA2 (Parent to children)
+  sa4_to_sa2:
+    methodology: "hierarchical_decomposition"
+    allocation_basis: "equal"
+    relationship: "one_to_many"
+    
+  # State/Territory to SA2
+  state_to_sa2:
+    methodology: "hierarchical_decomposition"
+    allocation_basis: "equal"
+    relationship: "one_to_many"
+
+# Temporal Mapping (Historical Correspondences)
+temporal_mapping:
+  
+  # Support for different census years
+  census_years:
+    - year: 2021
+      status: "current"
+      sa2_count: 2473
+      
+    - year: 2016
+      status: "historical"
+      sa2_count: 2310
+      correspondence_available: true
+      
+    - year: 2011
+      status: "historical"
+      sa2_count: 2214
+      correspondence_available: true
+      
+  # Temporal correspondence rules
+  correspondence_rules:
+    default_allocation: "population_proportion"
+    handle_boundary_changes: true
+    track_new_sa2s: true
+    track_split_sa2s: true
+    track_merged_sa2s: true
+    
+  # Change tracking
+  change_tracking:
+    log_changes: true
+    change_threshold: 0.1  # Log changes affecting >10% of area/population
+    impact_assessment: true
+
+# Custom Geographic Units
+custom_units:
+  
+  # Electoral boundaries
+  electoral_boundaries:
+    federal_electorates:
+      allocation_basis: "population_weighted"
+      data_source: "aec"
+      
+    state_electorates:
+      allocation_basis: "population_weighted"
+      data_source: "state_electoral_commissions"
+      
+  # Tourism regions
+  tourism_regions:
+    allocation_basis: "tourism_activity_weighted"
+    data_source: "tra"  # Tourism Research Australia
+    
+  # Economic regions
+  economic_regions:
+    anzsic_regions:
+      allocation_basis: "employment_weighted"
+      data_source: "abs_business_register"
+
+# Data Quality and Validation
+data_quality:
+  
+  # Completeness checks
+  completeness_checks:
+    all_postcodes_mapped: true
+    all_lgas_mapped: true
+    all_phns_mapped: true
+    no_orphaned_sa2s: true
+    
+  # Consistency checks
+  consistency_checks:
+    allocation_sum_tolerance: 0.01  # 1% tolerance
+    cross_mapping_consistency: true
+    temporal_consistency: true
+    
+  # Accuracy validation
+  accuracy_validation:
+    sample_verification_rate: 0.05  # Verify 5% of mappings
+    ground_truth_comparison: true
+    expert_review_required: true
+    
+  # Error handling
+  error_handling:
+    missing_mappings: "error"      # error, warn, default
+    invalid_allocations: "error"   # error, warn, normalise
+    boundary_overlaps: "warn"      # error, warn, ignore
+
+# Performance Optimisation
+performance:
+  
+  # Caching strategy
+  caching:
+    enable_mapping_cache: true
+    cache_size_mb: 100
+    cache_ttl_hours: 24
+    persistent_cache: true
+    
+  # Spatial indexing
+  spatial_indexing:
+    enable_rtree_index: true
+    index_granularity: "sa2"
+    rebuild_frequency: "weekly"
+    
+  # Batch processing
+  batch_processing:
+    batch_size: 5000
+    parallel_workers: 4
+    memory_limit_mb: 512
+
+# Output Formats
+output_formats:
+  
+  # Standard correspondence tables
+  correspondence_tables:
+    format: "csv"
+    encoding: "utf-8"
+    include_metadata: true
+    
+    columns:
+      - source_code
+      - source_type  
+      - target_sa2_code
+      - allocation_factor
+      - mapping_method
+      - confidence_score
+      - data_source
+      - reference_date
+      
+  # Spatial formats
+  spatial_formats:
+    geojson:
+      precision: 6
+      include_properties: true
+      
+    shapefile:
+      coordinate_system: "GDA2020"
+      include_dbf: true
+      
+  # Database formats
+  database_formats:
+    postgresql:
+      table_prefix: "geo_mapping_"
+      spatial_index: true
+      
+    sqlite:
+      spatial_extension: "spatialite"
+      
+# Reference Data Management
+reference_data:
+  
+  # Update schedules
+  update_schedules:
+    abs_correspondences: "annual"     # After each census
+    postcode_data: "quarterly"       # As Australia Post updates
+    lga_boundaries: "as_needed"      # When LGA changes occur
+    phn_boundaries: "annual"         # Health network reviews
+    
+  # Data validation
+  data_validation:
+    checksum_verification: true
+    schema_validation: true
+    completeness_testing: true
+    
+  # Version control
+  version_control:
+    track_versions: true
+    maintain_history: true
+    rollback_capability: true
+    
+# Integration Points
+integration:
+  
+  # External data sources
+  external_sources:
+    abs_api:
+      base_url: "https://api.abs.gov.au"
+      authentication_required: false
+      rate_limit: 1000  # requests per hour
+      
+    auspost_api:
+      base_url: "https://digitalapi.auspost.com.au"
+      authentication_required: true
+      
+  # Export destinations
+  export_destinations:
+    data_warehouse:
+      connection_string: "${DATABASE_URL}"
+      table_schema: "geographic"
+      
+    file_system:
+      base_path: "data_processed/geographic_mappings"
+      retention_days: 365

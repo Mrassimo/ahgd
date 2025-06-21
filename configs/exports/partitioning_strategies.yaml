@@ -1,0 +1,321 @@
+# Data partitioning rules and thresholds
+# Australian Health and Geographic Data (AHGD) Export Pipeline
+# British English spelling used throughout
+
+partitioning_strategies:
+  none:
+    description: "No partitioning - single file output"
+    use_when:
+      - data_size_mb: "< 50"
+      - record_count: "< 100000"
+      - simple_analysis: true
+    advantages:
+      - simplicity
+      - single_file_handling
+      - no_coordination_overhead
+    disadvantages:
+      - large_file_sizes
+      - memory_constraints
+      - poor_parallelisation
+      
+  state_based:
+    description: "Partition by Australian state/territory codes"
+    partition_column: "state_code"
+    expected_partitions: 8  # 6 states + 2 territories
+    use_when:
+      - has_state_code: true
+      - records_per_state: "> 1000"
+      - state_analysis_common: true
+    partition_mapping:
+      NSW: "new_south_wales"
+      VIC: "victoria"
+      QLD: "queensland"
+      WA: "western_australia"
+      SA: "south_australia"
+      TAS: "tasmania"
+      ACT: "australian_capital_territory"
+      NT: "northern_territory"
+    advantages:
+      - natural_data_locality
+      - administrative_alignment
+      - balanced_partition_sizes
+    sizing_estimates:
+      typical_size_ratio: [0.32, 0.25, 0.20, 0.10, 0.07, 0.02, 0.02, 0.01]  # NSW, VIC, QLD, WA, SA, TAS, ACT, NT
+      
+  sa3_based:
+    description: "Partition by Statistical Area Level 3 codes"
+    partition_column: "sa3_code"
+    expected_partitions: 358  # Approximate SA3 count
+    use_when:
+      - has_sa3_code: true
+      - detailed_geographic_analysis: true
+      - records_per_sa3: "> 100"
+    advantages:
+      - fine_grained_geographic_control
+      - ato_taxation_statistics_alignment
+      - labour_market_analysis_support
+    disadvantages:
+      - many_small_files
+      - coordination_overhead
+      - imbalanced_partition_sizes
+    sizing_considerations:
+      min_records_per_partition: 100
+      max_partition_size_mb: 50
+      
+  temporal_based:
+    description: "Partition by date/time periods"
+    use_when:
+      - has_date_column: true
+      - temporal_analysis_common: true
+      - time_series_data: true
+    strategies:
+      yearly:
+        partition_column: "year"
+        format: "YYYY"
+        use_when: "multi_year_historical_data"
+      monthly:
+        partition_column: "month"
+        format: "YYYY-MM"
+        use_when: "regular_monthly_updates"
+      quarterly:
+        partition_column: "quarter"
+        format: "YYYY-QQ"
+        use_when: "quarterly_reporting_cycles"
+      financial_year:
+        partition_column: "financial_year"
+        format: "FYYYY"  # e.g., F2023 for 2022-23
+        use_when: "australian_government_data"
+    advantages:
+      - time_range_queries
+      - incremental_updates
+      - archival_strategies
+      
+  size_based:
+    description: "Partition based on data volume thresholds"
+    use_when:
+      - very_large_datasets: true
+      - no_natural_partitioning: true
+      - processing_constraints: true
+    strategies:
+      row_count:
+        max_rows_per_partition: 1000000
+        naming_pattern: "chunk_{chunk_number:04d}"
+      file_size:
+        max_size_mb_per_partition: 100
+        naming_pattern: "part_{part_number:04d}"
+      memory_based:
+        max_memory_mb_per_partition: 500
+        naming_pattern: "segment_{segment_id:04d}"
+    advantages:
+      - predictable_partition_sizes
+      - processing_resource_control
+      - parallel_processing_optimisation
+      
+  hybrid_strategies:
+    state_and_temporal:
+      description: "Partition by state, then by time period"
+      primary_partition: "state_code"
+      secondary_partition: "financial_year"
+      use_when:
+        - longitudinal_state_analysis: true
+        - government_reporting: true
+      naming_pattern: "state_{state_code}/fy_{financial_year}/{filename}"
+      
+    sa3_and_temporal:
+      description: "Partition by SA3, then by time period"
+      primary_partition: "sa3_code"
+      secondary_partition: "quarter"
+      use_when:
+        - detailed_local_trends: true
+        - small_area_time_series: true
+      naming_pattern: "sa3_{sa3_code}/quarter_{quarter}/{filename}"
+      
+    size_limited_geographic:
+      description: "Geographic partitioning with size limits"
+      primary_partition: "state_code"
+      size_limit_mb: 200
+      fallback_strategy: "size_based"
+      use_when:
+        - large_state_datasets: true
+        - processing_constraints: true
+
+# Australian-specific partitioning considerations
+australian_data_patterns:
+  geographic_hierarchy:
+    - "state_territory"
+    - "sa4_code"  # Statistical Area Level 4
+    - "sa3_code"  # Statistical Area Level 3
+    - "sa2_code"  # Statistical Area Level 2
+    - "postcode"
+    natural_partitioning_order: ["state_code", "sa3_code", "sa2_code"]
+    
+  temporal_patterns:
+    financial_year:
+      start_month: 7  # July
+      end_month: 6    # June
+      format: "YYYY-YY"  # e.g., "2022-23"
+    calendar_year:
+      start_month: 1  # January
+      end_month: 12   # December
+      format: "YYYY"
+    reporting_quarters:
+      q1: [7, 8, 9]    # Jul-Sep
+      q2: [10, 11, 12] # Oct-Dec
+      q3: [1, 2, 3]    # Jan-Mar
+      q4: [4, 5, 6]    # Apr-Jun
+      
+  health_data_patterns:
+    aihw_reporting:
+      typical_partition: "state_and_temporal"
+      temporal_unit: "financial_year"
+    abs_health_surveys:
+      typical_partition: "state_based"
+      temporal_considerations: "survey_cycle"
+    pbs_data:
+      typical_partition: "temporal_based"
+      temporal_unit: "monthly"
+      secondary_partition: "state_code"
+
+# Partitioning decision matrix
+decision_matrix:
+  small_datasets:
+    size_threshold_mb: 50
+    record_threshold: 100000
+    recommended_strategy: "none"
+    reasoning: "Overhead of partitioning exceeds benefits"
+    
+  medium_datasets:
+    size_threshold_mb: 500
+    record_threshold: 1000000
+    recommended_strategy: "state_based"
+    reasoning: "Natural geographic partitioning provides good balance"
+    
+  large_datasets:
+    size_threshold_mb: 2000
+    record_threshold: 10000000
+    recommended_strategy: "hybrid_strategies"
+    reasoning: "Multiple partitioning dimensions needed for manageability"
+    
+  very_large_datasets:
+    size_threshold_mb: 10000
+    record_threshold: 50000000
+    recommended_strategy: "size_based"
+    reasoning: "Performance considerations override natural partitioning"
+
+# Format-specific partitioning considerations
+format_partitioning_support:
+  parquet:
+    native_partitioning: true
+    hive_style_partitioning: true
+    predicate_pushdown: true
+    partition_pruning: true
+    recommended_max_partitions: 1000
+    
+  csv:
+    native_partitioning: false
+    directory_based_partitioning: true
+    filename_based_partitioning: true
+    recommended_max_partitions: 100
+    
+  json:
+    native_partitioning: false
+    directory_based_partitioning: true
+    single_file_recommended: true
+    recommended_max_partitions: 50
+    
+  geojson:
+    native_partitioning: false
+    geographic_partitioning_natural: true
+    tile_based_partitioning: true
+    recommended_max_partitions: 100
+    
+  xlsx:
+    native_partitioning: false
+    sheet_based_partitioning: true
+    file_size_limitations: true
+    recommended_max_partitions: 10
+
+# Performance optimisation
+partitioning_performance:
+  read_optimisation:
+    partition_elimination:
+      enabled: true
+      predicate_pushdown: true
+    parallel_reading:
+      enabled: true
+      max_parallel_partitions: 8
+      
+  write_optimisation:
+    parallel_writing:
+      enabled: true
+      max_parallel_writers: 4
+    buffer_management:
+      partition_buffer_mb: 64
+      flush_threshold_mb: 32
+      
+  storage_optimisation:
+    compression_per_partition: true
+    metadata_consolidation: true
+    partition_statistics: true
+    
+# Quality and monitoring
+partitioning_quality:
+  balance_monitoring:
+    size_variance_threshold: 0.5  # Max 50% size difference
+    record_variance_threshold: 0.3  # Max 30% record count difference
+    
+  performance_monitoring:
+    read_time_per_partition: true
+    write_time_per_partition: true
+    partition_skip_rate: true
+    
+  maintenance:
+    orphaned_partition_detection: true
+    partition_consolidation_recommendations: true
+    rebalancing_suggestions: true
+
+# Integration with Australian data standards
+australian_standards_integration:
+  abs_standards:
+    statistical_areas:
+      alignment: "complete"
+      validation: "strict"
+    classification_codes:
+      anzsco: "supported"  # Australian and New Zealand Standard Classification of Occupations
+      anzsic: "supported"  # Australian and New Zealand Standard Industrial Classification
+      
+  government_reporting:
+    coag_requirements:
+      partition_alignment: "quarterly"
+      state_breakdown: "mandatory"
+    productivity_commission:
+      data_availability: "annual"
+      comparative_analysis: "cross_state"
+      
+  privacy_considerations:
+    small_area_suppression:
+      minimum_cell_size: 5
+      suppression_strategy: "complementary"
+    geographic_aggregation:
+      confidentiality_rules: "abs_guidelines"
+      
+# Error handling and fallbacks
+error_handling:
+  partition_column_missing:
+    fallback_strategy: "size_based"
+    warning_level: "high"
+    
+  partition_size_imbalance:
+    rebalancing_threshold: 10  # 10x size difference
+    automatic_rebalancing: false
+    manual_intervention_required: true
+    
+  too_many_small_partitions:
+    consolidation_threshold: 1000  # If > 1000 partitions
+    min_partition_size_mb: 1
+    consolidation_strategy: "merge_adjacent"
+    
+  memory_constraints:
+    max_partitions_in_memory: 100
+    streaming_partition_processing: true
+    temporary_file_management: true

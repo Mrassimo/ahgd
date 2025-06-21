@@ -1,0 +1,265 @@
+# Target Schema Configuration for AHGD Project
+# Defines the target data structure for integrated health and geographic data
+
+schema_version: "2.0.0"
+configuration_version: "1.0.0"
+last_updated: "2024-12-21"
+
+# Primary Key Configuration
+primary_key:
+  field_name: "sa2_code"
+  data_type: "string"
+  format: "^\\d{9}$"
+  description: "9-digit Statistical Area Level 2 code as primary identifier"
+
+# Geographic Hierarchy Definition
+geographic_hierarchy:
+  levels:
+    - name: "sa1"
+      code_pattern: "^\\d{11}$"
+      description: "Statistical Area Level 1"
+      parent: null
+      typical_population: 400
+      
+    - name: "sa2"
+      code_pattern: "^\\d{9}$"
+      description: "Statistical Area Level 2"
+      parent: "sa3"
+      typical_population: 10000
+      
+    - name: "sa3"
+      code_pattern: "^\\d{5}$"
+      description: "Statistical Area Level 3"
+      parent: "sa4"
+      typical_population: 50000
+      
+    - name: "sa4"
+      code_pattern: "^\\d{3}$"
+      description: "Statistical Area Level 4"
+      parent: "state"
+      typical_population: 300000
+      
+    - name: "state"
+      code_pattern: "^(NSW|VIC|QLD|SA|WA|TAS|NT|ACT)$"
+      description: "State or Territory"
+      parent: "country"
+      
+    - name: "country"
+      code_pattern: "^AUS$"
+      description: "Australia"
+      parent: null
+
+  relationships:
+    containment_rules:
+      - child: "sa1"
+        parent: "sa2"
+        relationship: "many_to_one"
+        validation: "strict"
+        
+      - child: "sa2"
+        parent: "sa3"
+        relationship: "many_to_one"
+        validation: "strict"
+        
+      - child: "sa3"
+        parent: "sa4"
+        relationship: "many_to_one"
+        validation: "strict"
+
+# Core Data Domains
+data_domains:
+  demographic:
+    description: "Population and demographic characteristics"
+    mandatory_fields:
+      - "total_population"
+      - "population_density_per_sq_km"
+      - "median_age"
+    optional_fields:
+      - "indigenous_population_percentage"
+      - "overseas_born_percentage"
+      - "english_proficiency_percentage"
+    
+  geographic:
+    description: "Geographic boundaries and spatial characteristics"
+    mandatory_fields:
+      - "boundary_data"
+      - "urbanisation"
+      - "remoteness_category"
+    optional_fields:
+      - "area_square_km"
+      - "perimeter_km"
+      - "compactness_ratio"
+    
+  socioeconomic:
+    description: "Socioeconomic indicators and SEIFA measures"
+    mandatory_fields:
+      - "seifa_scores"
+      - "seifa_deciles"
+      - "disadvantage_category"
+    optional_fields:
+      - "median_household_income"
+      - "unemployment_rate"
+      - "low_income_households_percentage"
+    
+  health_outcomes:
+    description: "Health outcomes and mortality indicators"
+    mandatory_fields:
+      - "health_outcomes_summary"
+    optional_fields:
+      - "life_expectancy"
+      - "self_assessed_health"
+      - "avoidable_mortality_rate"
+      - "infant_mortality_rate"
+    
+  health_services:
+    description: "Healthcare utilisation and access"
+    mandatory_fields:
+      - "healthcare_access"
+    optional_fields:
+      - "gp_services_per_1000"
+      - "specialist_services_per_1000"
+      - "bulk_billing_rate"
+      - "emergency_dept_presentations_per_1000"
+    
+  risk_factors:
+    description: "Health risk factors and behaviours"
+    mandatory_fields: []
+    optional_fields:
+      - "smoking_prevalence"
+      - "obesity_prevalence"
+      - "physical_inactivity_prevalence"
+      - "harmful_alcohol_use_prevalence"
+    
+  environmental:
+    description: "Environmental health indicators"
+    mandatory_fields: []
+    optional_fields:
+      - "air_quality_index"
+      - "green_space_access"
+      - "noise_pollution_levels"
+
+# Integration Levels Configuration
+integration_levels:
+  minimal:
+    description: "Basic geographic and demographic data only"
+    required_domains: ["geographic", "demographic"]
+    minimum_completeness: 90.0
+    estimated_processing_time: "5 minutes"
+    
+  standard:
+    description: "Includes health and socioeconomic data"
+    required_domains: ["geographic", "demographic", "socioeconomic", "health_outcomes"]
+    minimum_completeness: 85.0
+    estimated_processing_time: "15 minutes"
+    
+  comprehensive:
+    description: "All available data sources included"
+    required_domains: ["geographic", "demographic", "socioeconomic", "health_outcomes", "health_services", "risk_factors"]
+    minimum_completeness: 80.0
+    estimated_processing_time: "30 minutes"
+    
+  enhanced:
+    description: "Includes derived indicators and advanced analytics"
+    required_domains: ["geographic", "demographic", "socioeconomic", "health_outcomes", "health_services", "risk_factors", "environmental"]
+    minimum_completeness: 75.0
+    estimated_processing_time: "45 minutes"
+    derived_indicators: true
+    machine_learning_features: true
+
+# Data Quality Requirements
+data_quality:
+  completeness_thresholds:
+    critical_fields: 100.0
+    high_priority_fields: 95.0
+    medium_priority_fields: 90.0
+    low_priority_fields: 80.0
+    
+  accuracy_requirements:
+    geographic_coordinates: 99.9
+    population_counts: 99.5
+    health_indicators: 95.0
+    survey_data: 90.0
+    
+  consistency_rules:
+    geographic_hierarchy: "strict"
+    population_totals: "within_5_percent"
+    temporal_alignment: "same_reference_period"
+    
+  validation_frequency:
+    real_time: ["primary_key", "geographic_codes"]
+    daily: ["population_counts", "boundary_geometry"]
+    weekly: ["health_indicators", "seifa_scores"]
+    monthly: ["derived_indicators", "quality_scores"]
+
+# Target Output Specifications
+output_specifications:
+  master_health_record:
+    table_name: "master_health_records"
+    primary_key: "sa2_code"
+    partitioning: "state_code"
+    indexes: ["sa2_code", "sa3_code", "sa4_code", "state_code"]
+    estimated_size_gb: 2.5
+    refresh_frequency: "weekly"
+    
+  sa2_health_profile:
+    table_name: "sa2_health_profiles"
+    primary_key: "sa2_code"
+    partitioning: "reference_period"
+    indexes: ["sa2_code", "seifa_disadvantage_decile"]
+    estimated_size_gb: 1.8
+    refresh_frequency: "monthly"
+    
+  health_indicator_summary:
+    table_name: "health_indicator_summaries"
+    primary_key: ["geographic_id", "reporting_period"]
+    partitioning: "geographic_level"
+    indexes: ["geographic_id", "geographic_level", "reporting_period"]
+    estimated_size_gb: 0.8
+    refresh_frequency: "monthly"
+    
+  geographic_health_mapping:
+    table_name: "geographic_health_mappings"
+    primary_key: "primary_area_id"
+    partitioning: "primary_area_type"
+    indexes: ["primary_area_id", "remoteness_area"]
+    estimated_size_gb: 1.2
+    refresh_frequency: "quarterly"
+    geometry_storage: "binary"
+    spatial_indexes: true
+
+# Performance Optimisation
+performance:
+  memory_management:
+    chunk_size: 10000
+    max_memory_gb: 8
+    parallel_processing: true
+    max_workers: 4
+    
+  storage_optimisation:
+    compression: "snappy"
+    column_encoding: "dictionary"
+    row_group_size: 50000
+    
+  caching:
+    enable_result_caching: true
+    cache_duration_hours: 24
+    cache_size_mb: 1024
+
+# Metadata Management
+metadata:
+  lineage_tracking: true
+  quality_scoring: true
+  change_detection: true
+  versioning_strategy: "semantic"
+  
+  audit_fields:
+    - "integration_timestamp"
+    - "source_datasets"
+    - "data_completeness_score"
+    - "quality_score"
+    - "schema_version"
+    
+  documentation:
+    auto_generate_schema_docs: true
+    include_data_dictionary: true
+    generate_quality_reports: true

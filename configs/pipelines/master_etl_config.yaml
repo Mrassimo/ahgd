@@ -1,0 +1,338 @@
+# Master ETL Pipeline Configuration
+# Complete end-to-end ETL pipeline with integrated validation
+
+pipeline:
+  name: "master_etl_pipeline"
+  description: "Complete ETL pipeline for Australian Health and Geographic Data"
+  version: "3.0.0"
+  
+# Pipeline execution settings
+execution:
+  parallel_stages: true
+  max_workers: 4
+  timeout_seconds: 7200  # 2 hours
+  enable_checkpoints: true
+  checkpoint_interval: 1000
+  max_retries: 3
+  retry_delay: 5.0
+  retry_backoff: 2.0
+
+# Quality assurance configuration
+quality_assurance:
+  enabled: true
+  quality_level: "comprehensive"  # minimal, standard, comprehensive, audit
+  validation_mode: "selective"    # strict, permissive, selective, audit_only
+  halt_on_critical_errors: true
+  generate_quality_reports: true
+  monitor_performance: true
+  track_data_lineage: true
+  compliance_standards:
+    - "AIHW"
+    - "ABS" 
+    - "Medicare"
+    - "PBS"
+
+# Pipeline stages definition
+stages:
+  # Data Extraction Stage
+  data_extraction:
+    stage_id: "data_extraction"
+    stage_name: "Data Extraction"
+    stage_type: "extraction"
+    stage_class: "src.extractors.aihw_extractor.AIHWExtractor"
+    dependencies: []
+    configuration:
+      sources:
+        - source_id: "aihw_mortality"
+          source_type: "csv"
+          source_url: "https://www.aihw.gov.au/reports-data/health-conditions-disability-deaths/deaths/data"
+          expected_schema:
+            required_fields: ["SA2_CODE", "CAUSE_OF_DEATH", "AGE_GROUP", "SEX", "DEATHS"]
+        - source_id: "aihw_health_indicators"
+          source_type: "api"
+          source_url: "https://api.aihw.gov.au/health-indicators"
+          expected_schema:
+            required_fields: ["SA2_CODE", "INDICATOR_TYPE", "VALUE", "YEAR"]
+      validation_enabled: true
+      validation_mode: "selective"
+      quality_threshold: 95.0
+      halt_on_validation_failure: false
+    validation_required: true
+    quality_level: "standard"
+    timeout_seconds: 1800
+    retry_attempts: 3
+    parallel_capable: false
+
+  # Data Transformation Stage  
+  data_transformation:
+    stage_id: "data_transformation"
+    stage_name: "Data Transformation"
+    stage_type: "transformation"
+    stage_class: "src.transformers.geographic_standardiser.GeographicStandardiser"
+    dependencies: ["data_extraction"]
+    configuration:
+      geographic_column: "geographic_code"
+      geographic_type_column: "geographic_type"
+      output_sa2_column: "sa2_code"
+      output_allocation_column: "allocation_factor"
+      include_mapping_metadata: true
+      strict_validation: true
+      handle_invalid_codes: "warn"
+      batch_size: 1000
+      enable_caching: true
+      validation_enabled: true
+      validation_mode: "selective"
+      geographic_quality_threshold: 95.0
+      halt_on_validation_failure: false
+    validation_required: true
+    quality_level: "comprehensive"
+    timeout_seconds: 2400
+    retry_attempts: 3
+    parallel_capable: true
+
+  # Data Integration Stage
+  data_integration:
+    stage_id: "data_integration"
+    stage_name: "Data Integration"
+    stage_type: "integration"
+    stage_class: "src.transformers.data_integrator.DataIntegrator"
+    dependencies: ["data_transformation"]
+    configuration:
+      integration_strategy: "sa2_based"
+      temporal_alignment: true
+      spatial_validation: true
+      derived_indicators:
+        - "mortality_rate_per_1000"
+        - "health_service_accessibility"
+        - "socioeconomic_health_correlation"
+      quality_weights:
+        completeness: 0.3
+        accuracy: 0.4
+        consistency: 0.2
+        timeliness: 0.1
+      validation_enabled: true
+      integration_quality_threshold: 90.0
+    validation_required: true
+    quality_level: "comprehensive"
+    timeout_seconds: 3600
+    retry_attempts: 2
+    parallel_capable: true
+
+  # Data Loading Stage
+  data_loading:
+    stage_id: "data_loading"
+    stage_name: "Data Loading"
+    stage_type: "loading"
+    stage_class: "src.loaders.base.BaseLoader"
+    dependencies: ["data_integration"]
+    configuration:
+      output_formats:
+        - format: "parquet"
+          compression: "snappy"
+          destination: "data_processed/master_health_data.parquet"
+        - format: "csv"
+          destination: "data_processed/master_health_data.csv"
+          include_headers: true
+        - format: "geojson"
+          destination: "data_processed/sa2_health_boundaries.geojson"
+          coordinate_precision: 6
+      validation_on_load: true
+      row_count_validation: true
+      schema_validation: true
+    validation_required: true
+    quality_level: "standard"
+    timeout_seconds: 1800
+    retry_attempts: 3
+    parallel_capable: false
+
+# Data flow checkpoints
+data_flow_checkpoints:
+  extraction_to_transformation:
+    checkpoint_id: "extraction_to_transformation"
+    source_stage: "data_extraction"
+    target_stage: "data_transformation"
+    validation_rules:
+      - "non_empty"
+      - "no_duplicates"
+      - "min_records:100"
+    transformation_rules:
+      - "remove_duplicates"
+      - "standardise_column_names"
+    quality_threshold: 95.0
+    data_schema: "raw_health_data"
+
+  transformation_to_integration:
+    checkpoint_id: "transformation_to_integration"
+    source_stage: "data_transformation"
+    target_stage: "data_integration"
+    validation_rules:
+      - "non_empty"
+      - "valid_sa2_codes"
+      - "geographic_consistency"
+    transformation_rules:
+      - "fill_nulls"
+      - "validate_coordinates"
+    quality_threshold: 95.0
+    data_schema: "standardised_health_data"
+
+  integration_to_loading:
+    checkpoint_id: "integration_to_loading"
+    source_stage: "data_integration"
+    target_stage: "data_loading"
+    validation_rules:
+      - "non_empty"
+      - "referential_integrity"
+      - "completeness_check"
+    transformation_rules: []
+    quality_threshold: 98.0
+    data_schema: "integrated_health_data"
+
+# Validation configuration
+validation:
+  enabled: true
+  mode: "selective"
+  
+  # Stage-specific validation rules
+  stage_validation_rules:
+    data_extraction:
+      - rule_id: "extraction_schema_validation"
+        rule_name: "Schema Validation"
+        rule_type: "schema"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          required_columns: ["SA2_CODE", "geographic_code"]
+          data_types:
+            SA2_CODE: "string"
+            geographic_code: "string"
+      
+      - rule_id: "extraction_completeness"
+        rule_name: "Data Completeness"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        threshold: 95.0
+        parameters:
+          critical_fields: ["SA2_CODE", "geographic_code"]
+
+    data_transformation:
+      - rule_id: "transformation_geographic_validation"
+        rule_name: "Geographic Validation"
+        rule_type: "geographic"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          coordinate_system: "GDA2020"
+          valid_sa2_pattern: "^[0-9]{11}$"
+      
+      - rule_id: "transformation_consistency"
+        rule_name: "Transformation Consistency"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        threshold: 90.0
+
+    data_integration:
+      - rule_id: "integration_referential_integrity"
+        rule_name: "Referential Integrity"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+      
+      - rule_id: "integration_statistical_consistency"
+        rule_name: "Statistical Consistency"
+        rule_type: "statistical"
+        severity: "medium"
+        action: "warning"
+        threshold: 85.0
+
+    data_loading:
+      - rule_id: "loading_row_count_validation"
+        rule_name: "Row Count Validation"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+      
+      - rule_id: "loading_format_validation"
+        rule_name: "Output Format Validation"
+        rule_type: "schema"
+        severity: "high"
+        action: "warning"
+
+# Performance monitoring
+performance:
+  enable_monitoring: true
+  metrics_collection:
+    - "execution_time"
+    - "memory_usage"
+    - "cpu_utilisation"
+    - "data_throughput"
+    - "validation_overhead"
+  
+  performance_thresholds:
+    max_stage_duration: 3600  # 1 hour
+    max_memory_usage_gb: 8
+    max_cpu_utilisation_percent: 80
+    min_throughput_records_per_second: 10
+  
+  alerting:
+    enabled: true
+    threshold_breach_action: "log_warning"
+    performance_degradation_threshold: 50  # 50% slower than baseline
+
+# Output configuration
+output:
+  base_directory: "data_processed"
+  
+  file_naming:
+    include_timestamp: true
+    include_version: true
+    pattern: "{dataset_name}_{stage}_{timestamp}_{version}.{extension}"
+  
+  metadata_generation:
+    enabled: true
+    include_lineage: true
+    include_quality_metrics: true
+    include_processing_statistics: true
+    output_format: "json"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  structured_logging: true
+  log_validation_results: true
+  log_performance_metrics: true
+  separate_error_log: true
+  
+  log_destinations:
+    - type: "file"
+      path: "logs/master_etl_pipeline.log"
+      level: "INFO"
+    - type: "file" 
+      path: "logs/master_etl_errors.log"
+      level: "ERROR"
+    - type: "console"
+      level: "INFO"
+
+# Error handling
+error_handling:
+  continue_on_warning: true
+  continue_on_non_critical_error: true
+  max_consecutive_failures: 3
+  
+  escalation_policy:
+    critical_error: "halt_pipeline"
+    validation_failure: "log_and_continue"
+    performance_degradation: "log_warning"
+    data_quality_issue: "quarantine_and_continue"
+
+# Resource management
+resources:
+  memory_limit_gb: 12
+  cpu_cores: 4
+  temporary_storage_gb: 20
+  
+  cleanup:
+    remove_intermediate_files: false
+    retain_checkpoints_days: 7
+    compress_old_logs: true

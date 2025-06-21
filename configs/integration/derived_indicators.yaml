@@ -1,0 +1,358 @@
+# Derived Health Indicators Configuration
+# Defines formulas, parameters, and methods for calculating derived health indicators
+
+# Health Indicator Calculation Configuration
+health_indicators:
+  # Confidence level for statistical calculations
+  confidence_level: 95.0
+  
+  # Minimum sample size for valid statistics
+  minimum_sample_size: 30
+  
+  # Enable statistical smoothing for small area estimates
+  smoothing_enabled: true
+  
+  # Australian national averages for comparison (2021 data)
+  national_averages:
+    life_expectancy: 83.2
+    composite_health_index: 75.0
+    infant_mortality_rate: 3.1
+    smoking_prevalence: 10.7
+    obesity_prevalence: 24.5
+    bulk_billing_rate: 87.2
+    gp_services_per_1000: 1.8
+
+# Standard Population for Age Standardisation
+standard_populations:
+  australia_2021:
+    reference_year: 2021
+    source: "ABS_Census_2021"
+    total_population: 25499881
+    age_groups:
+      age_0_4: 1565078
+      age_5_14: 3114845
+      age_15_24: 3320552
+      age_25_44: 6810434
+      age_45_64: 5373771
+      age_65_plus: 4315013
+
+# Composite Health Index Configuration
+composite_health_index:
+  # Component weights (must sum to 1.0)
+  components:
+    life_expectancy:
+      weight: 0.25
+      normalisation_factor: 83.0  # Australian average
+      higher_is_better: true
+      
+    mortality_rate:
+      weight: 0.25
+      normalisation_factor: 10.0  # Rate per 1000
+      higher_is_better: false
+      
+    healthcare_access:
+      weight: 0.25
+      normalisation_factor: 2.0   # GP services per 1000
+      higher_is_better: true
+      
+    risk_factors:
+      weight: 0.25
+      normalisation_factor: 100.0 # Composite risk score
+      higher_is_better: true
+
+# Health Inequality Index Configuration
+health_inequality:
+  # Reference values for inequality calculation
+  national_reference_values:
+    composite_health_index: 75.0
+    life_expectancy: 83.2
+    infant_mortality_rate: 3.1
+    
+  # Socioeconomic gradient calculation
+  ses_gradient:
+    national_ses_average: 1000.0
+    national_health_average: 75.0
+    
+  # Inequality measurement methods
+  methods:
+    absolute_difference: true
+    relative_ratio: true
+    concentration_index: false  # Requires population-level data
+
+# Healthcare Accessibility Configuration
+accessibility_indices:
+  # Geographic accessibility scoring
+  geographic_accessibility:
+    population_density_factors:
+      urban_threshold: 400        # People per sq km
+      regional_threshold: 100
+      rural_threshold: 10
+      
+    service_targets:
+      gp_services_per_1000: 2.0
+      specialist_services_per_1000: 0.5
+      
+  # Economic accessibility scoring  
+  economic_accessibility:
+    bulk_billing_target: 90.0
+    out_of_pocket_threshold: 50.0  # Average annual cost
+    
+  # Service availability scoring
+  service_availability:
+    component_weights:
+      primary_care: 0.50
+      specialist_care: 0.30
+      hospital_care: 0.20
+      
+    national_averages:
+      primary_care_per_1000: 2.0
+      specialist_care_per_1000: 0.5
+      hospital_beds_per_1000: 2.8
+
+# Environmental Health Index Configuration
+environmental_health:
+  # Air quality scoring
+  air_quality:
+    # AQI thresholds for health impact
+    excellent_threshold: 25
+    good_threshold: 50
+    moderate_threshold: 100
+    poor_threshold: 200
+    
+    # Health impact weights
+    health_impact_multipliers:
+      excellent: 1.0
+      good: 0.9
+      moderate: 0.7
+      poor: 0.4
+      very_poor: 0.1
+      
+  # Green space access scoring
+  green_space:
+    # Access thresholds
+    excellent_access: 80  # % with access
+    good_access: 60
+    moderate_access: 40
+    poor_access: 20
+    
+  # Composite environmental health weights
+  component_weights:
+    air_quality: 0.6
+    green_space_access: 0.4
+
+# Socioeconomic Indicators Configuration
+socioeconomic_indicators:
+  # Composite disadvantage index weights
+  composite_disadvantage:
+    seifa_weights:
+      IRSD: 0.40  # Socioeconomic disadvantage (primary)
+      IRSAD: 0.30 # Education and occupation access
+      IER: 0.20   # Economic resources
+      IEO: 0.10   # Education and occupation
+      
+  # Disadvantage categories based on IRSD deciles
+  disadvantage_categories:
+    most_disadvantaged: [1, 2]      # Deciles 1-2
+    disadvantaged: [3, 4]           # Deciles 3-4
+    average: [5, 6]                 # Deciles 5-6
+    advantaged: [7, 8]              # Deciles 7-8
+    most_advantaged: [9, 10]        # Deciles 9-10
+    
+  # Educational opportunity normalisation
+  educational_opportunity:
+    seifa_ieo_baseline: 500
+    seifa_ieo_range: 500
+
+# Risk Factor Scoring Configuration
+risk_factors:
+  # Major modifiable risk factors and their weights
+  risk_factor_weights:
+    smoking: 0.30
+    obesity: 0.25
+    physical_inactivity: 0.20
+    harmful_alcohol: 0.15
+    high_blood_pressure: 0.10
+    
+  # Australian prevalence baselines for scoring
+  national_prevalences:
+    smoking: 10.7
+    obesity: 24.5
+    physical_inactivity: 44.5
+    harmful_alcohol: 16.8
+    high_blood_pressure: 23.1
+    
+  # Risk score calculation (lower prevalence = higher score)
+  scoring_method: "inverse_prevalence"
+
+# Prevention Index Configuration
+prevention_indicators:
+  # Screening participation rates
+  screening_targets:
+    breast_cancer_screening: 70.0
+    cervical_cancer_screening: 70.0
+    bowel_cancer_screening: 45.0
+    
+  # Immunisation coverage targets
+  immunisation_targets:
+    childhood_coverage: 95.0
+    influenza_elderly: 75.0
+    covid_vaccination: 90.0
+    
+  # Primary care indicators
+  primary_care_indicators:
+    regular_gp_visits: 80.0
+    health_assessments: 30.0
+    chronic_disease_management: 60.0
+
+# Quality of Life Index Configuration
+quality_of_life:
+  # Component weights
+  component_weights:
+    health_status: 0.40
+    mental_wellbeing: 0.25
+    social_determinants: 0.20
+    environmental_quality: 0.15
+    
+  # Mental wellbeing indicators
+  mental_wellbeing:
+    psychological_distress_threshold: 15.0  # High distress prevalence
+    mental_health_service_access: 2.0       # Services per 1000
+    
+  # Social determinants scoring
+  social_determinants:
+    seifa_irsad_baseline: 1000
+    education_access_weight: 0.6
+    employment_access_weight: 0.4
+
+# Age Standardisation Configuration
+age_standardisation:
+  # Standard age groups for rate calculation
+  standard_age_groups:
+    - "0-4"
+    - "5-14" 
+    - "15-24"
+    - "25-44"
+    - "45-64"
+    - "65+"
+    
+  # Age-specific mortality multipliers (relative to 45-64 baseline)
+  age_mortality_multipliers:
+    "0-4": 0.2
+    "5-14": 0.1
+    "15-24": 0.3
+    "25-44": 0.5
+    "45-64": 1.0
+    "65+": 3.0
+    
+  # Disease-specific age patterns
+  disease_age_patterns:
+    cardiovascular:
+      "0-4": 0.1
+      "5-14": 0.1
+      "15-24": 0.2
+      "25-44": 0.4
+      "45-64": 1.0
+      "65+": 2.5
+      
+    cancer:
+      "0-4": 0.3
+      "5-14": 0.2
+      "15-24": 0.3
+      "25-44": 0.6
+      "45-64": 1.0
+      "65+": 2.0
+
+# Indicator Definitions
+indicator_definitions:
+  age_standardised_mortality_rate:
+    name: "Age-Standardised Mortality Rate"
+    calculation_method: "direct_standardisation"
+    required_fields: ["mortality_indicators", "demographic_profile"]
+    unit: "per 100,000 population"
+    interpretation: "Lower values indicate better health outcomes"
+    higher_is_better: false
+    australian_average: 550.0
+    data_source_priority: ["health_indicators", "abs", "aihw"]
+    
+  composite_health_index:
+    name: "Composite Health Index"
+    calculation_method: "weighted_average"
+    required_fields: ["life_expectancy", "mortality_indicators", "healthcare_access"]
+    unit: "index (0-100)"
+    interpretation: "Higher values indicate better overall health"
+    higher_is_better: true
+    australian_average: 75.0
+    data_source_priority: ["health_indicators", "medicare_pbs"]
+    
+  healthcare_accessibility_index:
+    name: "Healthcare Accessibility Index"
+    calculation_method: "composite_scoring"
+    required_fields: ["gp_services_per_1000", "specialist_services_per_1000", "bulk_billing_rate"]
+    unit: "index (0-100)"
+    interpretation: "Higher values indicate better healthcare access"
+    higher_is_better: true
+    australian_average: 72.5
+    data_source_priority: ["medicare_pbs", "health_indicators"]
+    
+  environmental_health_index:
+    name: "Environmental Health Index"
+    calculation_method: "weighted_composite"
+    required_fields: ["air_quality_index", "green_space_access"]
+    unit: "index (0-100)"
+    interpretation: "Higher values indicate better environmental health"
+    higher_is_better: true
+    australian_average: 68.0
+    data_source_priority: ["environmental", "bom"]
+
+# Calculation Parameters
+calculation_parameters:
+  # Rounding and precision
+  decimal_places:
+    rates: 1
+    percentages: 1
+    indices: 1
+    
+  # Confidence intervals
+  confidence_intervals:
+    enabled: true
+    level: 95
+    method: "normal_approximation"
+    
+  # Small area estimation
+  small_area_estimation:
+    enabled: true
+    minimum_events: 5
+    smoothing_method: "empirical_bayes"
+    
+  # Outlier handling
+  outlier_detection:
+    enabled: true
+    method: "iqr"
+    threshold: 3.0
+    action: "flag"
+
+# Validation Rules for Derived Indicators
+validation_rules:
+  # Range checks
+  range_checks:
+    composite_health_index: [0, 100]
+    healthcare_accessibility_index: [0, 100]
+    environmental_health_index: [0, 100]
+    age_standardised_mortality_rate: [0, 5000]
+    
+  # Consistency checks
+  consistency_checks:
+    # Health index should correlate with life expectancy
+    health_life_expectancy_correlation: 0.7
+    
+    # Accessibility should correlate with service counts
+    accessibility_services_correlation: 0.8
+    
+  # Plausibility checks
+  plausibility_checks:
+    # Derived indicators shouldn't exceed population bounds
+    max_population_rate: 1000  # per 1000 population
+    
+    # Index values should be realistic
+    minimum_valid_index: 5.0
+    maximum_valid_index: 95.0

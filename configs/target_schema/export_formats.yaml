@@ -1,0 +1,506 @@
+# Export Formats Configuration for AHGD Target Schema
+# Defines output format specifications and optimisation settings
+
+export_version: "1.0.0"
+last_updated: "2024-12-21"
+target_schema: "integrated_schema_v2.0.0"
+
+# Core Export Formats
+export_formats:
+  
+  # Parquet Format (Primary analytical format)
+  parquet:
+    description: "High-performance columnar format for analytics"
+    use_cases: ["data_warehouse", "analytics", "machine_learning", "big_data_processing"]
+    
+    configuration:
+      compression: "snappy"
+      page_size: 1048576  # 1MB
+      row_group_size: 50000
+      use_dictionary: true
+      write_statistics: true
+      data_page_version: "2.0"
+      
+    schema_mapping:
+      preserve_nested_structures: true
+      datetime_format: "timestamp_micros"
+      decimal_precision: 10
+      decimal_scale: 6
+      
+    partitioning:
+      enabled: true
+      partition_columns: ["state_code", "integration_level"]
+      max_partitions: 50
+      
+    optimisation:
+      predicate_pushdown: true
+      column_pruning: true
+      row_group_filtering: true
+      bloom_filters: ["sa2_code", "sa3_code"]
+      
+    file_organisation:
+      naming_pattern: "ahgd_integrated_{table_name}_{state_code}_{integration_level}_{timestamp}.parquet"
+      max_file_size_mb: 256
+      target_files_per_partition: 4
+      
+    metadata:
+      include_schema_metadata: true
+      include_column_statistics: true
+      include_data_lineage: true
+  
+  # CSV Format (Wide compatibility)
+  csv:
+    description: "Comma-separated values for broad compatibility"
+    use_cases: ["reporting", "excel_analysis", "data_sharing", "simple_analysis"]
+    
+    configuration:
+      delimiter: ","
+      quote_character: "\""
+      escape_character: "\\"
+      line_terminator: "\n"
+      encoding: "utf-8-sig"  # UTF-8 with BOM for Excel compatibility
+      
+    header_configuration:
+      include_headers: true
+      header_style: "snake_case"
+      include_data_types: false
+      include_descriptions: false
+      
+    data_formatting:
+      decimal_places: 2
+      date_format: "%Y-%m-%d"
+      datetime_format: "%Y-%m-%d %H:%M:%S"
+      null_representation: ""
+      boolean_format: ["true", "false"]
+      
+    handling_complex_data:
+      nested_objects: "json_string"
+      arrays: "pipe_separated"
+      geometry: "wkt"
+      
+    file_organisation:
+      naming_pattern: "ahgd_integrated_{table_name}_{timestamp}.csv"
+      max_file_size_mb: 100
+      split_large_files: true
+      include_row_numbers: false
+      
+    compression:
+      enabled: true
+      format: "gzip"
+      compression_level: 6
+  
+  # JSON Format (Web applications and APIs)
+  json:
+    description: "JavaScript Object Notation for web applications"
+    use_cases: ["web_apis", "javascript_applications", "data_exchange", "configuration"]
+    
+    configuration:
+      pretty_print: false
+      ensure_ascii: false
+      indent: null
+      separators: [",", ":"]
+      
+    data_structure:
+      output_format: "records"  # One JSON object per record
+      nested_structure_handling: "preserve"
+      array_formatting: "compact"
+      
+    data_formatting:
+      decimal_precision: 6
+      date_format: "iso8601"
+      null_handling: "explicit_null"
+      boolean_format: "native"
+      
+    file_organisation:
+      naming_pattern: "ahgd_integrated_{table_name}_{timestamp}.json"
+      max_file_size_mb: 50
+      split_format: "json_lines"
+      
+    compression:
+      enabled: true
+      format: "gzip"
+      compression_level: 9
+  
+  # GeoJSON Format (Spatial data)
+  geojson:
+    description: "Geographic JSON for spatial data and mapping"
+    use_cases: ["web_mapping", "gis_applications", "spatial_analysis", "visualisation"]
+    
+    configuration:
+      coordinate_precision: 6
+      crs: "EPSG:4326"  # WGS84
+      validate_geometry: true
+      ensure_ascii: false
+      
+    geometry_handling:
+      simplification: "adaptive"
+      simplification_tolerance: 0.0001  # degrees
+      multipart_handling: "preserve"
+      invalid_geometry_action: "skip_with_warning"
+      
+    properties_handling:
+      include_all_attributes: false
+      selected_attributes:
+        - "sa2_code"
+        - "sa2_name"
+        - "total_population"
+        - "seifa_deciles"
+        - "health_outcomes_summary"
+        - "data_completeness_score"
+      property_name_format: "camelCase"
+      
+    spatial_optimisation:
+      bbox_calculation: true
+      geometry_collection_support: true
+      coordinate_order: "longitude_latitude"
+      
+    file_organisation:
+      naming_pattern: "ahgd_boundaries_{geographic_level}_{timestamp}.geojson"
+      max_features_per_file: 10000
+      split_by_state: true
+      
+    compression:
+      enabled: true
+      format: "gzip"
+      compression_level: 9
+  
+  # Excel Format (Business reporting)
+  xlsx:
+    description: "Microsoft Excel format for business users"
+    use_cases: ["business_reporting", "dashboard_data", "presentations", "manual_analysis"]
+    
+    configuration:
+      max_rows_per_sheet: 1000000
+      max_columns_per_sheet: 16384
+      
+    workbook_structure:
+      multiple_sheets: true
+      sheet_organisation: "by_data_domain"
+      sheets:
+        - name: "Summary"
+          content: "executive_summary_statistics"
+        - name: "Demographics"
+          content: "demographic_indicators"
+        - name: "Health_Outcomes"
+          content: "health_outcome_indicators"
+        - name: "Healthcare_Access"
+          content: "healthcare_utilisation_indicators"
+        - name: "Risk_Factors"
+          content: "risk_factor_indicators"
+        - name: "Metadata"
+          content: "data_quality_and_lineage"
+          
+    formatting:
+      header_formatting:
+        bold: true
+        background_color: "#366092"
+        font_color: "#FFFFFF"
+      data_formatting:
+        number_format: "#,##0.00"
+        percentage_format: "0.00%"
+        date_format: "dd/mm/yyyy"
+      conditional_formatting:
+        quality_score_color_scale: true
+        missing_data_highlighting: true
+        
+    data_validation:
+      freeze_panes: "A2"
+      auto_filter: true
+      data_validation_rules: true
+      
+    file_organisation:
+      naming_pattern: "ahgd_integrated_report_{timestamp}.xlsx"
+      password_protection: false
+      read_only_recommendation: true
+  
+  # SQLite Format (Portable database)
+  sqlite:
+    description: "Portable database format for local analysis"
+    use_cases: ["local_analysis", "data_exploration", "prototype_development", "offline_access"]
+    
+    database_configuration:
+      journal_mode: "WAL"
+      synchronous: "NORMAL"
+      cache_size: 10000
+      page_size: 4096
+      
+    table_structure:
+      preserve_original_schema: true
+      create_indexes: true
+      create_views: true
+      
+    indexing_strategy:
+      primary_key_indexes: true
+      foreign_key_indexes: true
+      frequently_queried_columns:
+        - "sa2_code"
+        - "sa3_code"
+        - "seifa_deciles.IRSD"
+        - "total_population"
+        
+    data_integrity:
+      foreign_key_constraints: true
+      check_constraints: true
+      not_null_constraints: true
+      
+    file_organisation:
+      naming_pattern: "ahgd_integrated_{timestamp}.sqlite"
+      vacuum_on_creation: true
+      analyse_statistics: true
+  
+  # PostgreSQL Format (Production database)
+  postgresql:
+    description: "PostgreSQL dump format for production deployment"
+    use_cases: ["production_deployment", "data_warehouse", "advanced_analytics", "multi_user_access"]
+    
+    dump_configuration:
+      format: "custom"
+      compression_level: 9
+      include_schema: true
+      include_data: true
+      
+    schema_features:
+      use_schemas: true
+      schema_names: ["public", "health", "geographic", "quality"]
+      create_extensions: ["postgis", "uuid-ossp"]
+      
+    table_configuration:
+      create_indexes: true
+      create_constraints: true
+      create_triggers: true
+      partition_large_tables: true
+      
+    spatial_features:
+      postgis_enabled: true
+      spatial_indexes: true
+      spatial_reference_systems: [4326, 3857, 7844]
+      
+    file_organisation:
+      naming_pattern: "ahgd_integrated_dump_{timestamp}.sql"
+      split_by_schema: false
+      include_metadata: true
+
+# Export Specifications by Data Product
+data_product_exports:
+  
+  # Master Health Record Export
+  master_health_record:
+    primary_format: "parquet"
+    alternative_formats: ["csv", "sqlite"]
+    
+    export_variants:
+      full_dataset:
+        description: "Complete master health records"
+        includes_all_fields: true
+        estimated_size_gb: 2.5
+        
+      summary_dataset:
+        description: "Key indicators only"
+        selected_fields:
+          - "sa2_code"
+          - "sa2_name"
+          - "total_population"
+          - "seifa_deciles"
+          - "health_outcomes_summary"
+          - "composite_health_index"
+        estimated_size_mb: 150
+        
+      public_dataset:
+        description: "Public release version with privacy protections"
+        privacy_controls:
+          suppress_small_populations: true
+          minimum_population_threshold: 1000
+          noise_injection: false
+        estimated_size_gb: 2.0
+        
+    scheduling:
+      full_dataset_frequency: "monthly"
+      summary_dataset_frequency: "weekly"
+      public_dataset_frequency: "quarterly"
+  
+  # SA2 Health Profile Export
+  sa2_health_profile:
+    primary_format: "csv"
+    alternative_formats: ["xlsx", "json"]
+    
+    export_variants:
+      standard_profile:
+        description: "Standard health profile indicators"
+        include_confidence_intervals: true
+        
+      simplified_profile:
+        description: "Core indicators for general audience"
+        selected_indicators: "top_20_health_indicators"
+        
+      research_profile:
+        description: "Extended profile for research use"
+        include_all_available_indicators: true
+        include_methodology_notes: true
+        
+    geographical_splits:
+      national: true
+      state_level: true
+      regional_level: false
+      
+    scheduling:
+      standard_profile_frequency: "monthly"
+      simplified_profile_frequency: "monthly"
+      research_profile_frequency: "quarterly"
+  
+  # Geographic Health Mapping Export
+  geographic_health_mapping:
+    primary_format: "geojson"
+    alternative_formats: ["parquet", "postgresql"]
+    
+    spatial_products:
+      web_optimised:
+        description: "Simplified geometries for web mapping"
+        simplification_tolerance: 0.001
+        max_file_size_mb: 10
+        
+      analysis_ready:
+        description: "High-precision geometries for analysis"
+        simplification_tolerance: 0.0001
+        include_topology: true
+        
+      visualisation_ready:
+        description: "Choropleth mapping datasets"
+        include_classification_breaks: true
+        include_colour_schemes: true
+        
+    scheduling:
+      web_optimised_frequency: "monthly"
+      analysis_ready_frequency: "quarterly"
+      visualisation_ready_frequency: "monthly"
+
+# Performance Optimisation Settings
+performance_optimisation:
+  
+  # Export Processing
+  processing:
+    max_memory_gb: 16
+    parallel_processing: true
+    max_worker_threads: 8
+    chunk_size_rows: 100000
+    
+  # Compression Settings
+  compression:
+    default_compression: "gzip"
+    compression_levels:
+      fast: 1
+      balanced: 6
+      maximum: 9
+    size_threshold_mb: 10  # Compress files larger than 10MB
+    
+  # Caching
+  caching:
+    enable_export_caching: true
+    cache_duration_hours: 24
+    cache_size_limit_gb: 50
+    cache_cleanup_frequency: "daily"
+    
+  # Network Optimisation
+  network:
+    transfer_timeout_seconds: 3600
+    retry_attempts: 3
+    chunk_transfer_size_mb: 100
+
+# Quality Control for Exports
+export_quality_control:
+  
+  # Pre-export Validation
+  pre_export_checks:
+    schema_validation: true
+    data_type_validation: true
+    completeness_check: true
+    referential_integrity_check: true
+    
+  # Post-export Validation
+  post_export_checks:
+    file_integrity_check: true
+    row_count_validation: true
+    checksum_generation: true
+    sample_data_verification: true
+    
+  # Error Handling
+  error_handling:
+    validation_failure_action: "abort_export"
+    partial_export_on_warnings: true
+    error_notification_recipients:
+      - "data_engineering_team"
+      - "data_governance_lead"
+      
+  # Quality Metadata
+  quality_metadata:
+    include_quality_scores: true
+    include_completeness_metrics: true
+    include_data_lineage: true
+    include_export_timestamp: true
+
+# Security and Privacy
+security_controls:
+  
+  # Data Classification
+  data_classification:
+    public_data: "no_restrictions"
+    internal_data: "authorised_users_only"
+    restricted_data: "approval_required"
+    
+  # Privacy Protection
+  privacy_protection:
+    automatic_suppression: true
+    suppression_rules:
+      minimum_population: 1000
+      minimum_count: 10
+      complementary_suppression: true
+      
+  # Access Control
+  access_control:
+    authentication_required: false  # For public exports
+    audit_logging: true
+    download_tracking: true
+    
+  # Data Retention
+  data_retention:
+    export_retention_days: 90
+    archive_after_days: 365
+    permanent_deletion_after_years: 7
+
+# Metadata and Documentation
+metadata_standards:
+  
+  # Export Metadata
+  export_metadata:
+    dublin_core_compliance: true
+    iso_19115_compliance: true
+    
+    required_metadata:
+      - "title"
+      - "description"
+      - "creator"
+      - "creation_date"
+      - "format"
+      - "coverage_spatial"
+      - "coverage_temporal"
+      - "rights"
+      - "source"
+      - "quality_statement"
+      
+  # Documentation
+  documentation:
+    include_data_dictionary: true
+    include_methodology_notes: true
+    include_quality_statement: true
+    include_usage_guidelines: true
+    
+    documentation_formats: ["pdf", "html", "markdown"]
+    language: "english_australian"
+    
+  # Versioning
+  versioning:
+    semantic_versioning: true
+    version_change_triggers:
+      - "schema_change"
+      - "methodology_change"
+      - "quality_improvement"
+    maintain_version_history: true

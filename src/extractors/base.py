@@ -20,7 +20,10 @@ from ..utils.interfaces import (
     ProcessingStatus,
     ProgressCallback,
     SourceMetadata,
+    ValidationError,
 )
+from ..validators import ValidationOrchestrator, QualityChecker
+from ..pipelines.validation_pipeline import ValidationMode
 
 
 class BaseExtractor(ABC):
@@ -66,6 +69,20 @@ class BaseExtractor(ABC):
         self._source_metadata: Optional[SourceMetadata] = None
         self._processing_metadata: Optional[ProcessingMetadata] = None
         self._audit_trail: Optional[AuditTrail] = None
+        
+        # Validation configuration
+        self.validation_enabled = config.get('validation_enabled', True)
+        self.validation_mode = ValidationMode(config.get('validation_mode', 'selective'))
+        self.quality_threshold = config.get('quality_threshold', 95.0)
+        self.halt_on_validation_failure = config.get('halt_on_validation_failure', False)
+        
+        # Initialise validation components
+        if self.validation_enabled:
+            self.validation_orchestrator = ValidationOrchestrator()
+            self.quality_checker = QualityChecker()
+        else:
+            self.validation_orchestrator = None
+            self.quality_checker = None
     
     @abstractmethod
     def extract(
@@ -123,6 +140,131 @@ class BaseExtractor(ABC):
         """
         pass
     
+    def validate_extracted_data(
+        self,
+        data_batch: DataBatch,
+        validation_context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Validate extracted data batch.
+        
+        Args:
+            data_batch: Batch of extracted data to validate
+            validation_context: Optional validation context
+            
+        Returns:
+            Dict containing validation results
+            
+        Raises:
+            ValidationError: If validation fails critically
+        """
+        if not self.validation_enabled or not self.validation_orchestrator:
+            return {"validation_enabled": False, "passed": True}
+        
+        try:
+            # Convert batch to DataFrame for validation
+            import pandas as pd
+            if hasattr(data_batch, 'records'):
+                df = pd.DataFrame([record.__dict__ if hasattr(record, '__dict__') else record 
+                                 for record in data_batch.records])
+            else:
+                df = pd.DataFrame(data_batch)
+            
+            # Run validation orchestrator
+            validation_result = self.validation_orchestrator.validate_data(
+                df,
+                context=validation_context or {}
+            )
+            
+            # Check quality threshold
+            quality_score = getattr(validation_result, 'overall_quality_score', 100.0)
+            passed_threshold = quality_score >= self.quality_threshold
+            
+            # Prepare validation results
+            validation_summary = {
+                "validation_enabled": True,
+                "quality_score": quality_score,
+                "quality_threshold": self.quality_threshold,
+                "passed_threshold": passed_threshold,
+                "validation_mode": self.validation_mode.value,
+                "errors": getattr(validation_result, 'errors', []),
+                "warnings": getattr(validation_result, 'warnings', []),
+                "validation_timestamp": datetime.now().isoformat()
+            }
+            
+            # Handle validation failures
+            if not passed_threshold and self.halt_on_validation_failure:
+                error_msg = f"Data validation failed: quality score {quality_score:.2f}% below threshold {self.quality_threshold}%"
+                self.logger.error(error_msg)
+                raise ValidationError(error_msg)
+            elif not passed_threshold:
+                self.logger.warning(
+                    f"Data validation warning: quality score {quality_score:.2f}% below threshold {self.quality_threshold}%"
+                )
+            
+            self.logger.debug(
+                f"Data validation completed: quality score {quality_score:.2f}%, passed: {passed_threshold}"
+            )
+            
+            return validation_summary
+            
+        except ValidationError:
+            raise
+        except Exception as e:
+            error_msg = f"Validation execution failed: {str(e)}"
+            self.logger.error(error_msg)
+            if self.halt_on_validation_failure:
+                raise ValidationError(error_msg) from e
+            else:
+                return {
+                    "validation_enabled": True,
+                    "validation_failed": True,
+                    "error": str(e),
+                    "passed": False
+                }
+    
+    def validate_source_schema(
+        self,
+        source: Union[str, Path, Dict[str, Any]],
+        expected_schema: Optional[Dict[str, Any]] = None
+    ) -> bool:
+        """
+        Validate source data schema compatibility.
+        
+        Args:
+            source: Source specification
+            expected_schema: Expected schema definition
+            
+        Returns:
+            bool: True if schema is compatible
+        """
+        if not self.validation_enabled:
+            return True
+        
+        try:
+            # Get source metadata
+            source_metadata = self.get_source_metadata(source)
+            
+            # Basic schema validation
+            if expected_schema:
+                # Check if required fields are available
+                if hasattr(source_metadata, 'columns'):
+                    available_columns = set(source_metadata.columns or [])
+                    required_columns = set(expected_schema.get('required_fields', []))
+                    
+                    if not required_columns.issubset(available_columns):
+                        missing_columns = required_columns - available_columns
+                        self.logger.warning(
+                            f"Source schema validation warning: missing columns {missing_columns}"
+                        )
+                        return False
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Source schema validation failed: {str(e)}")
+            return False
+    
     def extract_with_retry(
         self,
         source: Union[str, Path, Dict[str, Any]],
@@ -165,31 +307,76 @@ class BaseExtractor(ABC):
                 if not self.validate_source(source):
                     raise ExtractionError(f"Source validation failed: {source}")
                 
+                # Validate source schema if enabled
+                if self.validation_enabled:
+                    self.validate_source_schema(source, kwargs.get('expected_schema'))
+                
                 # Extract data
                 total_records = 0
+                total_validation_failures = 0
                 for batch in self.extract(source, **kwargs):
-                    total_records += len(batch)
+                    batch_size = len(batch)
+                    total_records += batch_size
                     self._processing_metadata.records_processed = total_records
+                    
+                    # Validate extracted batch if enabled
+                    validation_result = None
+                    if self.validation_enabled:
+                        try:
+                            validation_result = self.validate_extracted_data(
+                                batch,
+                                validation_context={
+                                    'extractor_id': self.extractor_id,
+                                    'batch_number': total_records // self.batch_size,
+                                    'total_records': total_records
+                                }
+                            )
+                            
+                            if not validation_result.get('passed_threshold', True):
+                                total_validation_failures += 1
+                                
+                        except ValidationError as ve:
+                            if self.halt_on_validation_failure:
+                                raise ExtractionError(f"Extraction halted due to validation failure: {str(ve)}") from ve
+                            else:
+                                self.logger.warning(f"Validation failed for batch but continuing: {str(ve)}")
+                                total_validation_failures += 1
                     
                     # Report progress
                     if self._progress_callback:
+                        progress_message = f"Extracted {total_records} records"
+                        if validation_result:
+                            quality_score = validation_result.get('quality_score', 100.0)
+                            progress_message += f" (Quality: {quality_score:.1f}%)"
+                        
                         self._progress_callback(
                             total_records,
                             self._source_metadata.row_count or 0,
-                            f"Extracted {total_records} records"
+                            progress_message
                         )
                     
                     # Create checkpoint
                     if total_records % self._checkpoint_interval == 0:
-                        self._create_checkpoint(total_records)
+                        checkpoint_data = {
+                            'total_records': total_records,
+                            'validation_failures': total_validation_failures
+                        }
+                        if validation_result:
+                            checkpoint_data['last_validation_result'] = validation_result
+                        self._create_checkpoint(total_records, checkpoint_data)
                     
                     yield batch
                 
                 # Mark as completed
                 self._processing_metadata.mark_completed()
-                self.logger.info(
-                    f"Extraction completed: {total_records} records processed"
-                )
+                
+                # Log completion with validation statistics
+                completion_message = f"Extraction completed: {total_records} records processed"
+                if self.validation_enabled and total_validation_failures > 0:
+                    validation_failure_rate = (total_validation_failures / (total_records // self.batch_size)) * 100 if total_records > 0 else 0
+                    completion_message += f", {total_validation_failures} validation failures ({validation_failure_rate:.1f}%)"
+                
+                self.logger.info(completion_message)
                 return
                 
             except Exception as e:
@@ -276,12 +463,13 @@ class BaseExtractor(ABC):
         
         return self._audit_trail
     
-    def _create_checkpoint(self, records_processed: int) -> Dict[str, Any]:
+    def _create_checkpoint(self, records_processed: int, additional_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Create a checkpoint for resumability.
         
         Args:
             records_processed: Number of records processed so far
+            additional_data: Additional data to include in checkpoint
             
         Returns:
             Dict[str, Any]: Checkpoint data
@@ -292,6 +480,10 @@ class BaseExtractor(ABC):
             'timestamp': datetime.now().isoformat(),
             'source_checksum': self._source_metadata.checksum if self._source_metadata else None
         }
+        
+        # Add validation data if provided
+        if additional_data:
+            checkpoint.update(additional_data)
         
         self._last_checkpoint = checkpoint
         self.logger.debug(f"Created checkpoint: {checkpoint}")

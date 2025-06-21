@@ -1,0 +1,439 @@
+# Medicare and PBS Data Source Configurations
+# Configuration for Medicare and Pharmaceutical Benefits Scheme data sources
+# Includes privacy protection and statistical disclosure compliance
+
+medicare_pbs:
+  base_url: "https://data.gov.au/data/dataset"
+  api_version: "v1"
+  timeout_seconds: 120
+  retry_attempts: 3
+  batch_size: 500  # Smaller batches for privacy-sensitive data
+  
+  # Privacy and statistical disclosure control
+  privacy_protection:
+    enabled: true
+    min_cell_size: 5              # Minimum count for disclosure
+    complementary_suppression: true
+    perturbation: false           # Usually not used for official statistics
+    rounding: true
+    rounding_base: 3
+    
+    # Suppression rules
+    suppression_rules:
+      small_counts: true
+      zero_counts: false          # Zeros are typically not suppressed
+      dominant_cells: true        # Suppress if one entity dominates
+      dominant_threshold: 85      # Percentage threshold for dominance
+      
+    # Data release approvals
+    release_approval:
+      require_approval: true
+      approval_authority: "Department of Health"
+      privacy_impact_assessment: true
+
+  # Medicare utilisation data
+  medicare:
+    base_url: "https://data.gov.au/data/dataset/medicare-statistics"
+    update_frequency: "quarterly"
+    geographic_level: "SA2"       # Preferred geographic level
+    
+    # Medicare Benefits Schedule (MBS) utilisation
+    mbs_utilisation:
+      dataset_id: "mbs-utilisation-sa2"
+      endpoint: "/medicare/mbs-utilisation"
+      data_format: "csv"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE", "STATISTICAL_AREA_2", "Geographic_Area"]
+        year: ["YEAR", "REFERENCE_YEAR", "Calendar_Year"]
+        quarter: ["QUARTER", "REFERENCE_QUARTER", "Quarter"]
+        
+        # Service details
+        item_group: ["ITEM_GROUP", "MBS_GROUP", "Service_Category"]
+        item_number: ["ITEM_NUMBER", "MBS_ITEM", "Item_Code"]
+        item_description: ["ITEM_DESCRIPTION", "Service_Description"]
+        
+        # Utilisation metrics
+        services_count: ["SERVICES", "SERVICE_COUNT", "Total_Services"]
+        patients_count: ["PATIENTS", "PATIENT_COUNT", "Unique_Patients"]
+        benefits_paid: ["BENEFITS", "BENEFIT_PAID", "Total_Benefits_$"]
+        
+        # Bulk billing
+        bulk_billed_services: ["BULK_BILLED_SERVICES", "BB_SERVICES"]
+        bulk_billing_rate: ["BULK_BILLING_RATE", "BB_RATE_%"]
+        
+        # Demographics
+        age_group: ["AGE_GROUP", "Age_Group"]
+        sex: ["SEX", "Gender"]
+        
+        # Provider information
+        provider_type: ["PROVIDER_TYPE", "Provider_Category"]
+        provider_count: ["PROVIDER_COUNT", "Unique_Providers"]
+      
+      validation:
+        required_fields: ["sa2_code", "year", "item_group"]
+        sa2_code_format: "^\\d{9}$"
+        year_range: [2015, 2030]
+        quarter_values: ["Q1", "Q2", "Q3", "Q4"]
+        services_bounds: [0, 1000000]    # Per SA2 per quarter
+        benefits_bounds: [0, 10000000]   # Dollars
+        rate_bounds: [0, 100]            # Percentages
+      
+      # Privacy application
+      privacy_application:
+        fields_to_protect: ["services_count", "patients_count", "provider_count"]
+        min_cell_size: 5
+        suppress_complementary: true
+        apply_to_demographics: true
+      
+      # MBS item groups for health analysis
+      item_groups:
+        primary_care:
+          - "GP Attendances"
+          - "Other Non-Referred Attendances"
+          - "Practice Nurse Items"
+          
+        specialist_care:
+          - "Specialist Attendances"
+          - "Consultant Physician Attendances"
+          - "Surgical Operations"
+          
+        diagnostic:
+          - "Diagnostic Imaging"
+          - "Pathology Services"
+          - "Nuclear Medicine"
+          
+        mental_health:
+          - "Mental Health Services"
+          - "Psychology Services" 
+          - "Mental Health Nurse Items"
+          
+        allied_health:
+          - "Physiotherapy"
+          - "Occupational Therapy"
+          - "Speech Pathology"
+          - "Podiatry"
+          - "Optometry"
+          
+        preventive:
+          - "Health Assessments"
+          - "Immunisation"
+          - "Screening Services"
+    
+    # GP workforce and practice data
+    gp_workforce:
+      dataset_id: "gp-workforce-sa2"
+      endpoint: "/medicare/gp-workforce"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE"]
+        year: ["YEAR"]
+        gp_fte: ["GP_FTE", "GP_Full_Time_Equivalent"]
+        gp_headcount: ["GP_HEADCOUNT", "GP_Count"]
+        practices_count: ["PRACTICES", "Practice_Count"]
+        population: ["POPULATION", "Estimated_Population"]
+        gp_per_1000: ["GP_PER_1000", "GPs_per_1000_Population"]
+        
+      validation:
+        required_fields: ["sa2_code", "year"]
+        gp_bounds: [0, 500]       # Per SA2
+        practices_bounds: [0, 100] # Per SA2
+        rate_bounds: [0, 20]       # GPs per 1000
+
+  # Pharmaceutical Benefits Scheme (PBS) data
+  pbs:
+    base_url: "https://data.gov.au/data/dataset/pharmaceutical-benefits-scheme-pbs-data"
+    update_frequency: "monthly"
+    geographic_level: "SA2"
+    
+    # PBS prescriptions by SA2
+    prescriptions:
+      dataset_id: "pbs-prescriptions-sa2"
+      endpoint: "/pbs/prescriptions"
+      data_format: "csv"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE", "Geographic_Area"]
+        year: ["YEAR", "Calendar_Year"]
+        month: ["MONTH", "Month"]
+        
+        # Drug information
+        generic_name: ["GENERIC_NAME", "Drug_Name"]
+        atc_code: ["ATC_CODE", "Anatomical_Therapeutic_Chemical"]
+        drug_category: ["DRUG_CATEGORY", "Therapeutic_Category"]
+        pbs_code: ["PBS_CODE", "Item_Code"]
+        
+        # Prescription metrics
+        prescriptions_count: ["PRESCRIPTIONS", "Total_Prescriptions"]
+        patients_count: ["PATIENTS", "Unique_Patients"]
+        ddd_quantity: ["DDD", "Defined_Daily_Doses"]
+        total_cost: ["TOTAL_COST", "Total_Cost_$"]
+        government_cost: ["GOVERNMENT_COST", "Government_Cost_$"]
+        patient_cost: ["PATIENT_COST", "Patient_Contribution_$"]
+        
+        # Demographics
+        age_group: ["AGE_GROUP"]
+        sex: ["SEX"]
+        
+        # Provider
+        prescriber_type: ["PRESCRIBER_TYPE", "Prescriber_Category"]
+        pharmacy_count: ["PHARMACY_COUNT", "Dispensing_Pharmacies"]
+      
+      validation:
+        required_fields: ["sa2_code", "year", "generic_name"]
+        month_range: [1, 12]
+        prescriptions_bounds: [0, 100000]    # Per SA2 per month
+        cost_bounds: [0, 1000000]            # Dollars
+        
+      # Privacy application  
+      privacy_application:
+        fields_to_protect: ["prescriptions_count", "patients_count", "pharmacy_count"]
+        min_cell_size: 5
+        suppress_rare_drugs: true
+        min_drug_prevalence: 10  # Minimum prescriptions per SA2 to report drug
+      
+      # Major therapeutic categories for health analysis
+      therapeutic_categories:
+        cardiovascular:
+          - "ACE Inhibitors"
+          - "Beta Blockers"
+          - "Calcium Channel Blockers"
+          - "Diuretics"
+          - "Statins"
+          
+        mental_health:
+          - "Antidepressants"
+          - "Anxiolytics"
+          - "Antipsychotics"
+          - "Mood Stabilisers"
+          
+        diabetes:
+          - "Insulin"
+          - "Metformin"
+          - "Sulfonylureas"
+          - "DPP-4 Inhibitors"
+          - "SGLT-2 Inhibitors"
+          
+        respiratory:
+          - "Bronchodilators"
+          - "Corticosteroids (Inhaled)"
+          - "Leukotriene Antagonists"
+          
+        pain_management:
+          - "NSAIDs"
+          - "Opioid Analgesics"
+          - "Anticonvulsants (Pain)"
+          
+        antibiotics:
+          - "Penicillins"
+          - "Macrolides"
+          - "Cephalosporins"
+          - "Fluoroquinolones"
+    
+    # PBS expenditure analysis
+    expenditure:
+      dataset_id: "pbs-expenditure-sa2"
+      endpoint: "/pbs/expenditure"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE"]
+        year: ["YEAR"]
+        drug_category: ["DRUG_CATEGORY"]
+        total_prescriptions: ["TOTAL_PRESCRIPTIONS"]
+        total_cost: ["TOTAL_COST"]
+        cost_per_prescription: ["COST_PER_PRESCRIPTION"]
+        cost_per_capita: ["COST_PER_CAPITA"]
+        government_subsidy: ["GOVERNMENT_SUBSIDY"]
+        patient_contribution: ["PATIENT_CONTRIBUTION"]
+
+  # Healthcare services and providers
+  healthcare_services:
+    base_url: "https://data.gov.au/data/dataset/health-services"
+    
+    # Primary healthcare services
+    primary_care_services:
+      dataset_id: "primary-care-services-sa2"
+      endpoint: "/healthcare/primary-care"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE"]
+        service_type: ["SERVICE_TYPE", "Provider_Type"]
+        service_count: ["SERVICE_COUNT", "Number_of_Services"]
+        workforce_fte: ["WORKFORCE_FTE", "Full_Time_Equivalent"]
+        population: ["POPULATION"]
+        services_per_1000: ["SERVICES_PER_1000", "Services_per_1000_Population"]
+        workforce_per_1000: ["WORKFORCE_PER_1000", "Workforce_per_1000_Population"]
+        
+        # Access measures
+        average_distance_km: ["AVG_DISTANCE", "Average_Distance_km"]
+        accessibility_score: ["ACCESSIBILITY_SCORE"]
+        bulk_billing_rate: ["BULK_BILLING_RATE"]
+        
+      service_types:
+        - "GP Practices"
+        - "Medical Centres"
+        - "Community Health Centres"
+        - "Aboriginal Medical Services"
+        - "Mental Health Services"
+        - "Allied Health Services"
+        - "Pharmacies"
+        - "Dental Services"
+    
+    # Hospital services
+    hospital_services:
+      dataset_id: "hospital-services-sa2"
+      endpoint: "/healthcare/hospitals"
+      
+      field_mappings:
+        sa2_code: ["SA2_CODE"]
+        hospital_type: ["HOSPITAL_TYPE"]
+        hospital_count: ["HOSPITAL_COUNT"]
+        bed_count: ["BED_COUNT"]
+        beds_per_1000: ["BEDS_PER_1000"]
+        distance_to_nearest: ["DISTANCE_TO_NEAREST_KM"]
+        
+      hospital_types:
+        - "Public Acute"
+        - "Private Acute"
+        - "Public Psychiatric"
+        - "Private Psychiatric"
+        - "Rehabilitation"
+        - "Emergency Departments"
+
+# Data integration and linkage
+data_integration:
+  # Linkage keys for integration with other datasets
+  linkage_keys:
+    primary: "sa2_code"
+    temporal: ["year", "quarter", "month"]
+    demographic: ["age_group", "sex"]
+    
+  # Integration with health outcomes
+  health_outcomes_linkage:
+    mortality_linkage: true
+    hospitalisation_linkage: true
+    disease_prevalence_linkage: true
+    
+  # Population denominators
+  population_data:
+    source: "ABS Census and ERP"
+    update_frequency: "annual"
+    required_for_rates: true
+
+# Quality standards and validation
+quality_standards:
+  completeness_threshold: 80   # Lower threshold due to privacy constraints
+  accuracy_threshold: 95       # High accuracy for administrative data
+  timeliness_days: 120        # Quarterly reporting allows longer timeliness
+  
+  # Administrative data standards
+  australian_standards:
+    - "Department of Health Data Standards"
+    - "Medicare Benefits Schedule"
+    - "Pharmaceutical Benefits Scheme Guidelines"
+    - "Australian Institute of Health and Welfare METeOR"
+    - "Privacy Act 1988 compliance"
+    - "Therapeutic Goods Administration standards"
+
+# Target schema compatibility  
+target_schema:
+  healthcare_utilisation:
+    - geographic_id
+    - geographic_level
+    - indicator_name
+    - indicator_code
+    - indicator_type
+    - value
+    - unit
+    - reference_year
+    - service_type
+    - service_category
+    - visits_count
+    - utilisation_rate
+    - bulk_billed_percentage
+    - data_suppressed
+    - data_source_id
+    - extraction_timestamp
+    
+  pharmaceutical_utilisation:
+    - geographic_id
+    - drug_category
+    - prescription_count
+    - unique_patients
+    - total_cost
+    - cost_per_prescription
+    - data_suppressed
+    
+  healthcare_access:
+    - geographic_id
+    - service_type
+    - service_count
+    - workforce_fte
+    - workforce_per_1000_population
+    - average_distance_km
+    - accessibility_score
+
+# Statistical disclosure control procedures
+statistical_disclosure_control:
+  # Primary disclosure control
+  primary_disclosure:
+    method: "cell_suppression"
+    threshold: 5
+    apply_to_counts: true
+    apply_to_rates: false      # Rates based on suppressed counts are typically suppressed
+    
+  # Secondary disclosure control
+  secondary_disclosure:
+    method: "complementary_suppression"
+    minimum_suppressions: 2    # At least 2 cells suppressed per row/column
+    protect_margins: true
+    
+  # Perturbation (if used)
+  perturbation:
+    method: "random_rounding"
+    rounding_base: 3
+    maintain_additivity: true
+    
+  # Quality indicators after disclosure control
+  quality_indicators:
+    data_utility_measure: true
+    suppression_rate_threshold: 30  # Maximum acceptable suppression rate
+    
+# Error handling and data quality
+error_handling:
+  privacy_violations:
+    action: "suppress_and_log"
+    escalation: "immediate"
+    
+  data_quality_issues:
+    missing_sa2_action: "exclude_record"
+    invalid_values_action: "flag_and_exclude"
+    outlier_detection: true
+    outlier_action: "flag_for_review"
+    
+  # Disclosure risk assessment
+  disclosure_risk:
+    risk_assessment_required: true
+    threshold_high_risk: 0.1    # 10% risk threshold
+    mitigation_required: true
+
+# Compliance and governance
+compliance:
+  privacy_legislation:
+    - "Privacy Act 1988"
+    - "Australian Privacy Principles"
+    - "Public Health Act provisions"
+    
+  ethical_approval:
+    required: true
+    ethics_committee: "Department of Health"
+    
+  data_sharing_agreements:
+    required: true
+    review_frequency: "annual"
+    
+  audit_requirements:
+    access_logging: true
+    usage_monitoring: true
+    regular_audits: true
+    audit_frequency: "quarterly"

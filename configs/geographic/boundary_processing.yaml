@@ -1,0 +1,447 @@
+# Boundary Processing Configuration for AHGD Geographic Pipeline
+#
+# This file defines processing rules for Australian Bureau of Statistics
+# boundary files including topology validation, geometry simplification,
+# and spatial indexing for SA1, SA2, SA3, SA4 boundaries.
+
+# Default processing settings
+default_settings:
+  enable_validation: true
+  enable_simplification: true
+  enable_spatial_indexing: true
+  parallel_processing: true
+  max_workers: 4
+  batch_size: 100
+  memory_limit_mb: 1024
+
+# Input Data Sources
+data_sources:
+  
+  # ABS Statistical Area Boundaries
+  abs_boundaries:
+    base_url: "https://www.abs.gov.au/AUSSTATS/abs@.nsf/DetailsPage/1270.0.55.001July%202021"
+    
+    # Boundary files by statistical area level
+    boundary_files:
+      SA1:
+        filename: "SA1_2021_AUST_GDA2020_SHP.zip"
+        format: "shapefile"
+        coordinate_system: "GDA2020"
+        expected_count: 57523
+        geometry_type: "Polygon"
+        
+      SA2:
+        filename: "SA2_2021_AUST_GDA2020_SHP.zip"
+        format: "shapefile"
+        coordinate_system: "GDA2020"
+        expected_count: 2473
+        geometry_type: "Polygon"
+        
+      SA3:
+        filename: "SA3_2021_AUST_GDA2020_SHP.zip"
+        format: "shapefile"
+        coordinate_system: "GDA2020"
+        expected_count: 351
+        geometry_type: "Polygon"
+        
+      SA4:
+        filename: "SA4_2021_AUST_GDA2020_SHP.zip"
+        format: "shapefile"
+        coordinate_system: "GDA2020"
+        expected_count: 108
+        geometry_type: "Polygon"
+        
+  # Alternative data sources
+  alternative_sources:
+    geoscience_australia:
+      url: "https://data.gov.au/dataset/ds-ga-a05f7892-eae3-7506-e044-00144fdd4fa6"
+      format: "geojson"
+      
+    data_gov_au:
+      url: "https://data.gov.au/data/dataset/bdcf5b09-89bc-47ec-9281-6b8e9ee147aa"
+      format: "multiple"
+
+# Topology Validation Configuration
+topology_validation:
+  
+  # General validation settings
+  enabled: true
+  strict_mode: false  # Whether to fail on warnings
+  tolerance_metres: 1.0
+  
+  # Validation rules
+  validation_rules:
+    
+    # Geometry validation
+    geometry_validation:
+      check_geometry_type: true
+      check_coordinate_validity: true
+      check_ring_closure: true
+      check_ring_orientation: true
+      check_self_intersection: true
+      check_duplicate_points: true
+      
+    # Topology validation  
+    topology_validation:
+      check_gaps: true
+      check_overlaps: true
+      check_slivers: true
+      minimum_area_sqm: 100  # Polygons smaller than 100 sqm flagged
+      maximum_area_sqkm: 100000  # Areas larger than 100,000 sqkm flagged
+      
+    # Hierarchy validation
+    hierarchy_validation:
+      check_containment: true
+      check_code_format: true
+      check_parent_child_relationships: true
+      verify_population_constraints: true
+      
+    # Coordinate system validation
+    coordinate_validation:
+      check_australian_bounds: true
+      check_coordinate_precision: true
+      minimum_precision_digits: 6
+      maximum_coordinate_deviation: 1000  # metres from expected position
+      
+  # Error thresholds
+  error_thresholds:
+    maximum_geometry_errors: 10
+    maximum_topology_errors: 5
+    maximum_hierarchy_errors: 2
+    warning_threshold: 50  # warnings before failing validation
+    
+  # Automated fixes
+  automated_fixes:
+    enable_auto_fix: true
+    fix_ring_closure: true
+    fix_duplicate_points: true
+    fix_coordinate_precision: true
+    snap_tolerance_metres: 0.1
+
+# Geometry Simplification Configuration
+geometry_simplification:
+  
+  # Simplification settings
+  enabled: true
+  preserve_topology: true
+  
+  # Multi-resolution output levels
+  detail_levels:
+    
+    # Ultra-high detail for surveying and engineering
+    ultra_high:
+      tolerance_metres: 0.1
+      description: "Survey accuracy, ~10cm tolerance"
+      use_cases: ["surveying", "engineering", "construction"]
+      output_suffix: "_ultra_high"
+      
+    # High detail for detailed mapping and analysis
+    high:
+      tolerance_metres: 1.0
+      description: "High detail mapping, ~1m tolerance"
+      use_cases: ["detailed_mapping", "urban_planning", "local_analysis"]
+      output_suffix: "_high"
+      
+    # Medium detail for general purpose mapping
+    medium:
+      tolerance_metres: 10.0
+      description: "General purpose mapping, ~10m tolerance"
+      use_cases: ["web_mapping", "general_analysis", "data_visualisation"]
+      output_suffix: "_medium"
+      
+    # Low detail for overview and web services
+    low:
+      tolerance_metres: 100.0
+      description: "Overview mapping, ~100m tolerance"
+      use_cases: ["overview_maps", "web_services", "mobile_apps"]
+      output_suffix: "_low"
+      
+    # Overview level for national-scale visualisation
+    overview:
+      tolerance_metres: 1000.0
+      description: "National overview, ~1km tolerance"
+      use_cases: ["national_overview", "small_scale_maps", "thumbnails"]
+      output_suffix: "_overview"
+      
+  # Simplification algorithm settings
+  algorithm_settings:
+    
+    # Douglas-Peucker algorithm (default)
+    douglas_peucker:
+      enabled: true
+      high_quality: true
+      
+    # Visvalingam-Whyatt algorithm (alternative)
+    visvalingam_whyatt:
+      enabled: false
+      effective_area_threshold: 1000  # square metres
+      
+    # Topology-preserving simplification
+    topology_preserving:
+      enabled: true
+      avoid_intersections: true
+      maintain_connectivity: true
+      
+  # Quality control
+  quality_control:
+    maximum_area_change_percent: 5.0    # Flag if area changes >5%
+    maximum_perimeter_change_percent: 10.0  # Flag if perimeter changes >10%
+    minimum_retained_points: 4          # Minimum points for valid polygon
+    validate_output_topology: true
+    
+  # Special handling
+  special_handling:
+    
+    # Small islands and enclaves
+    small_features:
+      minimum_area_sqm: 10000  # 1 hectare
+      preserve_below_threshold: true
+      
+    # Coastline features
+    coastline_features:
+      enhanced_preservation: true
+      minimum_tolerance_metres: 0.5
+      
+    # Urban areas
+    urban_areas:
+      enhanced_detail: true
+      population_density_threshold: 1000  # people per sqkm
+
+# Spatial Indexing Configuration
+spatial_indexing:
+  
+  # Index settings
+  enabled: true
+  index_type: "rtree"  # rtree, quadtree, grid
+  
+  # R-tree configuration
+  rtree_settings:
+    max_entries_per_node: 16
+    min_entries_per_node: 4
+    max_depth: 15
+    bulk_loading: true
+    
+  # Quadtree configuration
+  quadtree_settings:
+    max_depth: 12
+    max_points_per_node: 100
+    
+  # Grid index configuration
+  grid_settings:
+    cell_size_metres: 1000
+    adaptive_grid: true
+    
+  # Performance settings
+  performance_settings:
+    cache_size_mb: 256
+    enable_parallel_indexing: true
+    index_compression: true
+    
+  # Index maintenance
+  maintenance:
+    rebuild_frequency: "monthly"
+    incremental_updates: true
+    integrity_checks: "weekly"
+
+# Output Configuration
+output_settings:
+  
+  # File formats
+  supported_formats:
+    
+    # Shapefile
+    shapefile:
+      enabled: true
+      coordinate_system: "GDA2020"
+      encoding: "utf-8"
+      create_prj_file: true
+      create_spatial_index: true
+      
+    # GeoJSON
+    geojson:
+      enabled: true
+      coordinate_precision: 6
+      pretty_print: false
+      include_crs: true
+      
+    # GeoPackage
+    geopackage:
+      enabled: true
+      spatial_index: true
+      compression: "deflate"
+      
+    # PostGIS database
+    postgis:
+      enabled: true
+      create_spatial_index: true
+      table_prefix: "boundary_"
+      schema_name: "geographic"
+      
+  # Metadata inclusion
+  metadata:
+    include_processing_metadata: true
+    include_validation_results: true
+    include_simplification_metrics: true
+    include_data_lineage: true
+    
+  # Directory structure
+  directory_structure:
+    base_directory: "data_processed/boundaries"
+    by_area_type: true      # Separate directories for SA1, SA2, etc.
+    by_detail_level: true   # Separate directories for each detail level
+    include_date: true      # Include processing date in path
+    
+    # Example structure:
+    # data_processed/boundaries/2024-01-15/SA2/medium/SA2_2021_boundaries_medium.shp
+
+# Quality Assurance
+quality_assurance:
+  
+  # Automated testing
+  automated_testing:
+    enable_unit_tests: true
+    enable_integration_tests: true
+    enable_regression_tests: true
+    
+  # Statistical validation
+  statistical_validation:
+    
+    # Area conservation tests
+    area_conservation:
+      tolerance_percent: 1.0
+      test_sample_size: 100
+      
+    # Boundary length tests
+    boundary_length:
+      tolerance_percent: 5.0
+      coastline_tolerance_percent: 2.0
+      
+    # Point count reduction
+    point_reduction:
+      expected_reduction_percent: [70, 90]  # Range for medium detail
+      maximum_reduction_percent: 95
+      
+  # Visual quality assessment
+  visual_assessment:
+    generate_comparison_maps: true
+    highlight_major_changes: true
+    create_difference_overlays: true
+    
+  # Performance benchmarks
+  performance_benchmarks:
+    maximum_processing_time_minutes: 60
+    maximum_memory_usage_gb: 8
+    maximum_output_file_size_gb: 2
+
+# Monitoring and Logging
+monitoring:
+  
+  # Processing metrics
+  metrics:
+    track_processing_time: true
+    track_memory_usage: true
+    track_error_rates: true
+    track_quality_scores: true
+    
+  # Logging configuration
+  logging:
+    log_level: "INFO"
+    log_validation_details: true
+    log_simplification_statistics: true
+    log_performance_metrics: true
+    
+    # Log retention
+    retention_days: 90
+    archive_old_logs: true
+    
+  # Alerting
+  alerting:
+    enable_alerts: true
+    
+    # Alert thresholds
+    thresholds:
+      processing_time_minutes: 90
+      error_rate_percent: 5.0
+      quality_score_minimum: 0.95
+      
+    # Alert destinations
+    destinations:
+      email: ["admin@ahgd.gov.au"]
+      webhook: "${MONITORING_WEBHOOK_URL}"
+
+# Integration Settings
+integration:
+  
+  # External services
+  external_services:
+    
+    # ABS Data API
+    abs_api:
+      base_url: "https://api.abs.gov.au"
+      timeout_seconds: 300
+      retry_attempts: 3
+      
+    # Geoscience Australia
+    geoscience_australia:
+      base_url: "https://data.gov.au"
+      timeout_seconds: 180
+      
+  # Database connections
+  database_connections:
+    
+    # Primary database
+    primary:
+      connection_string: "${DATABASE_URL}"
+      schema: "geographic"
+      timeout_seconds: 30
+      
+    # Backup database
+    backup:
+      connection_string: "${BACKUP_DATABASE_URL}"
+      schema: "geographic"
+      
+  # File system integration
+  file_system:
+    input_directory: "data_raw/boundaries"
+    output_directory: "data_processed/boundaries"
+    temp_directory: "temp/boundary_processing"
+    
+    # Cleanup settings
+    cleanup_temp_files: true
+    cleanup_after_hours: 24
+
+# Error Handling and Recovery
+error_handling:
+  
+  # Error classification
+  error_types:
+    
+    # Critical errors - stop processing
+    critical:
+      - "input_file_missing"
+      - "coordinate_system_mismatch"
+      - "severe_topology_errors"
+      
+    # Recoverable errors - attempt recovery
+    recoverable:
+      - "minor_geometry_errors"
+      - "metadata_inconsistencies"
+      - "projection_warnings"
+      
+    # Warnings - log but continue
+    warnings:
+      - "precision_loss"
+      - "simplification_artifacts"
+      - "performance_degradation"
+      
+  # Recovery strategies
+  recovery_strategies:
+    retry_with_different_settings: true
+    fallback_to_lower_quality: true
+    skip_problematic_features: false  # Maintain data completeness
+    
+  # Backup and rollback
+  backup_rollback:
+    create_backups: true
+    backup_retention_days: 30
+    enable_rollback: true

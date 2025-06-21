@@ -1,0 +1,341 @@
+# Web delivery optimisation settings
+# Australian Health and Geographic Data (AHGD) Export Pipeline
+# British English spelling used throughout
+
+web_optimisation:
+  general_principles:
+    target_audience: "web_applications"
+    primary_use_cases:
+      - api_responses
+      - dashboard_data
+      - interactive_visualisations
+      - mobile_applications
+    performance_priorities:
+      - fast_initial_load
+      - minimal_bandwidth_usage
+      - cache_effectiveness
+      - mobile_optimisation
+      
+  file_size_optimisation:
+    target_sizes:
+      api_response_max_kb: 500    # 500KB for API responses
+      dashboard_data_max_mb: 5    # 5MB for dashboard datasets
+      visualisation_data_max_mb: 10  # 10MB for complex visualisations
+      mobile_optimised_max_kb: 200   # 200KB for mobile-first data
+      
+    size_reduction_strategies:
+      field_selection:
+        enabled: true
+        exclude_internal_fields: true
+        include_only_essential: true
+      precision_reduction:
+        numeric_precision: 3
+        coordinate_precision: 4  # ~10m accuracy for Australian context
+        percentage_precision: 1
+      aggregation_levels:
+        provide_summary_data: true
+        detailed_data_on_demand: true
+        
+  compression_for_web:
+    primary_algorithm: "brotli"
+    fallback_algorithm: "gzip"
+    compression_levels:
+      brotli_level: 6
+      gzip_level: 6
+    content_type_specific:
+      json:
+        algorithm: "brotli"
+        level: 7
+        minification: true
+      geojson:
+        algorithm: "gzip"
+        level: 6
+        coordinate_precision: 4
+      csv:
+        algorithm: "gzip"
+        level: 5
+        header_optimisation: true
+        
+  caching_strategy:
+    cache_headers:
+      public_data:
+        cache_control: "public, max-age=3600"  # 1 hour
+        must_revalidate: false
+      reference_data:
+        cache_control: "public, max-age=86400"  # 24 hours
+        must_revalidate: false
+      static_boundaries:
+        cache_control: "public, max-age=604800"  # 1 week
+        must_revalidate: false
+        
+    etag_generation:
+      enabled: true
+      algorithm: "sha256"
+      truncate_length: 16
+      include_metadata: true
+      
+    last_modified:
+      enabled: true
+      source_data_timestamp: true
+      pipeline_execution_time: false
+      
+    expires_headers:
+      enabled: true
+      relative_to_cache_control: true
+      max_expires_days: 30
+      
+  content_delivery:
+    mime_types:
+      json: "application/json; charset=utf-8"
+      geojson: "application/geo+json; charset=utf-8"
+      csv: "text/csv; charset=utf-8"
+      parquet: "application/parquet"
+      
+    cors_headers:
+      enabled: true
+      allowed_origins: ["*"]
+      allowed_methods: ["GET", "HEAD", "OPTIONS"]
+      allowed_headers: ["Content-Type", "Authorization"]
+      max_age: 86400
+      
+    security_headers:
+      x_content_type_options: "nosniff"
+      x_frame_options: "DENY"
+      referrer_policy: "strict-origin-when-cross-origin"
+      
+  format_specific_optimisation:
+    json:
+      minification:
+        enabled: true
+        remove_whitespace: true
+        compact_separators: true
+      structure_optimisation:
+        flatten_nested_objects: false
+        array_optimisation: true
+        null_value_handling: "omit"
+      field_optimisation:
+        short_field_names: false  # Maintain readability
+        remove_empty_fields: true
+        consistent_data_types: true
+        
+    geojson:
+      geometry_optimisation:
+        simplify_polygons: true
+        tolerance: 0.0001  # ~10m for Australian coordinates
+        remove_duplicate_points: true
+      coordinate_optimisation:
+        precision: 4
+        scientific_notation: false
+      feature_optimisation:
+        remove_empty_properties: true
+        consistent_property_types: true
+        
+    csv:
+      encoding_optimisation:
+        use_utf8: true
+        bom: false
+      delimiter_optimisation:
+        comma_separated: true
+        escape_strategy: "quote"
+      header_optimisation:
+        include_headers: true
+        descriptive_names: true
+        consistent_naming: true
+        
+  australian_data_optimisations:
+    geographic_codes:
+      state_codes:
+        use_abbreviations: true  # NSW, VIC, etc.
+        consistent_case: "upper"
+      sa2_codes:
+        include_leading_zeros: true
+        validate_format: true
+      postcodes:
+        pad_to_four_digits: true
+        validate_australian_format: true
+        
+    health_indicators:
+      aihw_data:
+        standard_field_names: true
+        consistent_units: true
+        age_group_standardisation: true
+      abs_health_data:
+        census_year_indication: true
+        methodology_notes: "separate_file"
+        
+    temporal_data:
+      date_formats:
+        api_standard: "ISO8601"  # 2023-07-01T00:00:00Z
+        display_format: "DD/MM/YYYY"  # Australian standard
+      financial_year_format: "2022-23"
+      quarter_format: "Q1 2023"
+      
+  progressive_enhancement:
+    data_tiers:
+      summary_tier:
+        description: "High-level aggregated data"
+        target_size_kb: 50
+        use_cases: ["overview_dashboards", "mobile_summaries"]
+      detailed_tier:
+        description: "Detailed data for analysis"
+        target_size_mb: 2
+        use_cases: ["desktop_applications", "detailed_analysis"]
+      comprehensive_tier:
+        description: "Complete dataset"
+        target_size_mb: 10
+        use_cases: ["research", "comprehensive_analysis"]
+        
+    lazy_loading:
+      enabled: true
+      chunk_size_records: 1000
+      pagination_support: true
+      
+    data_streaming:
+      enabled: true
+      chunk_size_kb: 100
+      streaming_formats: ["json", "csv"]
+      
+  mobile_optimisation:
+    bandwidth_considerations:
+      3g_network_optimisation: true
+      maximum_initial_payload_kb: 100
+      progressive_data_loading: true
+      
+    data_structure_optimisation:
+      nested_object_flattening: true
+      array_pagination: true
+      essential_fields_only: true
+      
+    geographic_data_mobile:
+      coordinate_precision: 3  # Reduced for mobile
+      geometry_simplification: true
+      tile_based_loading: true
+      
+  api_optimisation:
+    response_structure:
+      metadata_inclusion:
+        enabled: true
+        separate_metadata_endpoint: false
+        inline_metadata: true
+      pagination:
+        enabled: true
+        default_page_size: 100
+        max_page_size: 1000
+        page_size_header: "X-Page-Size"
+        total_count_header: "X-Total-Count"
+        
+    query_optimisation:
+      field_selection:
+        enabled: true
+        parameter_name: "fields"
+        default_fields: "essential"
+      filtering:
+        enabled: true
+        geographic_filters: true
+        temporal_filters: true
+        
+    rate_limiting:
+      requests_per_minute: 60
+      burst_allowance: 10
+      rate_limit_headers: true
+      
+  cdn_optimisation:
+    cache_strategies:
+      static_data:
+        ttl_hours: 168  # 1 week
+        edge_caching: true
+      dynamic_data:
+        ttl_hours: 1
+        edge_caching: false
+      reference_data:
+        ttl_hours: 720  # 30 days
+        edge_caching: true
+        
+    geographic_distribution:
+      primary_region: "ap-southeast-2"  # Sydney
+      secondary_regions: ["ap-southeast-1", "us-west-1"]
+      
+    compression_at_edge:
+      enabled: true
+      algorithms: ["brotli", "gzip"]
+      
+  monitoring_and_analytics:
+    performance_metrics:
+      response_time_targets:
+        p50: "< 200ms"
+        p95: "< 500ms"
+        p99: "< 1000ms"
+      bandwidth_monitoring:
+        average_response_size: true
+        compression_effectiveness: true
+        
+    user_experience_metrics:
+      time_to_first_byte: "< 100ms"
+      time_to_interactive: "< 2s"
+      cumulative_layout_shift: "< 0.1"
+      
+    error_monitoring:
+      http_error_rates: true
+      compression_failures: true
+      cache_miss_rates: true
+      
+  quality_assurance:
+    automated_testing:
+      response_size_validation: true
+      compression_ratio_validation: true
+      cache_header_validation: true
+      
+    cross_browser_testing:
+      browsers: ["Chrome", "Firefox", "Safari", "Edge"]
+      mobile_browsers: ["Chrome Mobile", "Safari Mobile"]
+      
+    accessibility_compliance:
+      wcag_guidelines: "AA"
+      screen_reader_compatibility: true
+      keyboard_navigation: true
+      
+  fallback_strategies:
+    compression_failure:
+      serve_uncompressed: true
+      log_failure: true
+      
+    large_response_handling:
+      size_limit_mb: 50
+      redirect_to_download: true
+      
+    cache_failure:
+      serve_fresh_data: true
+      cache_bypass_header: "Cache-Control: no-cache"
+      
+  security_considerations:
+    data_sanitisation:
+      remove_sensitive_fields: true
+      anonymise_personal_data: true
+      
+    rate_limiting:
+      ddos_protection: true
+      ip_based_throttling: true
+      
+    content_validation:
+      input_sanitisation: true
+      output_validation: true
+      
+# Australian Government Web Standards compliance
+government_web_standards:
+  digital_service_standard:
+    user_needs_focus: true
+    accessibility_compliance: "WCAG 2.1 AA"
+    performance_budget: true
+    
+  web_content_accessibility:
+    level: "AA"
+    guidelines_version: "2.1"
+    testing_required: true
+    
+  privacy_compliance:
+    privacy_act_1988: true
+    notifiable_data_breaches: true
+    
+  security_compliance:
+    information_security_manual: true
+    protective_security_policy: true

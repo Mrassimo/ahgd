@@ -1,0 +1,511 @@
+# Validation Integration Configuration
+# Comprehensive validation settings for ETL pipeline integration
+
+validation_integration:
+  version: "3.0.0"
+  description: "Validation framework integration for Australian Health and Geographic Data ETL"
+  
+# Global validation settings
+global_validation:
+  enabled: true
+  default_mode: "selective"  # strict, permissive, selective, audit_only
+  default_quality_threshold: 95.0
+  halt_on_critical_failures: true
+  generate_validation_reports: true
+  track_validation_lineage: true
+  
+  # Performance settings
+  validation_timeout_seconds: 300
+  max_validation_retries: 2
+  validation_batch_size: 1000
+  enable_validation_caching: true
+
+# Validation orchestrator configuration
+orchestrator:
+  enabled: true
+  parallel_validation: true
+  max_concurrent_validators: 3
+  
+  # Validator priorities (higher number = higher priority)
+  validator_priorities:
+    schema_validation: 10
+    business_rules: 9
+    geographic_validation: 8
+    statistical_validation: 7
+    quality_checks: 6
+
+# Stage-specific validation configurations
+stage_validations:
+  # Pre-extraction validation
+  pre_extraction:
+    enabled: true
+    validation_mode: "selective"
+    quality_threshold: 90.0
+    halt_on_failure: false
+    
+    validators:
+      source_availability:
+        enabled: true
+        timeout_seconds: 30
+        retry_attempts: 3
+      
+      schema_compatibility:
+        enabled: true
+        strict_mode: false
+        allow_additional_fields: true
+      
+      access_permissions:
+        enabled: true
+        verify_credentials: true
+
+  # Post-extraction validation
+  post_extraction:
+    enabled: true
+    validation_mode: "selective"
+    quality_threshold: 95.0
+    halt_on_failure: false
+    
+    validators:
+      schema_validation:
+        enabled: true
+        severity: "critical"
+        rules:
+          - "required_fields_present"
+          - "data_types_correct"
+          - "field_lengths_valid"
+      
+      completeness_check:
+        enabled: true
+        severity: "high"
+        min_completeness_percent: 95.0
+        critical_fields:
+          - "SA2_CODE"
+          - "geographic_code"
+          - "reference_year"
+      
+      duplicate_detection:
+        enabled: true
+        severity: "medium"
+        duplicate_threshold_percent: 5.0
+        key_fields:
+          - "SA2_CODE"
+          - "reference_year"
+          - "indicator_type"
+
+  # Pre-transformation validation  
+  pre_transformation:
+    enabled: true
+    validation_mode: "comprehensive"
+    quality_threshold: 95.0
+    halt_on_failure: false
+    
+    validators:
+      data_integrity:
+        enabled: true
+        severity: "critical"
+        checks:
+          - "referential_integrity"
+          - "constraint_violations"
+          - "orphaned_records"
+      
+      geographic_validity:
+        enabled: true
+        severity: "critical"
+        coordinate_system: "GDA2020"
+        boundary_validation: true
+        sa2_code_validation: true
+        spatial_consistency: true
+      
+      statistical_consistency:
+        enabled: true
+        severity: "medium"
+        outlier_detection: true
+        distribution_checks: true
+        correlation_validation: true
+
+  # Post-transformation validation
+  post_transformation:
+    enabled: true
+    validation_mode: "comprehensive"
+    quality_threshold: 98.0
+    halt_on_failure: false
+    
+    validators:
+      transformation_integrity:
+        enabled: true
+        severity: "critical"
+        preserve_record_count: true
+        maintain_relationships: true
+        data_loss_threshold_percent: 1.0
+      
+      geographic_standardisation:
+        enabled: true
+        severity: "critical"
+        sa2_code_format: "^[0-9]{11}$"
+        allocation_factor_sum: 1.0
+        mapping_completeness: 99.0
+      
+      derived_indicator_validation:
+        enabled: true
+        severity: "high"
+        calculation_accuracy: true
+        logical_consistency: true
+        range_validation: true
+
+  # Pre-integration validation
+  pre_integration:
+    enabled: true
+    validation_mode: "comprehensive"
+    quality_threshold: 95.0
+    halt_on_failure: false
+    
+    validators:
+      multi_source_consistency:
+        enabled: true
+        severity: "critical"
+        temporal_alignment: true
+        spatial_alignment: true
+        schema_compatibility: true
+      
+      integration_readiness:
+        enabled: true
+        severity: "high"
+        required_dimensions_present: true
+        fact_table_consistency: true
+        lookup_table_completeness: true
+
+  # Post-integration validation
+  post_integration:
+    enabled: true
+    validation_mode: "comprehensive"
+    quality_threshold: 98.0
+    halt_on_failure: false
+    
+    validators:
+      integrated_data_quality:
+        enabled: true
+        severity: "critical"
+        cross_dataset_consistency: true
+        aggregation_accuracy: true
+        dimensional_integrity: true
+      
+      derived_metrics_validation:
+        enabled: true
+        severity: "high"
+        health_indicator_calculations: true
+        geographic_aggregations: true
+        temporal_trends: true
+
+  # Pre-loading validation
+  pre_loading:
+    enabled: true
+    validation_mode: "standard"
+    quality_threshold: 98.0
+    halt_on_failure: true
+    
+    validators:
+      export_readiness:
+        enabled: true
+        severity: "critical"
+        schema_compliance: true
+        format_compatibility: true
+        size_validation: true
+      
+      final_quality_check:
+        enabled: true
+        severity: "critical"
+        overall_completeness: 99.0
+        data_freshness: true
+        metadata_completeness: true
+
+  # Post-loading validation
+  post_loading:
+    enabled: true
+    validation_mode: "audit"
+    quality_threshold: 99.0
+    halt_on_failure: true
+    
+    validators:
+      load_verification:
+        enabled: true
+        severity: "critical"
+        row_count_match: true
+        checksum_verification: true
+        format_integrity: true
+      
+      accessibility_validation:
+        enabled: true
+        severity: "high"
+        file_permissions: true
+        read_verification: true
+        metadata_availability: true
+
+# Quality gate configurations
+quality_gates:
+  gates:
+    # Extraction Quality Gate
+    - gate_id: "extraction_gate"
+      gate_name: "Data Extraction Quality Gate"
+      stage_name: "data_extraction"
+      pass_threshold: 95.0
+      critical_rule_threshold: 100.0
+      mode: "selective"
+      timeout_seconds: 300
+      retry_attempts: 2
+      
+      validation_rules:
+        - rule_id: "extraction_completeness"
+          rule_name: "Extraction Completeness"
+          rule_type: "business"
+          severity: "critical"
+          action: "halt"
+          threshold: 95.0
+        
+        - rule_id: "extraction_schema_compliance"
+          rule_name: "Schema Compliance"
+          rule_type: "schema"
+          severity: "critical"
+          action: "halt"
+        
+        - rule_id: "source_data_freshness"
+          rule_name: "Data Freshness"
+          rule_type: "business"
+          severity: "high"
+          action: "warning"
+          threshold: 90.0
+
+    # Transformation Quality Gate
+    - gate_id: "transformation_gate"
+      gate_name: "Geographic Transformation Quality Gate"
+      stage_name: "data_transformation"
+      pass_threshold: 98.0
+      critical_rule_threshold: 100.0
+      mode: "comprehensive"
+      timeout_seconds: 600
+      retry_attempts: 3
+      
+      validation_rules:
+        - rule_id: "geographic_standardisation_accuracy"
+          rule_name: "Geographic Standardisation Accuracy"
+          rule_type: "geographic"
+          severity: "critical"
+          action: "halt"
+          threshold: 99.0
+        
+        - rule_id: "sa2_mapping_completeness"
+          rule_name: "SA2 Mapping Completeness"
+          rule_type: "geographic"
+          severity: "critical"
+          action: "halt"
+          threshold: 99.5
+        
+        - rule_id: "coordinate_system_consistency"
+          rule_name: "Coordinate System Consistency"
+          rule_type: "geographic"
+          severity: "high"
+          action: "warning"
+
+    # Integration Quality Gate
+    - gate_id: "integration_gate"
+      gate_name: "Data Integration Quality Gate"
+      stage_name: "data_integration"
+      pass_threshold: 95.0
+      critical_rule_threshold: 100.0
+      mode: "comprehensive"
+      timeout_seconds: 900
+      retry_attempts: 2
+      
+      validation_rules:
+        - rule_id: "cross_dataset_consistency"
+          rule_name: "Cross-Dataset Consistency"
+          rule_type: "business"
+          severity: "critical"
+          action: "halt"
+        
+        - rule_id: "derived_indicator_accuracy"
+          rule_name: "Derived Indicator Accuracy"
+          rule_type: "statistical"
+          severity: "high"
+          action: "warning"
+          threshold: 95.0
+        
+        - rule_id: "temporal_consistency"
+          rule_name: "Temporal Consistency"
+          rule_type: "business"
+          severity: "medium"
+          action: "warning"
+
+    # Loading Quality Gate
+    - gate_id: "loading_gate"
+      gate_name: "Data Loading Quality Gate"
+      stage_name: "data_loading"
+      pass_threshold: 99.0
+      critical_rule_threshold: 100.0
+      mode: "audit"
+      timeout_seconds: 300
+      retry_attempts: 3
+      
+      validation_rules:
+        - rule_id: "export_completeness"
+          rule_name: "Export Completeness"
+          rule_type: "business"
+          severity: "critical"
+          action: "halt"
+          threshold: 99.9
+        
+        - rule_id: "format_compliance"
+          rule_name: "Format Compliance"
+          rule_type: "schema"
+          severity: "critical"
+          action: "halt"
+        
+        - rule_id: "file_integrity"
+          rule_name: "File Integrity"
+          rule_type: "business"
+          severity: "critical"
+          action: "halt"
+
+# Validation reporting configuration
+reporting:
+  enabled: true
+  
+  # Report generation settings
+  generate_reports:
+    stage_reports: true
+    pipeline_summary: true
+    quality_trends: true
+    compliance_reports: true
+  
+  # Report formats
+  output_formats:
+    - "json"
+    - "html"
+    - "csv"
+  
+  # Report destinations
+  destinations:
+    file_system:
+      enabled: true
+      base_path: "logs/validation_reports"
+      subdirectories_by_date: true
+    
+    database:
+      enabled: false
+      connection_string: "postgresql://localhost/ahgd_validation"
+      table_name: "validation_results"
+  
+  # Report content configuration
+  content:
+    include_raw_data: false
+    include_statistics: true
+    include_recommendations: true
+    include_lineage: true
+    detail_level: "comprehensive"  # summary, standard, comprehensive, debug
+
+# Compliance monitoring
+compliance:
+  enabled: true
+  
+  # Australian health data standards
+  standards:
+    aihw:
+      enabled: true
+      version: "2023.1"
+      compliance_threshold: 95.0
+      mandatory_checks:
+        - "data_completeness"
+        - "format_compliance"
+        - "temporal_consistency"
+    
+    abs:
+      enabled: true
+      version: "2021"
+      compliance_threshold: 99.0
+      mandatory_checks:
+        - "geographic_standardisation"
+        - "sa2_compliance"
+        - "boundary_consistency"
+    
+    medicare:
+      enabled: true
+      version: "2023"
+      compliance_threshold: 98.0
+      mandatory_checks:
+        - "patient_privacy"
+        - "data_accuracy"
+        - "service_classification"
+    
+    pbs:
+      enabled: true
+      version: "2023"
+      compliance_threshold: 98.0
+      mandatory_checks:
+        - "pharmaceutical_coding"
+        - "dosage_validation"
+        - "prescriber_validation"
+
+# Performance monitoring for validation
+validation_performance:
+  monitoring_enabled: true
+  
+  # Performance metrics
+  track_metrics:
+    - "validation_execution_time"
+    - "validation_memory_usage"
+    - "validation_cpu_utilisation"
+    - "validation_throughput"
+    - "validation_cache_hit_rate"
+  
+  # Performance thresholds
+  thresholds:
+    max_validation_time_seconds: 300
+    max_memory_usage_mb: 1024
+    max_cpu_utilisation_percent: 70
+    min_throughput_records_per_second: 100
+  
+  # Performance optimisation
+  optimisation:
+    enable_parallel_validation: true
+    use_validation_caching: true
+    batch_size_optimisation: true
+    memory_management: true
+
+# Emergency procedures
+emergency:
+  bypass_enabled: true
+  
+  # Emergency bypass conditions
+  bypass_conditions:
+    - "critical_system_failure"
+    - "data_source_unavailable"
+    - "validation_system_error"
+    - "emergency_data_request"
+  
+  # Bypass approval process
+  approval_required: true
+  bypass_duration_hours: 24
+  automatic_re_validation: true
+  
+  # Emergency contacts
+  contacts:
+    - role: "data_quality_manager"
+      email: "dq.manager@health.gov.au"
+    - role: "system_administrator"
+      email: "sysadmin@health.gov.au"
+
+# Integration with external systems
+external_integrations:
+  data_catalogue:
+    enabled: true
+    update_validation_status: true
+    publish_quality_metrics: true
+  
+  monitoring_systems:
+    enabled: true
+    send_alerts: true
+    metrics_endpoint: "http://monitoring.internal/metrics"
+  
+  workflow_management:
+    enabled: true
+    update_pipeline_status: true
+    trigger_downstream_processes: true

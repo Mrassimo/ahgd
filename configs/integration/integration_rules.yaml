@@ -1,0 +1,341 @@
+# Data Integration Rules Configuration
+# Defines business rules, priorities, and strategies for integrating multiple data sources
+
+# Integration Rules Engine Configuration
+integration_rules:
+  # Default conflict resolution strategy
+  default_resolution_strategy: "highest_quality"
+  
+  # Temporal alignment configuration
+  temporal_tolerance_days: 365
+  reference_date: "2021-12-31"  # Census reference date
+  
+  # Source Priorities (lower number = higher priority)
+  source_priorities:
+    census: 1          # Highest priority for population data
+    seifa: 2           # High priority for socioeconomic data
+    health_indicators: 3
+    geographic_boundaries: 4
+    medicare_pbs: 5
+    environmental: 6
+    
+  # Field-specific priority rules
+  field_priorities:
+    total_population:
+      sources: ["census", "health_indicators", "seifa"]
+      minimum_quality: 0.90
+      
+    life_expectancy:
+      sources: ["health_indicators", "aihw", "abs"]
+      minimum_quality: 0.85
+      
+    seifa_irsd_score:
+      sources: ["seifa", "abs"]
+      minimum_quality: 0.95
+      
+    gp_services_per_1000:
+      sources: ["medicare_pbs", "health_indicators"]
+      minimum_quality: 0.80
+      
+    mortality_rates:
+      sources: ["health_indicators", "abs", "aihw"]
+      minimum_quality: 0.90
+      
+    geographic_hierarchy:
+      sources: ["geographic_boundaries", "abs", "census"]
+      minimum_quality: 0.98
+      
+    boundary_data:
+      sources: ["geographic_boundaries", "abs_boundaries"]
+      minimum_quality: 0.95
+
+  # Mandatory fields that must be present in final integration
+  mandatory_fields:
+    - sa2_code
+    - sa2_name
+    - geographic_hierarchy
+    - boundary_data
+    - total_population
+    - demographic_profile
+    - seifa_scores
+    - seifa_deciles
+    - data_completeness_score
+    - integration_level
+
+  # Quality thresholds by field category
+  quality_thresholds:
+    # Health indicators
+    life_expectancy: 0.85
+    mortality_rate: 0.95
+    morbidity_rate: 0.85
+    healthcare_utilisation: 0.80
+    
+    # Demographics
+    population_total: 0.90
+    age_distribution: 0.85
+    sex_distribution: 0.90
+    
+    # Geographic
+    coordinates: 0.95
+    area_calculation: 0.90
+    hierarchy_consistency: 0.98
+    
+    # Socioeconomic
+    seifa_indices: 0.95
+    income_data: 0.80
+    education_data: 0.85
+
+  # Integration Rules
+  rules:
+    - name: "population_validation"
+      type: "validation"
+      source_fields: ["total_population", "male_population", "female_population"]
+      target_field: "total_population"
+      condition: "abs(total_population - (male_population + female_population)) < max(10, total_population * 0.01)"
+      priority: 200
+      enabled: true
+      description: "Validate population totals consistency with tolerance"
+      
+    - name: "seifa_completeness"
+      type: "validation"
+      source_fields: ["seifa_irsd", "seifa_irsad", "seifa_ier", "seifa_ieo"]
+      target_field: "seifa_complete"
+      condition: "all(x is not None for x in [seifa_irsd, seifa_irsad, seifa_ier, seifa_ieo])"
+      priority: 150
+      enabled: true
+      description: "Check SEIFA indices completeness"
+      
+    - name: "geographic_hierarchy_validation"
+      type: "validation"
+      source_fields: ["sa2_code", "sa3_code", "sa4_code"]
+      target_field: "hierarchy_valid"
+      condition: "sa2_code.startswith(sa3_code) and sa3_code.startswith(sa4_code)"
+      priority: 180
+      enabled: true
+      description: "Validate geographic hierarchy consistency"
+      
+    - name: "mortality_rate_standardisation"
+      type: "transformation"
+      source_fields: ["crude_mortality_rate", "age_distribution"]
+      target_field: "age_standardised_mortality_rate"
+      transformation: "age_standardise_rate"
+      priority: 160
+      enabled: true
+      description: "Calculate age-standardised mortality rate"
+      
+    - name: "health_rate_bounds_check"
+      type: "validation"
+      source_fields: ["smoking_prevalence", "obesity_prevalence", "bulk_billing_rate"]
+      target_field: "rates_valid"
+      condition: "all(0 <= rate <= 100 for rate in [smoking_prevalence, obesity_prevalence, bulk_billing_rate] if rate is not None)"
+      priority: 140
+      enabled: true
+      description: "Validate health rates are within 0-100% bounds"
+
+# Conflict Resolution Configuration
+conflict_resolution:
+  # Default strategy when no field-specific strategy is defined
+  default_strategy: "highest_quality"
+  
+  # Consensus parameters
+  consensus_threshold: 0.7
+  minimum_sources_for_consensus: 3
+  
+  # Quality weighting for weighted averages
+  quality_weight_power: 2.0
+  
+  # Field-specific resolution strategies
+  field_strategies:
+    # Use weighted average for numeric health rates
+    smoking_prevalence: "weighted_average"
+    obesity_prevalence: "weighted_average"
+    mortality_rates: "weighted_average"
+    
+    # Use consensus for categorical data
+    urbanisation: "consensus"
+    remoteness_category: "consensus"
+    disadvantage_category: "consensus"
+    
+    # Use most recent for time-sensitive data
+    population_estimates: "most_recent"
+    economic_indicators: "most_recent"
+    
+    # Use highest quality for critical data
+    sa2_code: "highest_quality"
+    total_population: "highest_quality"
+    seifa_scores: "highest_quality"
+
+# Quality-Based Selection Configuration  
+quality_selection:
+  # Quality dimensions and their weights
+  quality_dimensions:
+    completeness: 0.30
+    accuracy: 0.30
+    timeliness: 0.20
+    consistency: 0.10
+    reliability: 0.10
+    
+  # Source reliability scores
+  source_reliability:
+    census: 0.98
+    seifa: 0.98
+    abs: 0.96
+    aihw: 0.94
+    health_indicators: 0.90
+    geographic_boundaries: 0.99
+    medicare_pbs: 0.85
+    environmental: 0.80
+    nhmd: 0.92
+    
+  # Timeliness decay parameters
+  timeliness_half_life_days: 365
+
+# Temporal Alignment Configuration
+temporal_alignment:
+  # Reference period for data alignment
+  reference_date: "2021-12-31"
+  alignment_tolerance_days: 365
+  
+  # Default alignment strategy
+  default_strategy: "nearest_available"
+  
+  # Field-specific alignment strategies
+  field_strategies:
+    # Use exact match for census data
+    total_population: "exact_match"
+    demographic_profile: "exact_match"
+    
+    # Use interpolation for continuous variables
+    health_rates: "interpolation"
+    economic_indicators: "interpolation"
+    
+    # Use seasonal adjustment for health indicators
+    mortality_rates: "seasonal_adjustment"
+    disease_prevalence: "seasonal_adjustment"
+    
+    # Use forward fill for administrative data
+    seifa_scores: "forward_fill"
+    geographic_boundaries: "forward_fill"
+  
+  # Seasonal patterns for adjustment (monthly multipliers)
+  seasonal_patterns:
+    mortality_rates:
+      1: 1.15   # January - higher winter mortality
+      2: 1.10   # February
+      3: 1.05   # March
+      4: 0.95   # April
+      5: 0.90   # May
+      6: 0.85   # June - lowest mortality
+      7: 0.85   # July
+      8: 0.90   # August
+      9: 0.95   # September
+      10: 1.00  # October
+      11: 1.05  # November
+      12: 1.10  # December
+      
+    respiratory_conditions:
+      1: 1.30   # Winter peak
+      2: 1.25
+      3: 1.15
+      4: 0.90
+      5: 0.80
+      6: 0.75   # Summer minimum
+      7: 0.75
+      8: 0.80
+      9: 0.90
+      10: 1.00
+      11: 1.15
+      12: 1.25
+
+# Missing Data Handling
+missing_data_strategies:
+  # Strategy by data category
+  geographic: "flag"           # Geographic data should not be interpolated
+  demographic: "interpolate"   # Population data can be interpolated
+  health: "interpolate"        # Health indicators can be interpolated
+  socioeconomic: "default"     # Use conservative defaults for socioeconomic
+  
+  # Interpolation methods
+  interpolation_enabled: true
+  interpolation_methods:
+    spatial: true              # Use spatial neighbours for interpolation
+    demographic: true          # Use similar demographic areas
+    temporal: false            # Don't use temporal interpolation for cross-sectional data
+    
+  # Default values by category
+  defaults:
+    health:
+      gp_services_per_1000: 1.5
+      bulk_billing_rate: 85.0
+      smoking_prevalence: 15.0
+      obesity_prevalence: 25.0
+      life_expectancy: 82.0
+      
+    demographic:
+      median_age: 38.0
+      population_density: 100.0
+      
+    socioeconomic:
+      seifa_irsd_score: 1000.0
+      seifa_irsd_decile: 5
+
+# Data Integration Levels
+integration_levels:
+  minimal:
+    required_sources: 2
+    required_indicators: 10
+    description: "Basic geographic and demographic data"
+    
+  standard:
+    required_sources: 3
+    required_indicators: 25
+    description: "Health and socioeconomic data included"
+    
+  comprehensive:
+    required_sources: 5
+    required_indicators: 40
+    description: "All major data sources integrated"
+    
+  enhanced:
+    required_sources: 6
+    required_indicators: 50
+    description: "Includes derived indicators and analysis"
+
+# Validation Configuration
+validation:
+  # Enable strict validation (reject records that fail validation)
+  strict_validation: false
+  
+  # Enable comprehensive logging of validation issues
+  log_validation_details: true
+  
+  # Maximum allowed validation errors per record
+  max_validation_errors: 10
+  
+  # Validation categories and their importance
+  validation_categories:
+    schema_compliance: "critical"
+    data_quality: "high"
+    business_rules: "medium"
+    statistical_validity: "medium"
+    
+# Performance Configuration
+performance:
+  # Enable parallel processing where possible
+  parallel_processing: true
+  
+  # Maximum number of worker processes
+  max_workers: 4
+  
+  # Batch size for processing large datasets
+  batch_size: 1000
+  
+  # Enable performance monitoring
+  enable_monitoring: true
+  
+  # Memory management
+  memory_limit_mb: 4096
+  
+  # Timeout configuration (minutes)
+  stage_timeout: 30
+  pipeline_timeout: 120

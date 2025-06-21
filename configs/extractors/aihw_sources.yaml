@@ -1,0 +1,244 @@
+# AIHW Data Source Configurations
+# Configuration for Australian Institute of Health and Welfare data sources
+
+aihw:
+  base_url: "https://www.aihw.gov.au/reports-data/myhospitals/datasets"
+  api_version: "v1"
+  timeout_seconds: 60
+  retry_attempts: 3
+  batch_size: 1000
+  
+  # Authentication (if required)
+  authentication:
+    type: "api_key"  # or "oauth", "basic", "none"
+    api_key: "${AIHW_API_KEY}"  # Environment variable
+    
+  # Mortality data (GRIM - General Record of Incidence of Mortality)
+  mortality:
+    dataset_id: "grim-deaths"
+    endpoint: "/mortality/grim"
+    data_format: "csv"
+    update_frequency: "annual"
+    
+    # Field mappings for target schema compatibility
+    field_mappings:
+      sa2_code: ["SA2_CODE_2021", "SA2_MAINCODE_2021", "sa2_code"]
+      cause_of_death: ["CAUSE", "COD_GROUP", "cause_of_death"]
+      icd10_code: ["ICD10", "ICD_CODE", "icd10_code"]
+      age_group: ["AGE_GROUP", "age_group"]
+      sex: ["SEX", "sex"]
+      deaths_count: ["DEATHS", "COUNT", "deaths_count"]
+      mortality_rate: ["RATE", "ASR", "age_standardised_rate", "mortality_rate"]
+      year: ["YEAR", "REFERENCE_YEAR", "year"]
+    
+    # Data validation rules
+    validation:
+      required_fields: ["sa2_code", "cause_of_death", "year"]
+      sa2_code_format: "^\\d{9}$"
+      year_range: [2015, 2025]
+      rate_bounds: [0, 10000]  # per 100,000
+    
+    # Privacy and disclosure control
+    privacy:
+      min_cell_size: 5
+      suppress_small_counts: true
+      apply_rounding: true
+      rounding_base: 3
+    
+    # Available data years
+    available_years: [2018, 2019, 2020, 2021, 2022]
+    
+    # Major cause categories
+    cause_categories:
+      - "Cardiovascular Disease"
+      - "Cancer"
+      - "Respiratory Disease" 
+      - "Diabetes"
+      - "Mental Health"
+      - "External Causes"
+      - "Infectious Diseases"
+      - "All Causes"
+  
+  # Hospitalisation data
+  hospitalisation:
+    dataset_id: "hospital-separations"
+    endpoint: "/hospital/separations"
+    data_format: "csv"
+    update_frequency: "annual"
+    
+    field_mappings:
+      sa2_code: ["SA2_CODE_2021", "SA2_MAINCODE_2021", "sa2_code"]
+      separation_count: ["SEPARATIONS", "COUNT", "separations"]
+      separation_rate: ["RATE", "AGE_STANDARDISED_RATE", "separation_rate"]
+      diagnosis: ["DIAGNOSIS", "PRINCIPAL_DIAGNOSIS", "diagnosis"]
+      procedure: ["PROCEDURE", "PRINCIPAL_PROCEDURE", "procedure"]
+      los_average: ["ALOS", "AVERAGE_LOS", "average_length_of_stay"]
+      hospital_type: ["HOSPITAL_TYPE", "hospital_type"]
+      year: ["YEAR", "REFERENCE_YEAR", "year"]
+    
+    validation:
+      required_fields: ["sa2_code", "year"]
+      sa2_code_format: "^\\d{9}$"
+      year_range: [2015, 2025]
+      rate_bounds: [0, 50000]  # per 100,000
+    
+    privacy:
+      min_cell_size: 5
+      suppress_small_counts: true
+      apply_rounding: true
+      rounding_base: 3
+  
+  # Health indicators
+  health_indicators:
+    dataset_id: "health-indicators"
+    endpoint: "/indicators/health"
+    data_format: "csv"
+    update_frequency: "biannual"
+    
+    field_mappings:
+      sa2_code: ["SA2_CODE", "GEOGRAPHIC_AREA", "area_code"]
+      indicator_name: ["INDICATOR", "MEASURE_NAME", "indicator"]
+      indicator_value: ["VALUE", "RATE", "PROPORTION", "value"]
+      indicator_unit: ["UNIT", "MEASURE_UNIT", "unit"]
+      age_group: ["AGE_GROUP", "age_group"]
+      sex: ["SEX", "sex"]
+      year: ["YEAR", "REFERENCE_YEAR", "year"]
+    
+    # Available health indicators
+    indicators:
+      prevalence:
+        - "Diabetes Prevalence"
+        - "Hypertension Prevalence"
+        - "Heart Disease Prevalence"
+        - "Asthma Prevalence"
+        - "COPD Prevalence"
+        - "Mental Health Condition Prevalence"
+      
+      risk_factors:
+        - "Smoking Prevalence"
+        - "Obesity Prevalence"
+        - "Physical Inactivity Prevalence"
+        - "Harmful Alcohol Use Prevalence"
+        - "High Psychological Distress Prevalence"
+      
+      health_outcomes:
+        - "Self-Assessed Health Excellent/Very Good"
+        - "Life Expectancy"
+        - "Infant Mortality Rate"
+        - "Avoidable Mortality Rate"
+      
+      healthcare_access:
+        - "Bulk Billing Rate"
+        - "GP Services per 1000"
+        - "Specialist Services per 1000"
+        - "Distance to Nearest Hospital"
+  
+  # Medicare utilisation (if available through AIHW)
+  medicare:
+    dataset_id: "medicare-utilisation"
+    endpoint: "/medicare/utilisation"
+    data_format: "csv"
+    update_frequency: "quarterly"
+    
+    field_mappings:
+      sa2_code: ["SA2_CODE", "STATISTICAL_AREA_2", "geographic_area"]
+      service_type: ["ITEM_GROUP", "SERVICE_TYPE", "service_category"]
+      services_count: ["SERVICES", "SERVICE_COUNT", "total_services"]
+      patient_count: ["PATIENTS", "PATIENT_COUNT", "unique_patients"]
+      bulk_billed_services: ["BULK_BILLED", "BB_SERVICES"]
+      year: ["YEAR", "REFERENCE_YEAR", "calendar_year"]
+      quarter: ["QUARTER", "REFERENCE_QUARTER"]
+    
+    privacy:
+      min_cell_size: 5
+      suppress_small_counts: true
+      apply_complementary_suppression: true
+    
+    service_categories:
+      - "GP Attendances"
+      - "Specialist Attendances"
+      - "Diagnostic Imaging"
+      - "Pathology"
+      - "Mental Health Services"
+      - "Allied Health Services"
+
+# Data quality requirements
+quality_standards:
+  completeness_threshold: 85  # Minimum completeness percentage
+  accuracy_threshold: 95      # Minimum accuracy percentage
+  timeliness_days: 90        # Maximum days since last update
+  
+  # Australian health data standards compliance
+  australian_standards:
+    - "METEOR (Metadata Online Registry)"
+    - "National Health Data Standards"
+    - "Statistical Data and Metadata Exchange (SDMX)"
+    - "AIHW Data Quality Framework"
+
+# Target schema compatibility
+target_schema:
+  health_indicator:
+    - geographic_id
+    - geographic_level
+    - indicator_name
+    - indicator_code
+    - indicator_type
+    - value
+    - unit
+    - reference_year
+    - age_group
+    - sex
+    - data_source_id
+    - extraction_timestamp
+  
+  mortality_data:
+    - geographic_id
+    - cause_of_death
+    - icd10_code
+    - deaths_count
+    - mortality_rate
+    - age_standardised_rate
+    - is_premature
+    - preventable
+  
+  healthcare_utilisation:
+    - geographic_id
+    - service_type
+    - service_category
+    - visits_count
+    - utilisation_rate
+    - bulk_billed_percentage
+    - provider_type
+
+# Error handling and logging
+error_handling:
+  max_retry_attempts: 3
+  retry_delay_seconds: 5
+  retry_backoff_multiplier: 2
+  
+  # Error categories
+  recoverable_errors:
+    - "ConnectionTimeout"
+    - "HTTPTimeout" 
+    - "RateLimitExceeded"
+  
+  non_recoverable_errors:
+    - "AuthenticationError"
+    - "InvalidDataFormat"
+    - "SourceNotFound"
+
+# Extraction modes
+extraction_modes:
+  full:
+    description: "Extract all available data"
+    incremental: false
+    
+  incremental:
+    description: "Extract only new/updated data"
+    incremental: true
+    checkpoint_field: "last_modified"
+    
+  sample:
+    description: "Extract sample data for testing"
+    sample_size: 1000
+    random_seed: 42

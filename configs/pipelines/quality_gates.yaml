@@ -1,0 +1,572 @@
+# Quality Gates Configuration
+# Comprehensive quality gate thresholds and actions for ETL pipeline
+
+quality_gates:
+  version: "3.0.0"
+  description: "Quality gate definitions for Australian Health and Geographic Data ETL pipeline"
+  
+# Global quality gate settings
+global_settings:
+  default_pass_threshold: 95.0
+  default_critical_threshold: 100.0
+  default_timeout_seconds: 300
+  default_retry_attempts: 2
+  enable_bypass_mechanism: true
+  audit_all_decisions: true
+
+# Quality gate definitions
+gates:
+  # ===========================================
+  # EXTRACTION QUALITY GATES
+  # ===========================================
+  
+  source_availability_gate:
+    gate_id: "source_availability_gate"
+    gate_name: "Data Source Availability Gate"
+    stage_name: "pre_extraction"
+    description: "Validates data source availability and accessibility"
+    
+    # Gate configuration
+    pass_threshold: 100.0
+    critical_rule_threshold: 100.0
+    mode: "strict"
+    timeout_seconds: 120
+    retry_attempts: 3
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "source_connectivity"
+        rule_name: "Source Connectivity Check"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          connection_timeout: 30
+          retry_attempts: 3
+        bypass_conditions:
+          - "maintenance_window"
+          - "emergency_bypass_token"
+      
+      - rule_id: "authentication_validation"
+        rule_name: "Authentication Validation"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          verify_credentials: true
+          token_expiry_check: true
+      
+      - rule_id: "data_freshness_check"
+        rule_name: "Data Freshness Check"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        threshold: 90.0
+        parameters:
+          max_age_hours: 24
+          expected_update_frequency: "daily"
+
+  extraction_quality_gate:
+    gate_id: "extraction_quality_gate" 
+    gate_name: "Data Extraction Quality Gate"
+    stage_name: "data_extraction"
+    description: "Validates extracted data quality and completeness"
+    
+    # Gate configuration
+    pass_threshold: 95.0
+    critical_rule_threshold: 100.0
+    mode: "selective"
+    timeout_seconds: 300
+    retry_attempts: 2
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "extraction_schema_validation"
+        rule_name: "Extraction Schema Validation"
+        rule_type: "schema"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          required_columns:
+            - "SA2_CODE"
+            - "geographic_code"
+            - "reference_year"
+            - "data_source"
+          column_data_types:
+            SA2_CODE: "string"
+            geographic_code: "string"
+            reference_year: "integer"
+            data_source: "string"
+          allow_additional_columns: true
+      
+      - rule_id: "extraction_completeness"
+        rule_name: "Data Completeness Check"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        threshold: 95.0
+        parameters:
+          critical_fields:
+            - "SA2_CODE"
+            - "geographic_code"
+          min_completeness_percent: 95.0
+          null_value_patterns: ["", "NULL", "N/A", "Unknown"]
+      
+      - rule_id: "extraction_record_count"
+        rule_name: "Minimum Record Count"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        threshold: 90.0
+        parameters:
+          min_records: 1000
+          expected_range_lower: 10000
+          expected_range_upper: 1000000
+      
+      - rule_id: "extraction_duplicate_detection"
+        rule_name: "Duplicate Record Detection"
+        rule_type: "business"
+        severity: "medium"
+        action: "warning"
+        threshold: 95.0
+        parameters:
+          duplicate_threshold_percent: 5.0
+          key_fields:
+            - "SA2_CODE"
+            - "reference_year"
+            - "indicator_type"
+
+  # ===========================================
+  # TRANSFORMATION QUALITY GATES
+  # ===========================================
+
+  pre_transformation_gate:
+    gate_id: "pre_transformation_gate"
+    gate_name: "Pre-Transformation Validation Gate"
+    stage_name: "pre_transformation"
+    description: "Validates data readiness for transformation"
+    
+    # Gate configuration
+    pass_threshold: 95.0
+    critical_rule_threshold: 100.0
+    mode: "selective"
+    timeout_seconds: 300
+    retry_attempts: 2
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "transformation_data_integrity"
+        rule_name: "Data Integrity Check"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          referential_integrity_checks: true
+          constraint_violations: true
+          orphaned_records: true
+      
+      - rule_id: "geographic_code_validity"
+        rule_name: "Geographic Code Validity"
+        rule_type: "geographic"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          valid_code_patterns:
+            postcode: "^[0-9]{4}$"
+            lga: "^[0-9]{5}$"
+            sa2: "^[0-9]{11}$"
+          coordinate_bounds:
+            min_latitude: -44.0
+            max_latitude: -10.0
+            min_longitude: 112.0
+            max_longitude: 154.0
+
+  geographic_transformation_gate:
+    gate_id: "geographic_transformation_gate"
+    gate_name: "Geographic Transformation Quality Gate"
+    stage_name: "data_transformation"
+    description: "Validates geographic standardisation quality"
+    
+    # Gate configuration
+    pass_threshold: 98.0
+    critical_rule_threshold: 100.0
+    mode: "comprehensive"
+    timeout_seconds: 600
+    retry_attempts: 3
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "sa2_standardisation_accuracy"
+        rule_name: "SA2 Standardisation Accuracy"
+        rule_type: "geographic"
+        severity: "critical"
+        action: "halt"
+        threshold: 99.0
+        parameters:
+          sa2_code_format: "^[0-9]{11}$"
+          valid_sa2_list_source: "abs_sa2_2021"
+          mapping_completeness_percent: 99.0
+      
+      - rule_id: "allocation_factor_validation"
+        rule_name: "Allocation Factor Validation"
+        rule_type: "geographic"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          allocation_factor_sum: 1.0
+          tolerance: 0.001
+          valid_range_min: 0.0
+          valid_range_max: 1.0
+      
+      - rule_id: "coordinate_system_consistency"
+        rule_name: "Coordinate System Consistency"
+        rule_type: "geographic"
+        severity: "high"
+        action: "warning"
+        parameters:
+          expected_crs: "GDA2020"
+          validate_projection: true
+          coordinate_precision: 6
+      
+      - rule_id: "transformation_data_preservation"
+        rule_name: "Data Preservation Check"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        threshold: 95.0
+        parameters:
+          max_data_loss_percent: 2.0
+          preserve_relationships: true
+          maintain_aggregations: true
+
+  # ===========================================
+  # INTEGRATION QUALITY GATES
+  # ===========================================
+
+  data_integration_gate:
+    gate_id: "data_integration_gate"
+    gate_name: "Data Integration Quality Gate"
+    stage_name: "data_integration"
+    description: "Validates integrated dataset quality and consistency"
+    
+    # Gate configuration
+    pass_threshold: 95.0
+    critical_rule_threshold: 100.0
+    mode: "comprehensive"
+    timeout_seconds: 900
+    retry_attempts: 2
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "cross_dataset_consistency"
+        rule_name: "Cross-Dataset Consistency"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          temporal_alignment_tolerance_days: 7
+          spatial_alignment_tolerance_metres: 100
+          schema_compatibility_check: true
+      
+      - rule_id: "derived_indicator_validation"
+        rule_name: "Derived Indicator Validation"
+        rule_type: "statistical"
+        severity: "high"
+        action: "warning"
+        threshold: 95.0
+        parameters:
+          calculation_accuracy_check: true
+          logical_consistency_check: true
+          range_validation: true
+          expected_indicators:
+            - "mortality_rate_per_1000"
+            - "health_service_accessibility"
+            - "socioeconomic_health_correlation"
+      
+      - rule_id: "integration_completeness"
+        rule_name: "Integration Completeness"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        threshold: 90.0
+        parameters:
+          required_data_sources: 
+            - "aihw_mortality"
+            - "aihw_health_indicators"
+            - "abs_census"
+          min_coverage_percent: 90.0
+      
+      - rule_id: "dimensional_integrity"
+        rule_name: "Dimensional Integrity"
+        rule_type: "business"
+        severity: "medium"
+        action: "warning"
+        parameters:
+          fact_table_consistency: true
+          dimension_table_completeness: true
+          foreign_key_integrity: true
+
+  # ===========================================
+  # LOADING QUALITY GATES
+  # ===========================================
+
+  pre_loading_gate:
+    gate_id: "pre_loading_gate"
+    gate_name: "Pre-Loading Validation Gate"
+    stage_name: "pre_loading"
+    description: "Validates data readiness for export and loading"
+    
+    # Gate configuration
+    pass_threshold: 98.0
+    critical_rule_threshold: 100.0
+    mode: "audit"
+    timeout_seconds: 300
+    retry_attempts: 3
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "export_schema_compliance"
+        rule_name: "Export Schema Compliance"
+        rule_type: "schema"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          target_schema_validation: true
+          required_export_fields: true
+          data_type_compatibility: true
+      
+      - rule_id: "final_completeness_check"
+        rule_name: "Final Completeness Check"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        threshold: 99.0
+        parameters:
+          overall_completeness_percent: 99.0
+          critical_field_completeness_percent: 100.0
+      
+      - rule_id: "export_size_validation"
+        rule_name: "Export Size Validation"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        parameters:
+          min_size_mb: 10
+          max_size_gb: 5
+          expected_record_count_range:
+            min: 50000
+            max: 2000000
+
+  data_loading_gate:
+    gate_id: "data_loading_gate"
+    gate_name: "Data Loading Quality Gate"
+    stage_name: "data_loading"
+    description: "Validates successful data loading and export"
+    
+    # Gate configuration
+    pass_threshold: 99.0
+    critical_rule_threshold: 100.0
+    mode: "audit"
+    timeout_seconds: 300
+    retry_attempts: 3
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "load_completion_verification"
+        rule_name: "Load Completion Verification"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          row_count_match: true
+          checksum_verification: true
+          file_size_verification: true
+      
+      - rule_id: "export_format_validation"
+        rule_name: "Export Format Validation"
+        rule_type: "schema"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          format_compliance: true
+          encoding_validation: true
+          compression_integrity: true
+          metadata_generation: true
+      
+      - rule_id: "accessibility_validation"
+        rule_name: "Data Accessibility Validation"
+        rule_type: "business"
+        severity: "high"
+        action: "warning"
+        parameters:
+          file_permissions_correct: true
+          read_access_verification: true
+          metadata_availability: true
+
+  # ===========================================
+  # FINAL QUALITY ASSURANCE GATE
+  # ===========================================
+
+  final_quality_assurance_gate:
+    gate_id: "final_quality_assurance_gate"
+    gate_name: "Final Quality Assurance Gate"
+    stage_name: "final_quality_assessment"
+    description: "Final comprehensive quality assessment for the entire pipeline"
+    
+    # Gate configuration
+    pass_threshold: 98.0
+    critical_rule_threshold: 100.0
+    mode: "audit"
+    timeout_seconds: 600
+    retry_attempts: 1
+    
+    # Validation rules
+    validation_rules:
+      - rule_id: "end_to_end_quality_assessment"
+        rule_name: "End-to-End Quality Assessment"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        threshold: 98.0
+        parameters:
+          overall_pipeline_quality: 98.0
+          data_lineage_completeness: 100.0
+          audit_trail_completeness: 100.0
+      
+      - rule_id: "compliance_verification"
+        rule_name: "Compliance Standards Verification"
+        rule_type: "business"
+        severity: "critical"
+        action: "halt"
+        parameters:
+          aihw_compliance: true
+          abs_compliance: true
+          medicare_compliance: true
+          pbs_compliance: true
+      
+      - rule_id: "performance_validation"
+        rule_name: "Pipeline Performance Validation"
+        rule_type: "business"
+        severity: "medium"
+        action: "warning"
+        parameters:
+          execution_time_within_sla: true
+          resource_utilisation_acceptable: true
+          error_rate_acceptable: true
+
+# Quality gate bypass configuration
+bypass_configuration:
+  enabled: true
+  
+  # Bypass approval process
+  approval_process:
+    require_approval: true
+    approval_roles:
+      - "data_quality_manager"
+      - "pipeline_administrator"
+      - "system_owner"
+  
+  # Bypass conditions
+  allowed_bypass_conditions:
+    - condition: "emergency_data_request"
+      description: "Emergency request for critical health data"
+      max_duration_hours: 12
+      requires_justification: true
+      auto_expire: true
+    
+    - condition: "system_maintenance"
+      description: "Scheduled system maintenance window"
+      max_duration_hours: 8
+      requires_justification: true
+      auto_expire: true
+    
+    - condition: "data_source_unavailable"
+      description: "Primary data source temporarily unavailable"
+      max_duration_hours: 24
+      requires_justification: true
+      auto_expire: true
+    
+    - condition: "validation_system_error"
+      description: "Validation system technical failure"
+      max_duration_hours: 6
+      requires_justification: true
+      auto_expire: true
+  
+  # Bypass audit requirements
+  audit_requirements:
+    log_all_bypasses: true
+    require_justification: true
+    notify_stakeholders: true
+    generate_bypass_report: true
+    review_bypass_usage: true
+
+# Escalation procedures
+escalation:
+  enabled: true
+  
+  # Escalation triggers
+  triggers:
+    - trigger: "critical_quality_gate_failure"
+      description: "Critical quality gate fails multiple times"
+      threshold: 3
+      escalation_level: "critical"
+      notify_immediately: true
+    
+    - trigger: "quality_trend_degradation"
+      description: "Quality metrics show declining trend"
+      threshold: "10_percent_decline"
+      escalation_level: "high"
+      notify_immediately: false
+    
+    - trigger: "compliance_violation"
+      description: "Compliance standard violation detected"
+      threshold: 1
+      escalation_level: "critical"
+      notify_immediately: true
+  
+  # Escalation contacts
+  contacts:
+    critical:
+      - role: "chief_data_officer"
+        email: "cdo@health.gov.au"
+        phone: "+61-2-xxxx-xxxx"
+      - role: "data_quality_manager"
+        email: "dq.manager@health.gov.au"
+        phone: "+61-2-xxxx-xxxx"
+    
+    high:
+      - role: "data_quality_manager"
+        email: "dq.manager@health.gov.au"
+      - role: "pipeline_administrator"
+        email: "pipeline.admin@health.gov.au"
+    
+    medium:
+      - role: "pipeline_administrator"
+        email: "pipeline.admin@health.gov.au"
+
+# Reporting and monitoring
+reporting:
+  quality_gate_reporting:
+    enabled: true
+    real_time_monitoring: true
+    generate_daily_summary: true
+    generate_weekly_trends: true
+    generate_monthly_compliance_report: true
+  
+  alert_configuration:
+    immediate_alerts:
+      - "critical_quality_gate_failure"
+      - "compliance_violation"
+      - "data_corruption_detected"
+    
+    summary_alerts:
+      - "quality_trend_changes"
+      - "performance_degradation"
+      - "unusual_data_patterns"
+  
+  dashboard_metrics:
+    - "quality_gate_pass_rate"
+    - "average_quality_score"
+    - "validation_execution_time"
+    - "compliance_status"
+    - "bypass_usage_frequency"

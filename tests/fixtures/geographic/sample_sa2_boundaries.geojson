@@ -1,0 +1,361 @@
+{
+  "type": "FeatureCollection",
+  "name": "Sample SA2 Boundaries for Testing",
+  "description": "Sample Statistical Area Level 2 (SA2) boundaries for AHGD geographic pipeline testing. These are simplified test boundaries based on actual ABS SA2 definitions.",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::7844"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "101021007",
+        "SA2_NAME": "Sydney - CBD - North",
+        "SA3_CODE": "10102",
+        "SA3_NAME": "Sydney Inner City",
+        "SA4_CODE": "101",
+        "SA4_NAME": "Sydney - City and Inner South",
+        "STATE_CODE": "1",
+        "STATE_NAME": "New South Wales",
+        "AREA_SQKM": 2.45,
+        "POPULATION_2021": 15234,
+        "DWELLINGS_2021": 8432,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [151.2093, -33.8568],
+            [151.2173, -33.8568],
+            [151.2173, -33.8648],
+            [151.2093, -33.8648],
+            [151.2093, -33.8568]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "101021008",
+        "SA2_NAME": "Sydney - CBD - South",
+        "SA3_CODE": "10102",
+        "SA3_NAME": "Sydney Inner City",
+        "SA4_CODE": "101",
+        "SA4_NAME": "Sydney - City and Inner South",
+        "STATE_CODE": "1",
+        "STATE_NAME": "New South Wales",
+        "AREA_SQKM": 1.82,
+        "POPULATION_2021": 12876,
+        "DWELLINGS_2021": 7123,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [151.2093, -33.8648],
+            [151.2173, -33.8648],
+            [151.2173, -33.8728],
+            [151.2093, -33.8728],
+            [151.2093, -33.8648]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "201021001",
+        "SA2_NAME": "Melbourne - CBD - North",
+        "SA3_CODE": "20102",
+        "SA3_NAME": "Melbourne Inner",
+        "SA4_CODE": "201",
+        "SA4_NAME": "Melbourne - Inner",
+        "STATE_CODE": "2",
+        "STATE_NAME": "Victoria",
+        "AREA_SQKM": 1.96,
+        "POPULATION_2021": 18567,
+        "DWELLINGS_2021": 9823,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [144.9631, -37.8036],
+            [144.9731, -37.8036],
+            [144.9731, -37.8136],
+            [144.9631, -37.8136],
+            [144.9631, -37.8036]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "201021002",
+        "SA2_NAME": "Melbourne - CBD - South",
+        "SA3_CODE": "20102",
+        "SA3_NAME": "Melbourne Inner",
+        "SA4_CODE": "201",
+        "SA4_NAME": "Melbourne - Inner",
+        "STATE_CODE": "2",
+        "STATE_NAME": "Victoria",
+        "AREA_SQKM": 1.73,
+        "POPULATION_2021": 16432,
+        "DWELLINGS_2021": 8901,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [144.9631, -37.8136],
+            [144.9731, -37.8136],
+            [144.9731, -37.8236],
+            [144.9631, -37.8236],
+            [144.9631, -37.8136]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "301031015",
+        "SA2_NAME": "Brisbane - CBD",
+        "SA3_CODE": "30103",
+        "SA3_NAME": "Brisbane Inner",
+        "SA4_CODE": "301",
+        "SA4_NAME": "Brisbane - West",
+        "STATE_CODE": "3",
+        "STATE_NAME": "Queensland",
+        "AREA_SQKM": 3.21,
+        "POPULATION_2021": 21098,
+        "DWELLINGS_2021": 11234,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [153.0260, -27.4598],
+            [153.0360, -27.4598],
+            [153.0360, -27.4698],
+            [153.0260, -27.4698],
+            [153.0260, -27.4598]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "401041025",
+        "SA2_NAME": "Adelaide - CBD",
+        "SA3_CODE": "40104",
+        "SA3_NAME": "Adelaide - City",
+        "SA4_CODE": "401",
+        "SA4_NAME": "Adelaide - Central and Hills",
+        "STATE_CODE": "4",
+        "STATE_NAME": "South Australia",
+        "AREA_SQKM": 2.87,
+        "POPULATION_2021": 19876,
+        "DWELLINGS_2021": 10567,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [138.5907, -34.9185],
+            [138.6007, -34.9185],
+            [138.6007, -34.9285],
+            [138.5907, -34.9285],
+            [138.5907, -34.9185]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "501051035",
+        "SA2_NAME": "Perth - CBD",
+        "SA3_CODE": "50105",
+        "SA3_NAME": "Perth - City",
+        "SA4_CODE": "501",
+        "SA4_NAME": "Perth - Inner",
+        "STATE_CODE": "5",
+        "STATE_NAME": "Western Australia",
+        "AREA_SQKM": 4.12,
+        "POPULATION_2021": 22543,
+        "DWELLINGS_2021": 12089,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [115.8505, -31.9405],
+            [115.8605, -31.9405],
+            [115.8605, -31.9505],
+            [115.8505, -31.9505],
+            [115.8505, -31.9405]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "601061045",
+        "SA2_NAME": "Hobart - CBD",
+        "SA3_CODE": "60106",
+        "SA3_NAME": "Hobart - Inner",
+        "SA4_CODE": "601",
+        "SA4_NAME": "Hobart",
+        "STATE_CODE": "6",
+        "STATE_NAME": "Tasmania",
+        "AREA_SQKM": 1.54,
+        "POPULATION_2021": 8765,
+        "DWELLINGS_2021": 4987,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [147.3157, -42.8721],
+            [147.3257, -42.8721],
+            [147.3257, -42.8821],
+            [147.3157, -42.8821],
+            [147.3157, -42.8721]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "701071055",
+        "SA2_NAME": "Darwin - CBD",
+        "SA3_CODE": "70107",
+        "SA3_NAME": "Darwin",
+        "SA4_CODE": "701",
+        "SA4_NAME": "Darwin",
+        "STATE_CODE": "7",
+        "STATE_NAME": "Northern Territory",
+        "AREA_SQKM": 3.68,
+        "POPULATION_2021": 14532,
+        "DWELLINGS_2021": 7891,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [130.8356, -12.4534],
+            [130.8456, -12.4534],
+            [130.8456, -12.4634],
+            [130.8356, -12.4634],
+            [130.8356, -12.4534]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "801081065",
+        "SA2_NAME": "Canberra - City",
+        "SA3_CODE": "80108",
+        "SA3_NAME": "Canberra - Central",
+        "SA4_CODE": "801",
+        "SA4_NAME": "Australian Capital Territory",
+        "STATE_CODE": "8",
+        "STATE_NAME": "Australian Capital Territory",
+        "AREA_SQKM": 2.34,
+        "POPULATION_2021": 11876,
+        "DWELLINGS_2021": 6543,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [149.1200, -35.2709],
+            [149.1300, -35.2709],
+            [149.1300, -35.2809],
+            [149.1200, -35.2809],
+            [149.1200, -35.2709]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "102022011",
+        "SA2_NAME": "Parramatta - CBD",
+        "SA3_CODE": "10202",
+        "SA3_NAME": "Parramatta",
+        "SA4_CODE": "102",
+        "SA4_NAME": "Sydney - Parramatta",
+        "STATE_CODE": "1",
+        "STATE_NAME": "New South Wales",
+        "AREA_SQKM": 5.67,
+        "POPULATION_2021": 28943,
+        "DWELLINGS_2021": 15678,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [151.0000, -33.8100],
+            [151.0100, -33.8100],
+            [151.0100, -33.8200],
+            [151.0000, -33.8200],
+            [151.0000, -33.8100]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "SA2_CODE": "202023012",
+        "SA2_NAME": "Geelong - Central",
+        "SA3_CODE": "20202",
+        "SA3_NAME": "Geelong",
+        "SA4_CODE": "202",
+        "SA4_NAME": "Geelong",
+        "STATE_CODE": "2",
+        "STATE_NAME": "Victoria",
+        "AREA_SQKM": 8.45,
+        "POPULATION_2021": 35621,
+        "DWELLINGS_2021": 18934,
+        "TEST_BOUNDARY": true
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [144.3500, -38.1400],
+            [144.3600, -38.1400],
+            [144.3600, -38.1500],
+            [144.3500, -38.1500],
+            [144.3500, -38.1400]
+          ]
+        ]
+      }
+    }
+  ]
+}

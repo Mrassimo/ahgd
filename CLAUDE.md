@@ -209,3 +209,8 @@ The codebase enforces these data integrity measures:
 3. **Validation Gates**: Multi-layer validation before data proceeds
 4. **Reproducibility**: Deterministic processes with dependency tracking
 5. **Rollback Capability**: Version management for data and configuration
+
+## Development Strategies
+
+### Test-Driven Development
+- Test driven development for the ETL, we have an idea about how the data should look.. lets conform to meet those standards

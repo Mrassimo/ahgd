@@ -39,7 +39,6 @@ xlsxwriter==3.1.9
 
 # Database & Storage
 sqlalchemy==2.0.23
-sqlite3==3.41.2
 psycopg2-binary==2.9.9
 
 # Cloud & External Services

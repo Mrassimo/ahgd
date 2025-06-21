@@ -1,0 +1,364 @@
+# Field Mappings Configuration for AHGD Target Schema
+# Defines how source system fields map to target integrated schema fields
+
+mapping_version: "1.0.0"
+last_updated: "2024-12-21"
+schema_target: "integrated_schema_v2.0.0"
+
+# Geographic Field Mappings
+geographic_mappings:
+  
+  # ABS Statistical Area mappings
+  abs_boundaries:
+    source_system: "abs_statistical_areas"
+    field_mappings:
+      "SA2_MAIN16": "sa2_code"
+      "SA2_NAME16": "sa2_name"
+      "SA3_CODE16": "geographic_hierarchy.sa3_code"
+      "SA4_CODE16": "geographic_hierarchy.sa4_code"
+      "STATE_CODE16": "geographic_hierarchy.state_code"
+      "AREASQKM16": "boundary_data.area_sq_km"
+      "geometry": "boundary_data.geometry"
+      
+    transformations:
+      sa2_code:
+        type: "format_standardisation"
+        pattern: "zero_pad_9_digits"
+        validation: "^\\d{9}$"
+        
+      area_sq_km:
+        type: "unit_conversion"
+        source_unit: "square_metres"
+        target_unit: "square_kilometres"
+        conversion_factor: 0.000001
+        
+      geometry:
+        type: "geometry_processing"
+        source_crs: "EPSG:4326"
+        target_crs: "EPSG:4326"
+        simplification_tolerance: 0.0001
+  
+  # Postcode to SA2 mappings
+  postcode_correspondences:
+    source_system: "abs_postcode_sa2"
+    field_mappings:
+      "POSTCODE": "geographic_hierarchy.postcode"
+      "SA2_MAINCODE_2016": "sa2_code"
+      "RATIO": "postcode_allocation_ratio"
+      
+    aggregation_rules:
+      population_weighted: true
+      ratio_threshold: 0.1
+      primary_postcode_only: false
+
+# Demographic Field Mappings
+demographic_mappings:
+  
+  # ABS Census data
+  census_data:
+    source_system: "abs_census_2021"
+    field_mappings:
+      "Tot_P_P": "total_population"
+      "Median_age_persons": "median_age"
+      "Indigenous_P": "demographic_profile.indigenous_population"
+      "Born_OS_P": "demographic_profile.overseas_born_population"
+      "Lang_spoken_home_Eng_only_P": "demographic_profile.english_only_speakers"
+      
+    calculations:
+      population_density_per_sq_km:
+        formula: "total_population / boundary_data.area_sq_km"
+        dependencies: ["total_population", "boundary_data.area_sq_km"]
+        
+      indigenous_population_percentage:
+        formula: "(demographic_profile.indigenous_population / total_population) * 100"
+        dependencies: ["demographic_profile.indigenous_population", "total_population"]
+        
+    age_group_aggregations:
+      age_0_4:
+        source_fields: ["Age_0_4_yr_M", "Age_0_4_yr_F"]
+        aggregation: "sum"
+        
+      age_5_14:
+        source_fields: ["Age_5_9_yr_M", "Age_5_9_yr_F", "Age_10_14_yr_M", "Age_10_14_yr_F"]
+        aggregation: "sum"
+        
+      working_age_15_64:
+        source_fields: ["Age_15_19_yr_M", "Age_15_19_yr_F", "Age_20_24_yr_M", "Age_20_24_yr_F", 
+                       "Age_25_34_yr_M", "Age_25_34_yr_F", "Age_35_44_yr_M", "Age_35_44_yr_F",
+                       "Age_45_54_yr_M", "Age_45_54_yr_F", "Age_55_64_yr_M", "Age_55_64_yr_F"]
+        aggregation: "sum"
+        
+      elderly_65_plus:
+        source_fields: ["Age_65_74_yr_M", "Age_65_74_yr_F", "Age_75_84_yr_M", "Age_75_84_yr_F", "Age_85ov_M", "Age_85ov_F"]
+        aggregation: "sum"
+
+# Socioeconomic Field Mappings
+socioeconomic_mappings:
+  
+  # SEIFA Index mappings
+  seifa_data:
+    source_system: "abs_seifa_2021"
+    field_mappings:
+      "IRSD_Score": "seifa_scores.IRSD"
+      "IRSAD_Score": "seifa_scores.IRSAD"
+      "IER_Score": "seifa_scores.IER"
+      "IEO_Score": "seifa_scores.IEO"
+      "IRSD_Decile": "seifa_deciles.IRSD"
+      "IRSAD_Decile": "seifa_deciles.IRSAD"
+      "IER_Decile": "seifa_deciles.IER"
+      "IEO_Decile": "seifa_deciles.IEO"
+      
+    derived_fields:
+      disadvantage_category:
+        source_field: "IRSD_Decile"
+        mapping:
+          1: "Most Disadvantaged"
+          2: "Most Disadvantaged"
+          3: "Disadvantaged"
+          4: "Disadvantaged"
+          5: "Middle"
+          6: "Middle"
+          7: "Advantaged"
+          8: "Advantaged"
+          9: "Least Disadvantaged"
+          10: "Least Disadvantaged"
+  
+  # Income and employment data
+  income_employment:
+    source_system: "abs_census_employment"
+    field_mappings:
+      "Median_tot_hhd_inc_weekly": "median_household_income"
+      "Unemployed_total": "demographic_profile.unemployed_count"
+      "Labour_force_total": "demographic_profile.labour_force_total"
+      
+    calculations:
+      unemployment_rate:
+        formula: "(demographic_profile.unemployed_count / demographic_profile.labour_force_total) * 100"
+        dependencies: ["demographic_profile.unemployed_count", "demographic_profile.labour_force_total"]
+
+# Health Outcomes Field Mappings
+health_outcomes_mappings:
+  
+  # AIHW Mortality data
+  aihw_mortality:
+    source_system: "aihw_national_mortality_database"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "DEATHS_ALL_CAUSES": "mortality_indicators.all_cause_deaths"
+      "ASR_ALL_CAUSES": "mortality_indicators.all_cause_mortality_rate"
+      "DEATHS_CVD": "mortality_indicators.cardiovascular_deaths"
+      "ASR_CVD": "mortality_indicators.cardiovascular_mortality_rate"
+      "DEATHS_CANCER": "mortality_indicators.cancer_deaths"
+      "ASR_CANCER": "mortality_indicators.cancer_mortality_rate"
+      "DEATHS_RESPIRATORY": "mortality_indicators.respiratory_deaths"
+      "ASR_RESPIRATORY": "mortality_indicators.respiratory_mortality_rate"
+      "DEATHS_DIABETES": "mortality_indicators.diabetes_deaths"
+      "ASR_DIABETES": "mortality_indicators.diabetes_mortality_rate"
+      "DEATHS_SUICIDE": "mortality_indicators.suicide_deaths"
+      "ASR_SUICIDE": "mortality_indicators.suicide_mortality_rate"
+      
+    temporal_alignment:
+      reference_period: "annual"
+      lag_months: 18  # Mortality data typically has 18-month lag
+      
+  # Life expectancy data
+  life_expectancy:
+    source_system: "aihw_life_expectancy"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "LIFE_EXP_MALE": "life_expectancy.male"
+      "LIFE_EXP_FEMALE": "life_expectancy.female"
+      "LIFE_EXP_PERSONS": "life_expectancy.persons"
+      
+    quality_flags:
+      suppress_small_populations: true
+      minimum_population: 1000
+      confidence_intervals: true
+
+# Healthcare Utilisation Field Mappings
+healthcare_mappings:
+  
+  # Medicare Benefits Schedule data
+  mbs_data:
+    source_system: "medicare_benefits_schedule"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "GP_SERVICES_COUNT": "healthcare_access.gp_services_total"
+      "SPECIALIST_SERVICES_COUNT": "healthcare_access.specialist_services_total"
+      "BULK_BILLED_SERVICES": "healthcare_access.bulk_billed_services"
+      "TOTAL_SERVICES": "healthcare_access.total_services"
+      "POPULATION": "healthcare_access.reference_population"
+      
+    calculations:
+      gp_services_per_1000:
+        formula: "(healthcare_access.gp_services_total / healthcare_access.reference_population) * 1000"
+        dependencies: ["healthcare_access.gp_services_total", "healthcare_access.reference_population"]
+        
+      specialist_services_per_1000:
+        formula: "(healthcare_access.specialist_services_total / healthcare_access.reference_population) * 1000"
+        dependencies: ["healthcare_access.specialist_services_total", "healthcare_access.reference_population"]
+        
+      bulk_billing_rate:
+        formula: "(healthcare_access.bulk_billed_services / healthcare_access.total_services) * 100"
+        dependencies: ["healthcare_access.bulk_billed_services", "healthcare_access.total_services"]
+  
+  # Hospital admissions data
+  hospital_data:
+    source_system: "aihw_national_hospital_morbidity_database"
+    field_mappings:
+      "SA2_USUAL_RESIDENCE": "sa2_code"
+      "ADMISSIONS_COUNT": "healthcare_access.hospital_admissions_total"
+      "ED_PRESENTATIONS": "healthcare_access.emergency_presentations_total"
+      
+    calculations:
+      hospital_admissions_per_1000:
+        formula: "(healthcare_access.hospital_admissions_total / total_population) * 1000"
+        dependencies: ["healthcare_access.hospital_admissions_total", "total_population"]
+        
+      emergency_dept_presentations_per_1000:
+        formula: "(healthcare_access.emergency_presentations_total / total_population) * 1000"
+        dependencies: ["healthcare_access.emergency_presentations_total", "total_population"]
+
+# Risk Factors Field Mappings
+risk_factors_mappings:
+  
+  # Australian Health Survey data
+  health_survey:
+    source_system: "abs_australian_health_survey"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "CURRENT_SMOKERS_PERCENT": "smoking_prevalence"
+      "OBESE_PERCENT": "obesity_prevalence"
+      "OVERWEIGHT_OBESE_PERCENT": "overweight_obesity_prevalence"
+      "PHYSICALLY_INACTIVE_PERCENT": "physical_inactivity_prevalence"
+      "RISKY_ALCOHOL_PERCENT": "harmful_alcohol_use_prevalence"
+      "HIGH_PSYCH_DISTRESS_PERCENT": "psychological_distress_high"
+      
+    data_quality_notes:
+      modelling_methodology: "Small area estimation"
+      confidence_intervals: "95% confidence intervals available"
+      suppression_rules: "Suppress if RSE > 50% or count < 1000"
+
+# Environmental Field Mappings
+environmental_mappings:
+  
+  # Air quality data
+  air_quality:
+    source_system: "state_epa_air_quality"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "PM25_ANNUAL_MEAN": "environmental_indicators.pm25_annual_mean"
+      "PM10_ANNUAL_MEAN": "environmental_indicators.pm10_annual_mean"
+      "NO2_ANNUAL_MEAN": "environmental_indicators.no2_annual_mean"
+      "AQI_AVERAGE": "air_quality_index"
+      
+    spatial_interpolation:
+      method: "inverse_distance_weighting"
+      search_radius_km: 50
+      minimum_stations: 3
+      
+  # Green space data
+  green_space:
+    source_system: "satellite_vegetation_index"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "NDVI_MEAN": "environmental_indicators.vegetation_index"
+      "GREEN_SPACE_PERCENT": "green_space_access"
+      "TREE_CANOPY_PERCENT": "environmental_indicators.tree_canopy_cover"
+
+# Pharmaceutical Field Mappings
+pharmaceutical_mappings:
+  
+  # PBS data
+  pbs_data:
+    source_system: "pharmaceutical_benefits_scheme"
+    field_mappings:
+      "SA2_CODE": "sa2_code"
+      "CARDIOVASCULAR_SCRIPTS": "pharmaceutical_utilisation.cardiovascular"
+      "DIABETES_SCRIPTS": "pharmaceutical_utilisation.diabetes"
+      "MENTAL_HEALTH_SCRIPTS": "pharmaceutical_utilisation.mental_health"
+      "RESPIRATORY_SCRIPTS": "pharmaceutical_utilisation.respiratory"
+      "TOTAL_SCRIPTS": "pharmaceutical_utilisation.total"
+      "POPULATION": "pharmaceutical_utilisation.reference_population"
+      
+    privacy_controls:
+      suppress_small_counts: true
+      minimum_script_count: 10
+      noise_injection: false
+
+# Data Quality and Metadata Mappings
+metadata_mappings:
+  
+  # Source system metadata
+  data_lineage:
+    source_datasets:
+      - "abs_statistical_areas_2021"
+      - "abs_census_2021"
+      - "abs_seifa_2021"
+      - "aihw_mortality_2019_2021"
+      - "medicare_benefits_2022"
+      - "australian_health_survey_2020_2022"
+      
+    integration_metadata:
+      "source_datasets": "data_lineage.source_datasets"
+      "integration_timestamp": "metadata.processing_timestamp"
+      "data_completeness_score": "metadata.completeness_assessment"
+      "integration_level": "metadata.integration_level_achieved"
+      
+  # Quality scoring
+  quality_assessment:
+    completeness_calculation:
+      method: "field_level_assessment"
+      critical_fields_weight: 0.4
+      high_priority_fields_weight: 0.3
+      medium_priority_fields_weight: 0.2
+      low_priority_fields_weight: 0.1
+      
+    accuracy_calculation:
+      method: "validation_rule_compliance"
+      validation_rules_weight: 0.6
+      cross_validation_weight: 0.4
+
+# Transformation Rules
+transformation_rules:
+  
+  # Standard transformations
+  data_type_conversions:
+    string_to_numeric:
+      null_values: ["", "N/A", "NULL", "n.a.", ".."]
+      invalid_action: "set_null"
+      
+    percentage_normalisation:
+      source_range: [0, 100]
+      target_range: [0, 100]
+      decimal_places: 2
+      
+  # Date and time standardisation
+  temporal_standardisation:
+    date_formats:
+      input_formats: ["%Y-%m-%d", "%d/%m/%Y", "%Y%m%d"]
+      output_format: "%Y-%m-%d"
+      
+    reference_periods:
+      annual: "calendar_year"
+      financial: "july_to_june"
+      census: "census_night"
+      
+  # Geographic transformations
+  spatial_transformations:
+    coordinate_precision: 6
+    area_calculation_method: "spherical"
+    centroid_calculation: "geometric"
+    boundary_simplification: 0.0001
+    
+  # Statistical transformations
+  statistical_processing:
+    outlier_detection:
+      method: "iqr"
+      threshold: 3.0
+      action: "flag"
+      
+    missing_value_imputation:
+      method: "conditional_mean"
+      minimum_sample_size: 30
+      confidence_level: 0.95
