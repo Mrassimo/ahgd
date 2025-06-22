@@ -1,0 +1,102 @@
+graph TB
+    %% Detailed MasterHealthRecord Creation Flow
+    %% Shows the specific data elements and transformations
+    
+    classDef healthData fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef geoData fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef socioData fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef envData fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef processor fill:#fff8e1,stroke:#f57c00,stroke-width:2px
+    classDef masterRecord fill:#e8f5e8,stroke:#1b5e20,stroke-width:3px
+    
+    %% Source Data Components
+    subgraph "AIHW Health Data Sources"
+        MortalityData[Mortality Records<br/>• Cause of Death<br/>• Age-Standardised Rates<br/>• ICD-10 Codes<br/>• Geographic Mapping]
+        HospitalData[Hospital Separations<br/>• Diagnosis Codes<br/>• Length of Stay<br/>• Service Types<br/>• Utilisation Rates]
+        HealthIndicators[Health Indicators<br/>• Disease Prevalence<br/>• Risk Factors<br/>• Screening Rates<br/>• Health Behaviours]
+        MedicareUtil[Medicare Utilisation<br/>• GP Services<br/>• Specialist Care<br/>• Bulk Billing Rates<br/>• Per Capita Usage]
+    end
+    
+    subgraph "ABS Demographic & Geographic Data"
+        SA2Boundaries[SA2 Boundaries<br/>• Geometric Data<br/>• Area Calculations<br/>• Coordinate Systems<br/>• Geographic Hierarchy]
+        CensusDemo[Census Demographics<br/>• Population Counts<br/>• Age/Sex Distribution<br/>• Household Income<br/>• Employment Status]
+        SEIFAIndices[SEIFA Indices<br/>• Disadvantage (IRSD)<br/>• Advantage (IRSAD)<br/>• Economic Resources (IER)<br/>• Education/Occupation (IEO)]
+        PostcodeMaps[Postcode Mappings<br/>• Correspondence Files<br/>• Geographic Linkages<br/>• Address Validation]
+    end
+    
+    subgraph "BOM Environmental Data"
+        ClimateData[Climate Observations<br/>• Temperature Records<br/>• Rainfall Data<br/>• Humidity Levels<br/>• Solar Exposure]
+        WeatherStations[Weather Stations<br/>• Station Metadata<br/>• Geographic Coverage<br/>• Data Quality Flags]
+        AirQuality[Environmental Indicators<br/>• Air Quality Index<br/>• UV Exposure<br/>• Heat Stress Indicators]
+    end
+    
+    %% Processing Stages
+    subgraph "Data Integration Processors"
+        SA2Aggregator[SA2 Data Aggregator<br/>• Geographic Harmonisation<br/>• Spatial Joins<br/>• Population Weighting<br/>• Statistical Aggregation]
+        
+        HealthCalculator[Health Indicator Calculator<br/>• Rate Standardisation<br/>• Confidence Intervals<br/>• Trend Analysis<br/>• Risk Assessment]
+        
+        DemoBuilder[Demographic Profile Builder<br/>• Population Pyramids<br/>• Household Composition<br/>• Economic Indicators<br/>• Social Characteristics]
+        
+        QualityCalculator[Quality Score Calculator<br/>• Data Completeness<br/>• Source Reliability<br/>• Temporal Currency<br/>• Spatial Accuracy]
+    end
+    
+    %% MasterHealthRecord Components
+    subgraph "MasterHealthRecord Structure"
+        PrimaryID[Primary Identification<br/>• SA2 Code (9 digits)<br/>• SA2 Name<br/>• Data Version<br/>• Last Updated]
+        
+        GeographicDims[Geographic Dimensions<br/>• Boundary Geometry<br/>• Area (sq km)<br/>• Urban/Rural Classification<br/>• Remoteness Category<br/>• Geographic Hierarchy]
+        
+        DemographicProfile[Demographic Profile<br/>• Total Population<br/>• Population Density<br/>• Age Distribution<br/>• Household Characteristics<br/>• Economic Indicators]
+        
+        HealthProfile[Health Profile<br/>• Mortality Indicators<br/>• Disease Prevalence<br/>• Healthcare Utilisation<br/>• Health Risk Factors<br/>• Service Access]
+        
+        SocioeconomicProfile[Socioeconomic Profile<br/>• SEIFA Scores<br/>• Income Distribution<br/>• Education Levels<br/>• Employment Patterns<br/>• Social Disadvantage]
+        
+        EnvironmentalProfile[Environmental Profile<br/>• Climate Indicators<br/>• Air Quality Metrics<br/>• Environmental Health Risks<br/>• Weather Patterns]
+        
+        QualityMetadata[Data Quality Metadata<br/>• Integration Level<br/>• Quality Scores<br/>• Source Tracking<br/>• Audit Trail<br/>• Validation Results]
+    end
+    
+    %% Final Master Record
+    FinalMaster[🎯 Complete MasterHealthRecord<br/>• Comprehensive SA2 Profile<br/>• Multi-dimensional Health Data<br/>• Quality Assured<br/>• Export Ready]
+    
+    %% Data Flows
+    MortalityData --> SA2Aggregator
+    HospitalData --> SA2Aggregator
+    HealthIndicators --> HealthCalculator
+    MedicareUtil --> HealthCalculator
+    
+    SA2Boundaries --> SA2Aggregator
+    CensusDemo --> DemoBuilder
+    SEIFAIndices --> DemoBuilder
+    PostcodeMaps --> SA2Aggregator
+    
+    ClimateData --> SA2Aggregator
+    WeatherStations --> SA2Aggregator
+    AirQuality --> SA2Aggregator
+    
+    SA2Aggregator --> PrimaryID
+    SA2Aggregator --> GeographicDims
+    
+    HealthCalculator --> HealthProfile
+    DemoBuilder --> DemographicProfile
+    DemoBuilder --> SocioeconomicProfile
+    
+    SA2Aggregator --> EnvironmentalProfile
+    QualityCalculator --> QualityMetadata
+    
+    PrimaryID --> FinalMaster
+    GeographicDims --> FinalMaster
+    DemographicProfile --> FinalMaster
+    HealthProfile --> FinalMaster
+    SocioeconomicProfile --> FinalMaster
+    EnvironmentalProfile --> FinalMaster
+    QualityMetadata --> FinalMaster
+    
+    %% Apply Styles
+    class MortalityData,HospitalData,HealthIndicators,MedicareUtil healthData
+    class SA2Boundaries,CensusDemo,SEIFAIndices,PostcodeMaps geoData
+    class ClimateData,WeatherStations,AirQuality envData
+    class SA2Aggregator,HealthCalculator,DemoBuilder,QualityCalculator processor
+    class PrimaryID,GeographicDims,DemographicProfile,HealthProfile,SocioeconomicProfile,EnvironmentalProfile,QualityMetadata,FinalMaster masterRecord

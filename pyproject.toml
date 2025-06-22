@@ -87,6 +87,7 @@ ahgd-extract = "src.extractors.cli:main"
 ahgd-transform = "src.pipelines.cli:main"
 ahgd-validate = "src.validators.cli:main"
 ahgd-loader = "src.loaders.cli:main"
+ahgd-generate-docs = "src.documentation.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

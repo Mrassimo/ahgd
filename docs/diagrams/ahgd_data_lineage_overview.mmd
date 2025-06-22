@@ -1,0 +1,107 @@
+graph TB
+    %% AHGD ETL Pipeline Data Lineage Overview
+    %% This diagram shows the high-level data flow from sources to final outputs
+    
+    classDef sourceNode fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef extractorNode fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef transformerNode fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef validatorNode fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef loaderNode fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef outputNode fill:#f1f8e9,stroke:#33691e,stroke-width:3px
+    
+    %% External Data Sources
+    subgraph "External Data Sources"
+        AIHW[("🏥 AIHW<br/>Australian Institute<br/>of Health & Welfare")]
+        ABS[("📊 ABS<br/>Australian Bureau<br/>of Statistics")]
+        BOM[("🌤️ BOM<br/>Bureau of<br/>Meteorology")]
+        Medicare[("💊 Medicare PBS<br/>Pharmaceutical<br/>Benefits Scheme")]
+    end
+    
+    %% Extraction Layer
+    subgraph "Extraction Layer"
+        AIHWExt[AIHW Extractors<br/>• Mortality Data<br/>• Hospital Data<br/>• Health Indicators<br/>• Medicare Utilisation]
+        ABSExt[ABS Extractors<br/>• Geographic Boundaries<br/>• Census Demographics<br/>• SEIFA Indices<br/>• Postcode Mappings]
+        BOMExt[BOM Extractors<br/>• Climate Data<br/>• Weather Stations<br/>• Environmental Indicators]
+        MedExt[Medicare Extractors<br/>• PBS Data<br/>• Prescription Patterns]
+    end
+    
+    %% Raw Data Storage
+    subgraph "Raw Data Storage"
+        RawData[(🗄️ data_raw/<br/>• CSV Files<br/>• JSON Files<br/>• Geospatial Data)]
+    end
+    
+    %% Transformation Layer
+    subgraph "Transformation Layer"
+        GeoTrans[Geographic Standardiser<br/>• Coordinate Systems<br/>• Boundary Processing<br/>• SA2 Mapping]
+        DataInt[Data Integrator<br/>• Source Harmonisation<br/>• Conflict Resolution<br/>• Quality Assessment]
+        DerivedInd[Derived Indicators<br/>• Health Metrics<br/>• Risk Factors<br/>• Composite Indices]
+        Denorm[Denormaliser<br/>• Flatten Hierarchies<br/>• Export Optimisation]
+    end
+    
+    %% Validation Layer
+    subgraph "Validation Layer"
+        SchemaVal[Schema Validation<br/>• Data Types<br/>• Field Constraints<br/>• Business Rules]
+        GeoVal[Geographic Validation<br/>• Boundary Consistency<br/>• Spatial Relationships<br/>• Coordinate Validation]
+        StatVal[Statistical Validation<br/>• Outlier Detection<br/>• Distribution Analysis<br/>• Quality Metrics]
+        QualCheck[Quality Checker<br/>• Completeness<br/>• Consistency<br/>• Accuracy Assessment]
+    end
+    
+    %% Master Data Creation
+    subgraph "Integrated Data Processing"
+        MasterRec[🎯 MasterHealthRecord<br/>Creation Pipeline<br/>• SA2-Level Integration<br/>• Complete Health Profiles]
+    end
+    
+    %% Export Layer
+    subgraph "Export & Loading Layer"
+        ProdLoader[Production Loader<br/>• Multi-format Export<br/>• Compression<br/>• Partitioning]
+    end
+    
+    %% Final Outputs
+    subgraph "Final Data Products"
+        Parquet[(📋 Parquet Files<br/>• master_health_record.parquet<br/>• Optimised for Analytics)]
+        CSV[(📄 CSV Exports<br/>• Human Readable<br/>• Excel Compatible)]
+        GeoJSON[(🗺️ GeoJSON<br/>• Spatial Data<br/>• Web Mapping)]
+        JSON[(📝 JSON<br/>• API Consumption<br/>• Web Applications)]
+        Reports[(📊 Quality Reports<br/>• Validation Results<br/>• Data Lineage)]
+    end
+    
+    %% Data Flow Connections
+    AIHW --> AIHWExt
+    ABS --> ABSExt
+    BOM --> BOMExt
+    Medicare --> MedExt
+    
+    AIHWExt --> RawData
+    ABSExt --> RawData
+    BOMExt --> RawData
+    MedExt --> RawData
+    
+    RawData --> GeoTrans
+    RawData --> DataInt
+    
+    GeoTrans --> DerivedInd
+    DataInt --> DerivedInd
+    DerivedInd --> Denorm
+    
+    Denorm --> SchemaVal
+    SchemaVal --> GeoVal
+    GeoVal --> StatVal
+    StatVal --> QualCheck
+    
+    QualCheck --> MasterRec
+    
+    MasterRec --> ProdLoader
+    
+    ProdLoader --> Parquet
+    ProdLoader --> CSV
+    ProdLoader --> GeoJSON
+    ProdLoader --> JSON
+    ProdLoader --> Reports
+    
+    %% Apply styles
+    class AIHW,ABS,BOM,Medicare sourceNode
+    class AIHWExt,ABSExt,BOMExt,MedExt extractorNode
+    class GeoTrans,DataInt,DerivedInd,Denorm transformerNode
+    class SchemaVal,GeoVal,StatVal,QualCheck validatorNode
+    class ProdLoader loaderNode
+    class MasterRec,Parquet,CSV,GeoJSON,JSON,Reports outputNode

@@ -1,0 +1,105 @@
+graph LR
+    %% Technical ETL Pipeline Flow with DVC Orchestration
+    %% Shows the actual command execution and data dependencies
+    
+    classDef dvcStage fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    classDef dataAsset fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef validation fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef export fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef command fill:#fce4ec,stroke:#c2185b,stroke-width:1px
+    
+    %% DVC Pipeline Stages
+    subgraph "DVC Stage 1: Extract All Sources"
+        ExtractStage[extract_all_sources<br/>Command: ahgd-extract --all --output data_raw]
+        ExtractCmd[CLI Commands:<br/>• ahgd-extract --source aihw<br/>• ahgd-extract --source abs<br/>• ahgd-extract --source bom<br/>• ahgd-extract --source medicare]
+    end
+    
+    subgraph "Raw Data Assets"
+        AIHWRaw[data_raw/aihw/<br/>• mortality_data.csv<br/>• hospital_separations.csv<br/>• health_indicators.json<br/>• medicare_utilisation.csv]
+        ABSRaw[data_raw/abs/<br/>• sa2_boundaries_2021.shp<br/>• census_demographics.csv<br/>• seifa_indices_2021.csv<br/>• postcode_mappings.csv]
+        BOMRaw[data_raw/bom/<br/>• climate_observations.csv<br/>• weather_stations.json<br/>• air_quality_data.csv]
+    end
+    
+    subgraph "DVC Stage 2: Transform & Integrate"
+        TransformStage[integrate_master_data<br/>Command: ahgd-transform --input data_raw --output data_processed/master_health_record.parquet]
+        TransformCmd[Transformation Pipeline:<br/>• Geographic Standardisation<br/>• Data Integration<br/>• Derived Indicators<br/>• Quality Assessment]
+    end
+    
+    subgraph "Transformation Components"
+        GeoStd[Geographic Standardiser<br/>• Reproject to GDA2020<br/>• Validate SA2 codes<br/>• Calculate areas<br/>• Build hierarchies]
+        
+        DataInteg[Data Integrator<br/>• Source prioritisation<br/>• Conflict resolution<br/>• Quality scoring<br/>• Record linkage]
+        
+        Indicators[Derived Indicators<br/>• Health risk scores<br/>• Environmental indices<br/>• Composite measures<br/>• Standardised rates]
+        
+        QualityAssess[Quality Assessment<br/>• Completeness metrics<br/>• Accuracy validation<br/>• Temporal consistency<br/>• Spatial validation]
+    end
+    
+    subgraph "DVC Stage 3: Validate Master Data"
+        ValidateStage[validate_master_data<br/>Command: ahgd-validate --input data_processed/master_health_record.parquet --rules schemas/]
+        ValidateCmd[Validation Pipeline:<br/>• Schema validation<br/>• Business rules<br/>• Statistical checks<br/>• Geographic validation]
+    end
+    
+    subgraph "Validation Components"
+        SchemaVal[Schema Validation<br/>• Pydantic model validation<br/>• Data type checking<br/>• Constraint enforcement<br/>• Field completeness]
+        
+        BusinessVal[Business Rules<br/>• Health indicator ranges<br/>• Population consistency<br/>• Geographic relationships<br/>• Temporal logic]
+        
+        StatVal[Statistical Validation<br/>• Outlier detection<br/>• Distribution analysis<br/>• Trend validation<br/>• Cross-correlation checks]
+        
+        GeoVal[Geographic Validation<br/>• Boundary integrity<br/>• Spatial relationships<br/>• Coordinate validation<br/>• Topology checks]
+    end
+    
+    subgraph "DVC Stage 4: Export Final Data"
+        ExportStage[export_final_data<br/>Command: ahgd-loader --input data_processed/master_health_record.parquet --output data_exports]
+        ExportCmd[Export Pipeline:<br/>• Multi-format conversion<br/>• Compression optimisation<br/>• Partitioning strategies<br/>• Quality reporting]
+    end
+    
+    subgraph "Export Outputs"
+        ParquetOut[data_exports/parquet/<br/>• master_health_record.parquet<br/>• partitioned_by_state/<br/>• compressed_snappy/]
+        
+        CSVOut[data_exports/csv/<br/>• master_health_record.csv<br/>• demographic_summary.csv<br/>• health_indicators.csv]
+        
+        GeoOut[data_exports/geospatial/<br/>• sa2_health_boundaries.geojson<br/>• health_choropleth_data.json]
+        
+        ReportsOut[reports/<br/>• validation_report.html<br/>• quality_assessment.json<br/>• data_lineage.md]
+    end
+    
+    %% Pipeline Flow Dependencies
+    ExtractStage --> AIHWRaw
+    ExtractStage --> ABSRaw
+    ExtractStage --> BOMRaw
+    
+    AIHWRaw --> TransformStage
+    ABSRaw --> TransformStage
+    BOMRaw --> TransformStage
+    
+    TransformStage --> GeoStd
+    TransformStage --> DataInteg
+    GeoStd --> Indicators
+    DataInteg --> Indicators
+    Indicators --> QualityAssess
+    
+    QualityAssess --> ValidateStage
+    
+    ValidateStage --> SchemaVal
+    ValidateStage --> BusinessVal
+    ValidateStage --> StatVal
+    ValidateStage --> GeoVal
+    
+    SchemaVal --> ExportStage
+    BusinessVal --> ExportStage
+    StatVal --> ExportStage
+    GeoVal --> ExportStage
+    
+    ExportStage --> ParquetOut
+    ExportStage --> CSVOut
+    ExportStage --> GeoOut
+    ExportStage --> ReportsOut
+    
+    %% Apply Styles
+    class ExtractStage,TransformStage,ValidateStage,ExportStage dvcStage
+    class AIHWRaw,ABSRaw,BOMRaw,ParquetOut,CSVOut,GeoOut,ReportsOut dataAsset
+    class SchemaVal,BusinessVal,StatVal,GeoVal validation
+    class GeoStd,DataInteg,Indicators,QualityAssess export
+    class ExtractCmd,TransformCmd,ValidateCmd,ExportCmd command

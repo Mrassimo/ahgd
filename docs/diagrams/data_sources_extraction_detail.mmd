@@ -1,0 +1,107 @@
+graph TB
+    %% Detailed Data Sources and Extraction Mapping
+    %% Shows specific data elements extracted from each source
+    
+    classDef aihwSource fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    classDef absSource fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef bomSource fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef schemaTarget fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef extractor fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    
+    %% AIHW Data Sources
+    subgraph "AIHW - Australian Institute of Health and Welfare"
+        GRIM[GRIM Mortality Data<br/>• Cause of death by SA2<br/>• Age-standardised mortality rates<br/>• ICD-10 classification<br/>• Deaths count by demographic]
+        
+        Hospital[Hospital Separations<br/>• Principal diagnosis codes<br/>• Average length of stay<br/>• Separation rates by SA2<br/>• Hospital type classification]
+        
+        HealthPerf[Health Performance Indicators<br/>• Disease prevalence rates<br/>• Screening participation<br/>• Risk factor prevalence<br/>• Health behaviour metrics]
+        
+        MedServices[Medicare Services<br/>• GP consultation rates<br/>• Specialist service usage<br/>• Bulk billing percentages<br/>• Mental health services]
+    end
+    
+    %% ABS Data Sources  
+    subgraph "ABS - Australian Bureau of Statistics"
+        ASGS[ASGS Boundaries 2021<br/>• SA2 geometric boundaries<br/>• Geographic hierarchy (SA1→SA4)<br/>• Area calculations<br/>• Coordinate reference systems]
+        
+        Census2021[Census 2021 DataPacks<br/>• Population demographics<br/>• Age/sex distribution<br/>• Household income<br/>• Employment statistics<br/>• Education levels]
+        
+        SEIFA2021[SEIFA 2021 Indices<br/>• Index of Disadvantage (IRSD)<br/>• Index of Advantage (IRSAD)<br/>• Economic Resources (IER)<br/>• Education/Occupation (IEO)]
+        
+        Postcode[Postcode Correspondence<br/>• Postcode to SA2 mappings<br/>• Geographic linkage tables<br/>• Address validation data]
+    end
+    
+    %% BOM Data Sources
+    subgraph "BOM - Bureau of Meteorology" 
+        ClimateObs[Climate Observations<br/>• Daily temperature (min/max)<br/>• Rainfall measurements<br/>• Humidity readings<br/>• Solar exposure data]
+        
+        WeatherNet[Weather Station Network<br/>• Station coordinates<br/>• Elevation data<br/>• Operational status<br/>• Data quality flags]
+        
+        AirQualIdx[Air Quality Index<br/>• PM2.5/PM10 concentrations<br/>• Ozone levels<br/>• Air quality categories<br/>• Health advisories]
+        
+        UVIndex[UV Index Data<br/>• Daily UV maximums<br/>• Sun protection times<br/>• UV category ratings<br/>• Seasonal patterns]
+    end
+    
+    %% Extractors
+    subgraph "Extraction Layer"
+        AIHWExtractors[AIHW Extractors<br/>• AIHWMortalityExtractor<br/>• AIHWHospitalisationExtractor<br/>• AIHWHealthIndicatorExtractor<br/>• AIHWMedicareExtractor]
+        
+        ABSExtractors[ABS Extractors<br/>• ABSGeographicExtractor<br/>• ABSCensusExtractor<br/>• ABSSEIFAExtractor<br/>• ABSPostcodeExtractor]
+        
+        BOMExtractors[BOM Extractors<br/>• BOMClimateExtractor<br/>• BOMWeatherStationExtractor<br/>• BOMEnvironmentalExtractor]
+    end
+    
+    %% Target Schemas
+    subgraph "Target Schema Components"
+        HealthSchema[Health Schemas<br/>• MortalityData<br/>• HealthcareUtilisation<br/>• HealthIndicator<br/>• DiseasePrevalence]
+        
+        GeographicSchema[Geographic Schemas<br/>• SA2Coordinates<br/>• GeographicBoundary<br/>• SA2BoundaryData<br/>• UrbanRuralClassification]
+        
+        DemographicSchema[Demographic Schemas<br/>• CensusDemographics<br/>• PopulationProfile<br/>• HouseholdCharacteristics]
+        
+        SocioSchema[Socioeconomic Schemas<br/>• SEIFAScore<br/>• SEIFAComponent<br/>• EconomicIndicator]
+        
+        EnvironmentalSchema[Environmental Schemas<br/>• WeatherObservation<br/>• ClimateStatistics<br/>• EnvironmentalHealthIndex]
+    end
+    
+    %% Target Integration Schema
+    MasterSchema[🎯 MasterHealthRecord Schema<br/>• Primary identification (SA2 code)<br/>• Geographic dimensions<br/>• Demographic profile<br/>• Health profile<br/>• Socioeconomic profile<br/>• Environmental profile<br/>• Data quality metadata]
+    
+    %% Data Flow Mappings
+    GRIM --> AIHWExtractors
+    Hospital --> AIHWExtractors
+    HealthPerf --> AIHWExtractors
+    MedServices --> AIHWExtractors
+    
+    ASGS --> ABSExtractors
+    Census2021 --> ABSExtractors
+    SEIFA2021 --> ABSExtractors
+    Postcode --> ABSExtractors
+    
+    ClimateObs --> BOMExtractors
+    WeatherNet --> BOMExtractors
+    AirQualIdx --> BOMExtractors
+    UVIndex --> BOMExtractors
+    
+    AIHWExtractors --> HealthSchema
+    ABSExtractors --> GeographicSchema
+    ABSExtractors --> DemographicSchema
+    ABSExtractors --> SocioSchema
+    BOMExtractors --> EnvironmentalSchema
+    
+    HealthSchema --> MasterSchema
+    GeographicSchema --> MasterSchema
+    DemographicSchema --> MasterSchema
+    SocioSchema --> MasterSchema
+    EnvironmentalSchema --> MasterSchema
+    
+    %% Field Mapping Examples
+    subgraph "Key Field Mappings"
+        MappingExample[Field Transformations:<br/>• AIHW 'SA2_CODE_2021' → 'sa2_code'<br/>• ABS 'Tot_P_P' → 'total_population'<br/>• BOM 'TMAX' → 'temperature_max_celsius'<br/>• SEIFA 'IRSD_SCORE' → 'disadvantage_score'<br/>• Geographic hierarchy building<br/>• Rate standardisation<br/>• Quality score calculation]
+    end
+    
+    %% Apply Styles
+    class GRIM,Hospital,HealthPerf,MedServices aihwSource
+    class ASGS,Census2021,SEIFA2021,Postcode absSource
+    class ClimateObs,WeatherNet,AirQualIdx,UVIndex bomSource
+    class HealthSchema,GeographicSchema,DemographicSchema,SocioSchema,EnvironmentalSchema,MasterSchema schemaTarget
+    class AIHWExtractors,ABSExtractors,BOMExtractors extractor

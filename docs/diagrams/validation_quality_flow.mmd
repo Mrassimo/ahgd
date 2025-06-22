@@ -1,0 +1,128 @@
+graph TB
+    %% Data Validation and Quality Assurance Flow
+    %% Shows comprehensive validation stages and quality gates
+    
+    classDef inputData fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef validator fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef qualityGate fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    classDef qualityMetric fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef passOutput fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef failOutput fill:#ffebee,stroke:#c62828,stroke-width:2px
+    
+    %% Input Data Stages
+    subgraph "Data Processing Stages"
+        RawData[Raw Extracted Data<br/>• Multiple source formats<br/>• Heterogeneous schemas<br/>• Variable quality]
+        
+        TransformedData[Transformed Data<br/>• Standardised formats<br/>• Harmonised schemas<br/>• Integrated records]
+        
+        IntegratedData[Integrated Data<br/>• MasterHealthRecord format<br/>• Complete SA2 profiles<br/>• Quality enriched]
+    end
+    
+    %% Validation Components
+    subgraph "Pre-Extraction Validation"
+        SourceVal[Source Validation<br/>• URL accessibility<br/>• File format checks<br/>• Data availability<br/>• Version consistency]
+    end
+    
+    subgraph "Post-Extraction Validation"
+        SchemaValidation[Schema Validation<br/>• Data type checking<br/>• Field constraints<br/>• Required field presence<br/>• Format compliance]
+        
+        RangeValidation[Range Validation<br/>• Numeric bounds checking<br/>• Date range validation<br/>• Geographic coordinate limits<br/>• Population constraints]
+        
+        FormatValidation[Format Validation<br/>• SA2 code format (9 digits)<br/>• Date format consistency<br/>• Coordinate system validation<br/>• Identifier uniqueness]
+    end
+    
+    subgraph "Post-Transformation Validation"
+        BusinessRules[Business Rules Validation<br/>• Health indicator ranges<br/>• Population consistency<br/>• Age distribution logic<br/>• Service utilisation rates]
+        
+        GeographicVal[Geographic Validation<br/>• Boundary topology<br/>• Spatial relationships<br/>• Coordinate accuracy<br/>• Area calculations]
+        
+        TemporalVal[Temporal Validation<br/>• Date consistency<br/>• Time series continuity<br/>• Version compatibility<br/>• Update frequency]
+    end
+    
+    subgraph "Post-Integration Validation"
+        StatisticalVal[Statistical Validation<br/>• Outlier detection<br/>• Distribution analysis<br/>• Correlation checks<br/>• Trend validation]
+        
+        CrossSourceVal[Cross-Source Validation<br/>• Data consistency across sources<br/>• Population reconciliation<br/>• Geographic alignment<br/>• Temporal synchronisation]
+        
+        QualityAssessment[Quality Assessment<br/>• Completeness scoring<br/>• Accuracy measurement<br/>• Reliability rating<br/>• Fitness for purpose]
+    end
+    
+    %% Quality Gates
+    subgraph "Quality Gates"
+        ExtractionGate{Extraction<br/>Quality Gate<br/>✓ 95% source success<br/>✓ Schema compliance<br/>✓ No critical errors}
+        
+        TransformationGate{Transformation<br/>Quality Gate<br/>✓ 98% record validity<br/>✓ Geographic accuracy<br/>✓ Business rule compliance}
+        
+        IntegrationGate{Integration<br/>Quality Gate<br/>✓ 99% data completeness<br/>✓ Statistical validity<br/>✓ Cross-source consistency}
+        
+        FinalGate{Final Quality Gate<br/>✓ All validations pass<br/>✓ Quality scores > thresholds<br/>✓ Export format compliance<br/>✓ Documentation complete}
+    end
+    
+    %% Quality Metrics and Reporting
+    subgraph "Quality Metrics & Reporting"
+        CompletenessMetrics[Completeness Metrics<br/>• Field coverage percentage<br/>• Record completeness<br/>• Source data availability<br/>• Missing value analysis]
+        
+        AccuracyMetrics[Accuracy Metrics<br/>• Validation error rates<br/>• Business rule violations<br/>• Geographic precision<br/>• Cross-reference consistency]
+        
+        ConsistencyMetrics[Consistency Metrics<br/>• Inter-source agreement<br/>• Temporal consistency<br/>• Geographic alignment<br/>• Format standardisation]
+        
+        QualityReports[Quality Reports<br/>• validation_report.html<br/>• quality_dashboard.json<br/>• error_summary.csv<br/>• audit_trail.log]
+    end
+    
+    %% Outcomes
+    subgraph "Validation Outcomes"
+        PassedData[✅ Validated Data<br/>• Quality assured<br/>• Ready for export<br/>• Fully documented<br/>• Audit trail complete]
+        
+        FailedData[❌ Failed Validation<br/>• Quality issues identified<br/>• Processing halted<br/>• Issues logged<br/>• Manual review required]
+        
+        WarningData[⚠️ Data with Warnings<br/>• Minor quality issues<br/>• Conditional approval<br/>• Enhanced monitoring<br/>• User notification]
+    end
+    
+    %% Data Flow
+    RawData --> SourceVal
+    SourceVal --> ExtractionGate
+    
+    ExtractionGate -->|Pass| SchemaValidation
+    ExtractionGate -->|Fail| FailedData
+    
+    SchemaValidation --> RangeValidation
+    RangeValidation --> FormatValidation
+    FormatValidation --> TransformationGate
+    
+    TransformationGate -->|Pass| TransformedData
+    TransformationGate -->|Fail| FailedData
+    
+    TransformedData --> BusinessRules
+    BusinessRules --> GeographicVal
+    GeographicVal --> TemporalVal
+    TemporalVal --> IntegrationGate
+    
+    IntegrationGate -->|Pass| IntegratedData
+    IntegrationGate -->|Fail| FailedData
+    
+    IntegratedData --> StatisticalVal
+    StatisticalVal --> CrossSourceVal
+    CrossSourceVal --> QualityAssessment
+    QualityAssessment --> FinalGate
+    
+    FinalGate -->|Pass| PassedData
+    FinalGate -->|Fail| FailedData
+    FinalGate -->|Warning| WarningData
+    
+    %% Quality Metric Connections
+    SchemaValidation --> CompletenessMetrics
+    BusinessRules --> AccuracyMetrics
+    CrossSourceVal --> ConsistencyMetrics
+    QualityAssessment --> QualityReports
+    
+    CompletenessMetrics --> QualityReports
+    AccuracyMetrics --> QualityReports
+    ConsistencyMetrics --> QualityReports
+    
+    %% Apply Styles
+    class RawData,TransformedData,IntegratedData inputData
+    class SourceVal,SchemaValidation,RangeValidation,FormatValidation,BusinessRules,GeographicVal,TemporalVal,StatisticalVal,CrossSourceVal,QualityAssessment validator
+    class ExtractionGate,TransformationGate,IntegrationGate,FinalGate qualityGate
+    class CompletenessMetrics,AccuracyMetrics,ConsistencyMetrics,QualityReports qualityMetric
+    class PassedData,WarningData passOutput
+    class FailedData failOutput
