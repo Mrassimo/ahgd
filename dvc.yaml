@@ -7,12 +7,12 @@ vars:
 
 stages:
   extract_all_sources:
-    cmd: ahgd-extract --all --output data_raw
+    cmd: python test_extraction.py
     deps:
       - src/extractors
       - configs/extractors
     params:
-      - external_services
+      - pipeline.enabled
     outs:
       - data_raw:
           cache: false
@@ -26,7 +26,7 @@ stages:
       - configs/pipelines
       - configs/integration
     params:
-      - data_processing
+      - pipeline.enabled
     outs:
       - data_processed/master_health_record.parquet:
           cache: true

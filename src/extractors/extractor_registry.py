@@ -456,6 +456,47 @@ class ExtractorRegistry:
                     )
         
         return errors
+    
+    def get_extractor(
+        self,
+        extractor_id: str,
+        config_override: Optional[Dict[str, Any]] = None,
+    ) -> Optional[BaseExtractor]:
+        """
+        Get an extractor instance by string ID.
+        
+        Args:
+            extractor_id: String ID of the extractor (e.g., 'abs_geographic')
+            config_override: Optional configuration overrides
+            
+        Returns:
+            Configured extractor instance or None if not found
+            
+        Raises:
+            ExtractionError: If extractor creation fails
+        """
+        try:
+            # Convert string ID to ExtractorType enum
+            extractor_type = None
+            for ext_type in ExtractorType:
+                if ext_type.value == extractor_id:
+                    extractor_type = ext_type
+                    break
+            
+            if not extractor_type:
+                logger.error(f"Unknown extractor ID: {extractor_id}")
+                return None
+            
+            # Use factory to create instance
+            factory = ExtractorFactory(self)
+            extractor = factory.create_extractor(extractor_type, config_override)
+            
+            logger.info(f"Successfully created extractor instance: {extractor_id}")
+            return extractor
+            
+        except Exception as e:
+            logger.error(f"Failed to create extractor {extractor_id}: {e}")
+            raise ExtractionError(f"Failed to create extractor {extractor_id}: {e}")
 
 
 class ExtractorFactory:
