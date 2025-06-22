@@ -126,17 +126,21 @@ def list_available_sources(registry: ExtractorRegistry) -> None:
     print("Available extraction sources:")
     print("=" * 50)
     
-    for source_id, extractor_info in registry.list_extractors().items():
-        status = "✅ Available" if extractor_info.get("available", True) else "❌ Unavailable"
-        description = extractor_info.get("description", "No description")
-        data_types = extractor_info.get("data_types", [])
+    for extractor_metadata in registry.list_extractors():
+        status = "✅ Available" if extractor_metadata.enabled else "❌ Unavailable"
+        source_id = extractor_metadata.extractor_type.value
+        description = extractor_metadata.description
+        data_category = extractor_metadata.data_category.value
         
         print(f"\n📊 {source_id}")
         print(f"   Status: {status}")
         print(f"   Description: {description}")
-        if data_types:
-            print(f"   Data types: {', '.join(data_types)}")
-        print(f"   Class: {extractor_info.get('extractor_class', 'Unknown')}")
+        print(f"   Data category: {data_category}")
+        print(f"   Source: {extractor_metadata.source_organization}")
+        print(f"   Update frequency: {extractor_metadata.update_frequency}")
+        print(f"   Geographic coverage: {extractor_metadata.geographic_coverage}")
+        print(f"   Priority: {extractor_metadata.priority}")
+        print(f"   Class: {extractor_metadata.extractor_class.__name__}")
 
 
 @monitor_performance("extraction_cli")
@@ -182,10 +186,11 @@ def extract_sources(
                 success_count += 1
                 continue
             
-            # Perform extraction
+            # Perform extraction - pass empty dict as source to use default public URLs
             start_time = time.time()
             
             extraction_result = extractor.extract(
+                source={},  # Use default public data sources
                 output_dir=str(source_output_dir),
                 format=args.format,
                 compress=args.compress
@@ -290,8 +295,7 @@ def main() -> int:
         # Determine sources to extract
         if args.all:
             available_extractors = registry.list_extractors()
-            sources = [source_id for source_id, info in available_extractors.items() 
-                      if info.get("available", True)]
+            sources = [extractor.extractor_type.value for extractor in available_extractors]
             logger.info(f"Extracting from all available sources: {sources}")
         else:
             sources = args.sources
@@ -302,7 +306,8 @@ def main() -> int:
         
         # Validate sources exist
         available_extractors = registry.list_extractors()
-        invalid_sources = [s for s in sources if s not in available_extractors]
+        available_source_ids = [extractor.extractor_type.value for extractor in available_extractors]
+        invalid_sources = [s for s in sources if s not in available_source_ids]
         if invalid_sources:
             logger.error(f"Invalid sources specified: {invalid_sources}")
             logger.info("Use --list-sources to see available options")

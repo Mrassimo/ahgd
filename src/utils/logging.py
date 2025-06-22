@@ -152,25 +152,25 @@ class AHGDLogger:
                 diagnose=True
             )
         
-        # File handlers for different levels
-        log_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        # File handlers for different levels - TEMPORARILY DISABLED
+        # log_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
         
-        for level in log_levels:
-            # Standard text logs
-            logger.add(
-                log_dir / f"{level.lower()}.log",
-                format=self.config['formats']['file'],
-                level=level,
-                rotation=self.config['max_file_size'],
-                retention=self.config['backup_count'],
-                compression=self.config.get('compression', 'gz'),
-                backtrace=True,
-                diagnose=True,
-                enqueue=True
-            )
+        # for level in log_levels:
+        #     # Standard text logs
+        #     logger.add(
+        #         log_dir / f"{level.lower()}.log",
+        #         format=self.config['formats']['file'],
+        #         level=level,
+        #         rotation=self.config['max_file_size'],
+        #         retention=self.config['backup_count'],
+        #         compression=self.config.get('compression', 'gz'),
+        #         backtrace=True,
+        #         diagnose=True,
+        #         enqueue=True
+        #     )
             
-            # JSON logs for machine processing
-            if self.config.get('json_logs', True):
+            # JSON logs for machine processing - TEMPORARILY DISABLED
+            if False:  # self.config.get('json_logs', True):
                 logger.add(
                     log_dir / f"{level.lower()}.json",
                     format=self._json_formatter,
