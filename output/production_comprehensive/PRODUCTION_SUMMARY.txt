@@ -1,0 +1,19 @@
+AHGD PRODUCTION DATASET - OFFICIAL RELEASE
+==================================================
+
+Created: 2025-06-24 14:52:45
+Version: 2.0.0
+
+DATA SOURCES:
+- ABS Census 2021: Official SA2 level data
+- ABS ASGS 2021: SA2 geographic boundaries
+- BOM Climate: Weather station observations
+
+DATASET STATISTICS:
+- Total Records: 2,472
+- Geographic Areas: 2,472 SA2s
+- Population Coverage: 40,359
+- Data Columns: 7
+- File Size: 0.0 MB
+
+✅ READY FOR HUGGING FACE DEPLOYMENT
