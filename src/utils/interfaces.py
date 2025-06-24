@@ -177,6 +177,36 @@ class ExtractionError(AHGDException):
     pass
 
 
+class DataExtractionError(ExtractionError):
+    """
+    Exception raised when data source extraction fails.
+    
+    This exception is raised when real data sources (URLs, APIs, files) fail
+    to provide data, ensuring that extractors do not silently fall back to
+    demo/mock data in production environments.
+    """
+    
+    def __init__(self, message: str, source: str = None, source_type: str = None):
+        """
+        Initialize DataExtractionError with context.
+        
+        Args:
+            message: Error description
+            source: The data source that failed (URL, file path, etc.)
+            source_type: Type of source (url, file, api, etc.)
+        """
+        super().__init__(message)
+        self.source = source
+        self.source_type = source_type
+        
+        # Enhance message with context if available
+        if source:
+            enhanced_message = f"{message}. Source: {source}"
+            if source_type:
+                enhanced_message += f" (Type: {source_type})"
+            super().__init__(enhanced_message)
+
+
 class TransformationError(AHGDException):
     """Exception raised during data transformation."""
     pass
@@ -200,6 +230,19 @@ class ConfigurationError(AHGDException):
 class DataQualityError(AHGDException):
     """Exception raised for data quality issues."""
     pass
+
+
+class PipelineError(AHGDException):
+    """Exception raised during pipeline execution."""
+    pass
+
+
+class DataIntegrationLevel(str, Enum):
+    """Level of data integration completeness."""
+    MINIMAL = "minimal"  # Basic geographic and demographic only
+    STANDARD = "standard"  # Health and socioeconomic included  
+    COMPREHENSIVE = "comprehensive"  # All available data sources
+    ENHANCED = "enhanced"  # Includes derived indicators and analysis
 
 
 class GeographicValidationError(ValidationError):

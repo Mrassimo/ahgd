@@ -19,8 +19,8 @@ from typing import Any, Dict, List, Optional, Set, Type, Union, Tuple
 import threading
 from collections import OrderedDict
 
-from src.utils.logging import get_logger
-from src.utils.interfaces import AHGDException
+from ..utils.logging import get_logger
+from ..utils.interfaces import AHGDException
 
 logger = get_logger(__name__)
 

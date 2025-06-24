@@ -170,12 +170,45 @@ class ConfigurationManager:
     
     def _initialize(self):
         """Initialize configuration system"""
+        # Load .env files into environment variables first
+        self._load_env_files()
+        
         self._discover_config_sources()
         self._load_configuration()
         self._validate_configuration()
         
         if self.enable_hot_reload:
             self._setup_hot_reload()
+    
+    def _load_env_files(self):
+        """Load .env files into environment variables using python-dotenv"""
+        try:
+            from dotenv import load_dotenv
+            
+            # List of .env files to try loading (in priority order)
+            env_files = [
+                self.config_dir / ".env",  # Project-specific .env
+                Path(".env"),  # Root .env
+                Path.home() / ".ahgd" / ".env",  # User-specific .env
+            ]
+            
+            loaded_count = 0
+            for env_file in env_files:
+                if env_file.exists():
+                    try:
+                        load_dotenv(env_file, override=False)  # Don't override existing env vars
+                        logger.debug(f"Loaded environment variables from: {env_file}")
+                        loaded_count += 1
+                    except Exception as e:
+                        logger.warning(f"Failed to load .env file {env_file}: {e}")
+            
+            if loaded_count > 0:
+                logger.info(f"Loaded {loaded_count} .env file(s) into environment variables")
+            
+        except ImportError:
+            logger.debug("python-dotenv not available, skipping .env file loading")
+        except Exception as e:
+            logger.warning(f"Error loading .env files: {e}")
     
     def _discover_config_sources(self):
         """Discover and register configuration sources"""

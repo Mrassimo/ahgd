@@ -19,8 +19,8 @@ import sqlite3
 from jsonschema import validate, ValidationError
 import re
 
-from src.utils.logging import get_logger
-from src.schemas.base import BaseSchemaV1
+from ..utils.logging import get_logger
+from ..schemas.base import BaseSchemaV1
 
 logger = get_logger(__name__)
 

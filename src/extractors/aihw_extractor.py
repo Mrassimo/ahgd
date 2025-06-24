@@ -24,6 +24,7 @@ from ..utils.interfaces import (
     DataBatch,
     DataRecord,
     ExtractionError,
+    DataExtractionError,
     SourceMetadata,
 )
 from ..utils.logging import get_logger
@@ -104,25 +105,47 @@ class AIHWMortalityExtractor(BaseExtractor):
             if not self.validate_source(source_url or source):
                 raise ExtractionError(f"Invalid AIHW mortality source: {source}")
             
-            # Try real AIHW data first
-            try:
-                if not source_url:
+            # Try real AIHW data - NO FALLBACKS to demo data
+            if not source_url:
+                try:
                     source_url = self._get_default_aihw_url(dataset_id)
-                
-                if source_url and source_url.startswith('http'):
-                    logger.info(f"Attempting real AIHW extraction from: {source_url}")
+                except Exception as e:
+                    raise DataExtractionError(
+                        f"No AIHW URL available for dataset {dataset_id}: {e}",
+                        source=str(source),
+                        source_type="api"
+                    )
+            
+            if source_url and source_url.startswith('http'):
+                logger.info(f"Attempting real AIHW extraction from: {source_url}")
+                try:
                     yield from self._extract_from_api(source_url, dataset_id, filters)
-                elif isinstance(source, Path) or (isinstance(source, str) and Path(source).exists()):
-                    logger.info(f"Extracting AIHW from local file: {source}")
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"AIHW mortality data extraction failed from URL",
+                        source=source_url,
+                        source_type="api"
+                    ) from extraction_error
+            elif isinstance(source, Path) or (isinstance(source, str) and Path(source).exists()):
+                logger.info(f"Extracting AIHW from local file: {source}")
+                try:
                     yield from self._extract_from_file(Path(source))
-                else:
-                    raise ExtractionError("No valid AIHW source provided")
-                    
-            except Exception as real_extraction_error:
-                logger.warning(f"Real AIHW extraction failed: {real_extraction_error}")
-                logger.info("Falling back to demo mortality data")
-                yield from self._extract_demo_data()
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"AIHW mortality data extraction failed from file",
+                        source=str(source),
+                        source_type="file"
+                    ) from extraction_error
+            else:
+                raise DataExtractionError(
+                    "No valid AIHW source provided",
+                    source=str(source),
+                    source_type="unknown"
+                )
                 
+        except DataExtractionError:
+            # Re-raise DataExtractionError as-is
+            raise
         except Exception as e:
             logger.error(f"AIHW mortality extraction failed: {e}")
             raise ExtractionError(f"AIHW mortality extraction failed: {e}")
@@ -475,36 +498,6 @@ class AIHWMortalityExtractor(BaseExtractor):
         
         return 'Persons'  # Default to persons
     
-    def _extract_demo_data(self) -> Iterator[DataBatch]:
-        """Generate demo mortality data for development."""
-        logger.info("Generating demo AIHW mortality data")
-        
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '101021003']  # Demo SA2 codes
-        causes = ['Cardiovascular Disease', 'Cancer', 'Respiratory Disease', 'Diabetes']
-        
-        for sa2_code in sa2_codes:
-            for cause in causes:
-                demo_record = {
-                    'geographic_id': sa2_code,
-                    'geographic_level': 'SA2',
-                    'indicator_name': f"{cause} Mortality",
-                    'indicator_code': f"MORT_{cause.upper().replace(' ', '_')}",
-                    'indicator_type': HealthIndicatorType.MORTALITY.value,
-                    'value': 45.2,  # Demo mortality rate
-                    'unit': 'per 100,000',
-                    'reference_year': 2021,
-                    'age_group': AgeGroupType.ALL_AGES.value,
-                    'sex': 'Persons',
-                    'cause_of_death': cause,
-                    'deaths_count': 12,
-                    'data_source_id': 'AIHW_GRIM_DEMO',
-                    'data_source_name': 'AIHW GRIM Demo Data',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(
         self,
@@ -584,36 +577,15 @@ class AIHWHospitalisationExtractor(BaseExtractor):
         """Extract AIHW hospitalisation data."""
         logger.info("Extracting AIHW hospitalisation data")
         
-        # Generate demo data for now
-        yield from self._extract_demo_hospitalisation_data()
+        # Hospitalisation real data extraction not yet implemented
+        # In production, this would attempt to connect to AIHW hospitalisation data sources
+        raise DataExtractionError(
+            "Real data extraction not implemented for AIHW Hospitalisation extractor. "
+            "Production systems must implement actual hospitalisation data source connections.",
+            source=str(source),
+            source_type="hospitalisation_api"
+        )
     
-    def _extract_demo_hospitalisation_data(self) -> Iterator[DataBatch]:
-        """Generate demo hospitalisation data."""
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '101021003']
-        service_types = ['Emergency', 'Elective Surgery', 'Outpatient', 'Mental Health']
-        
-        for sa2_code in sa2_codes:
-            for service_type in service_types:
-                demo_record = {
-                    'geographic_id': sa2_code,
-                    'geographic_level': 'SA2',
-                    'indicator_name': f"{service_type} Utilisation",
-                    'indicator_code': f"HOSP_{service_type.upper().replace(' ', '_')}",
-                    'indicator_type': HealthIndicatorType.UTILISATION.value,
-                    'value': 125.5,  # Demo utilisation rate
-                    'unit': 'per 1,000',
-                    'reference_year': 2021,
-                    'service_type': service_type,
-                    'service_category': 'hospital',
-                    'visits_count': 85,
-                    'data_source_id': 'AIHW_HOSPITAL_DEMO',
-                    'data_source_name': 'AIHW Hospital Demo Data',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get hospitalisation source metadata."""
@@ -641,43 +613,22 @@ class AIHWHealthIndicatorExtractor(BaseExtractor):
     def extract(self, source, **kwargs) -> Iterator[DataBatch]:
         """Extract AIHW health indicators."""
         logger.info("Extracting AIHW health indicators")
-        yield from self._extract_demo_health_indicators()
+        
+        # Health indicators real data extraction not yet implemented
+        # In production, this would attempt to connect to AIHW health performance indicators
+        raise DataExtractionError(
+            "Real data extraction not implemented for AIHW Health Indicator extractor. "
+            "Production systems must implement actual health indicator data source connections.",
+            source=str(source),
+            source_type="health_indicator_api"
+        )
     
-    def _extract_demo_health_indicators(self) -> Iterator[DataBatch]:
-        """Generate demo health indicators."""
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '101021003']
-        indicators = [
-            ('Life Expectancy', 82.5, 'years'),
-            ('Smoking Prevalence', 14.2, '%'),
-            ('Obesity Prevalence', 31.8, '%'),
-            ('Diabetes Prevalence', 6.1, '%'),
-        ]
-        
-        for sa2_code in sa2_codes:
-            for indicator_name, value, unit in indicators:
-                demo_record = {
-                    'geographic_id': sa2_code,
-                    'geographic_level': 'SA2',
-                    'indicator_name': indicator_name,
-                    'indicator_code': f"HEALTH_{indicator_name.upper().replace(' ', '_')}",
-                    'indicator_type': HealthIndicatorType.PREVALENCE.value,
-                    'value': value,
-                    'unit': unit,
-                    'reference_year': 2021,
-                    'data_source_id': 'AIHW_INDICATORS_DEMO',
-                    'data_source_name': 'AIHW Health Indicators Demo',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get health indicators source metadata."""
         return SourceMetadata(
             source_id='aihw_health_indicators',
-            source_type='demo',
+            source_type='health_indicator_api',
             schema_version='1.0.0',
         )
     
@@ -699,41 +650,22 @@ class AIHWMedicareExtractor(BaseExtractor):
     def extract(self, source, **kwargs) -> Iterator[DataBatch]:
         """Extract AIHW Medicare data."""
         logger.info("Extracting AIHW Medicare data")
-        yield from self._extract_demo_medicare_data()
+        
+        # Medicare real data extraction not yet implemented
+        # In production, this would attempt to connect to AIHW Medicare utilisation data sources
+        raise DataExtractionError(
+            "Real data extraction not implemented for AIHW Medicare extractor. "
+            "Production systems must implement actual Medicare data source connections.",
+            source=str(source),
+            source_type="medicare_api"
+        )
     
-    def _extract_demo_medicare_data(self) -> Iterator[DataBatch]:
-        """Generate demo Medicare data."""
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '101021003']
-        service_types = ['GP Services', 'Specialist Services', 'Diagnostic Services', 'Mental Health Services']
-        
-        for sa2_code in sa2_codes:
-            for service_type in service_types:
-                demo_record = {
-                    'geographic_id': sa2_code,
-                    'geographic_level': 'SA2',
-                    'indicator_name': f"{service_type} Utilisation",
-                    'indicator_code': f"MEDICARE_{service_type.upper().replace(' ', '_')}",
-                    'indicator_type': HealthIndicatorType.UTILISATION.value,
-                    'value': 4.2,  # Services per capita
-                    'unit': 'per capita',
-                    'reference_year': 2021,
-                    'service_type': service_type,
-                    'service_category': 'primary_care',
-                    'bulk_billed_percentage': 85.3,
-                    'data_source_id': 'AIHW_MEDICARE_DEMO',
-                    'data_source_name': 'AIHW Medicare Demo Data',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get Medicare source metadata."""
         return SourceMetadata(
             source_id='aihw_medicare',
-            source_type='demo',
+            source_type='medicare_api',
             schema_version='1.0.0',
         )
     

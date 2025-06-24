@@ -449,6 +449,368 @@ class CensusHousing(VersionedSchema, TemporalData):
         return errors
 
 
+class CensusSEIFA(VersionedSchema, TemporalData):
+    """Schema for SEIFA socio-economic index data (ABS SEIFA 2021)."""
+    
+    # Geographic identification
+    geographic_id: str = Field(..., description="Geographic area identifier")
+    geographic_level: str = Field(..., description="Geographic level (SA1, SA2, etc)")
+    geographic_name: str = Field(..., description="Geographic area name")
+    state_territory: str = Field(..., description="State or territory")
+    census_year: int = Field(..., description="Census year for SEIFA data")
+    
+    # SEIFA index scores (standard range 600-1400, but allow broader for edge cases)
+    irsad_score: Optional[int] = Field(None, ge=1, le=2000, description="Index of Relative Socio-economic Advantage and Disadvantage score")
+    irsd_score: Optional[int] = Field(None, ge=1, le=2000, description="Index of Relative Socio-economic Disadvantage score") 
+    ier_score: Optional[int] = Field(None, ge=1, le=2000, description="Index of Education and Occupation score")
+    ieo_score: Optional[int] = Field(None, ge=1, le=2000, description="Index of Economic Resources score")
+    
+    # Rankings (1 = most disadvantaged/lowest score)
+    irsad_rank: Optional[int] = Field(None, ge=1, description="IRSAD national ranking")
+    irsd_rank: Optional[int] = Field(None, ge=1, description="IRSD national ranking")
+    ier_rank: Optional[int] = Field(None, ge=1, description="IER national ranking")
+    ieo_rank: Optional[int] = Field(None, ge=1, description="IEO national ranking")
+    
+    # Decile groupings (1=most disadvantaged, 10=most advantaged)
+    irsad_decile: Optional[int] = Field(None, ge=1, le=10, description="IRSAD decile")
+    irsd_decile: Optional[int] = Field(None, ge=1, le=10, description="IRSD decile")
+    ier_decile: Optional[int] = Field(None, ge=1, le=10, description="IER decile")
+    ieo_decile: Optional[int] = Field(None, ge=1, le=10, description="IEO decile")
+    
+    # State-level rankings and deciles
+    irsad_state_rank: Optional[int] = Field(None, ge=1, description="IRSAD state ranking")
+    irsd_state_rank: Optional[int] = Field(None, ge=1, description="IRSD state ranking")
+    irsad_state_decile: Optional[int] = Field(None, ge=1, le=10, description="IRSAD state decile")
+    irsd_state_decile: Optional[int] = Field(None, ge=1, le=10, description="IRSD state decile")
+    
+    # Composite indicators (derived from multiple indices)
+    overall_advantage_score: Optional[float] = Field(None, description="Composite advantage score")
+    disadvantage_severity: Optional[str] = Field(None, description="Categorical disadvantage level")
+    
+    # Population base for the geographic area
+    population_base: Optional[int] = Field(None, ge=0, description="Total population for SEIFA calculation")
+    
+    # Data source
+    data_source: DataSource = Field(..., description="Source of SEIFA data")
+    
+    @field_validator('census_year')
+    @classmethod
+    def validate_seifa_year(cls, v: int) -> int:
+        """Validate SEIFA year is a valid ABS SEIFA release year."""
+        valid_years = {2001, 2006, 2011, 2016, 2021, 2026}  # SEIFA release years
+        if v not in valid_years:
+            raise ValueError(f"Invalid SEIFA year: {v}")
+        return v
+    
+    @field_validator('state_territory')
+    @classmethod
+    def validate_state_territory(cls, v: str) -> str:
+        """Validate Australian state/territory codes."""
+        valid_states = {'NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT', 'OT'}
+        if v.upper() not in valid_states:
+            raise ValueError(f"Invalid state/territory: {v}")
+        return v.upper()
+    
+    @field_validator('disadvantage_severity')
+    @classmethod
+    def validate_disadvantage_severity(cls, v: Optional[str]) -> Optional[str]:
+        """Validate disadvantage severity categories."""
+        if v is None:
+            return v
+        valid_categories = {'very_high', 'high', 'moderate', 'low', 'very_low'}
+        if v.lower() not in valid_categories:
+            raise ValueError(f"Invalid disadvantage severity: {v}")
+        return v.lower()
+    
+    @model_validator(mode='after')
+    def validate_seifa_consistency(self) -> 'CensusSEIFA':
+        """Validate SEIFA data consistency."""
+        # Check that scores and ranks are consistent (lower score = higher rank number)
+        if self.irsd_score and self.irsd_rank:
+            # IRSD: lower score = more disadvantaged = higher rank number
+            # This is a basic sanity check - detailed validation would require full dataset
+            if self.irsd_score < 700 and self.irsd_rank < 1000:
+                # Very low score should have high rank number
+                pass  # This would need full dataset context for proper validation
+        
+        # Check decile consistency with scores where possible
+        if self.irsd_score and self.irsd_decile:
+            # Rough validation: very low scores should be in low deciles
+            if self.irsd_score < 800 and self.irsd_decile > 5:
+                raise ValueError("IRSD score and decile appear inconsistent")
+            if self.irsd_score > 1200 and self.irsd_decile < 5:
+                raise ValueError("IRSD score and decile appear inconsistent")
+        
+        # Ensure at least one SEIFA index is present
+        indices_present = [self.irsad_score, self.irsd_score, self.ier_score, self.ieo_score]
+        if not any(indices_present):
+            raise ValueError("At least one SEIFA index score must be provided")
+        
+        return self
+    
+    def get_schema_name(self) -> str:
+        """Return the schema name."""
+        return "CensusSEIFA"
+    
+    def get_overall_disadvantage_level(self) -> Optional[str]:
+        """Calculate overall disadvantage level from available indices."""
+        if not self.irsd_decile:
+            return None
+        
+        # Use IRSD as primary disadvantage indicator
+        if self.irsd_decile <= 2:
+            return "very_high"
+        elif self.irsd_decile <= 4:
+            return "high"
+        elif self.irsd_decile <= 6:
+            return "moderate"
+        elif self.irsd_decile <= 8:
+            return "low"
+        else:
+            return "very_low"
+    
+    def validate_data_integrity(self) -> List[str]:
+        """Validate SEIFA data integrity."""
+        errors = []
+        
+        # Check for reasonable score ranges
+        score_fields = [
+            ('irsad_score', self.irsad_score),
+            ('irsd_score', self.irsd_score),
+            ('ier_score', self.ier_score),
+            ('ieo_score', self.ieo_score)
+        ]
+        
+        for field_name, score in score_fields:
+            if score and (score < 600 or score > 1400):
+                errors.append(f"{field_name} outside typical range (600-1400): {score}")
+        
+        # Check rank consistency
+        rank_fields = [
+            ('irsad_rank', self.irsad_rank),
+            ('irsd_rank', self.irsd_rank),
+            ('ier_rank', self.ier_rank),
+            ('ieo_rank', self.ieo_rank)
+        ]
+        
+        for field_name, rank in rank_fields:
+            if rank and rank > 50000:  # Rough upper bound for Australian geographic areas
+                errors.append(f"{field_name} appears unusually high: {rank}")
+        
+        return errors
+
+
+class IntegratedCensusData(VersionedSchema, TemporalData):
+    """Unified master census dataset schema integrating all census domains."""
+    
+    # Universal identifiers (required)
+    geographic_id: str = Field(..., description="Geographic area identifier")
+    geographic_level: str = Field(..., description="Geographic level (SA1, SA2, etc)")
+    geographic_name: str = Field(..., description="Geographic area name") 
+    state_territory: str = Field(..., description="State or territory")
+    census_year: int = Field(..., description="Census year")
+    
+    # Geographic coordinates (WGS84)
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0, description="Centroid latitude in decimal degrees (WGS84)")
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0, description="Centroid longitude in decimal degrees (WGS84)")
+    
+    # Population metrics
+    total_population: int = Field(..., ge=0, description="Total resident population")
+    working_age_population: Optional[int] = Field(None, ge=0, description="Population aged 15+")
+    population_consistency_flag: Optional[bool] = Field(None, description="Population data consistency check")
+    
+    # Demographics domain (core indicators)
+    median_age: Optional[float] = Field(None, ge=0, le=120, description="Median age of population")
+    sex_ratio: Optional[float] = Field(None, ge=0, description="Males per 100 females")
+    indigenous_percentage: Optional[float] = Field(None, ge=0, le=100, description="Indigenous population %")
+    age_dependency_ratio: Optional[float] = Field(None, ge=0, description="Age dependency ratio")
+    
+    # Housing domain (core indicators) 
+    home_ownership_rate: Optional[float] = Field(None, ge=0, le=100, description="Home ownership rate %")
+    median_rent_weekly: Optional[int] = Field(None, ge=0, description="Median weekly rent")
+    median_mortgage_monthly: Optional[int] = Field(None, ge=0, description="Median monthly mortgage")
+    housing_stress_rate: Optional[float] = Field(None, ge=0, le=100, description="Housing stress rate %")
+    average_household_size: Optional[float] = Field(None, ge=0, description="Average persons per household")
+    
+    # Employment domain (core indicators)
+    unemployment_rate: Optional[float] = Field(None, ge=0, le=100, description="Unemployment rate %")
+    participation_rate: Optional[float] = Field(None, ge=0, le=100, description="Labour force participation %")
+    professional_employment_rate: Optional[float] = Field(None, ge=0, le=100, description="Professional occupation %")
+    median_personal_income: Optional[int] = Field(None, ge=0, description="Median personal income")
+    industry_diversity_index: Optional[float] = Field(None, ge=0, le=1, description="Industry diversity score")
+    
+    # Education domain (core indicators)
+    university_qualification_rate: Optional[float] = Field(None, ge=0, le=100, description="University qualification %")
+    year12_completion_rate: Optional[float] = Field(None, ge=0, le=100, description="Year 12 completion %")
+    vocational_qualification_rate: Optional[float] = Field(None, ge=0, le=100, description="Vocational qualification %")
+    
+    # SEIFA domain (core indicators)
+    irsad_score: Optional[int] = Field(None, ge=1, le=2000, description="IRSAD advantage/disadvantage score")
+    irsd_score: Optional[int] = Field(None, ge=1, le=2000, description="IRSD disadvantage score") 
+    irsad_decile: Optional[int] = Field(None, ge=1, le=10, description="IRSAD decile")
+    irsd_decile: Optional[int] = Field(None, ge=1, le=10, description="IRSD decile")
+    seifa_advantage_category: Optional[str] = Field(None, description="SEIFA advantage category")
+    
+    # Derived cross-domain insights
+    socioeconomic_profile: str = Field(..., description="Overall socioeconomic classification")
+    livability_index: Optional[float] = Field(None, ge=0, le=100, description="Composite livability score")
+    economic_opportunity_score: Optional[float] = Field(None, ge=0, le=100, description="Economic opportunity rating")
+    social_cohesion_index: Optional[float] = Field(None, ge=0, le=100, description="Social cohesion measure")
+    housing_market_pressure: Optional[float] = Field(None, ge=0, le=100, description="Housing market pressure indicator")
+    
+    # Data quality metrics
+    data_completeness_score: float = Field(..., ge=0, le=1, description="Data completeness 0-1")
+    demographics_completeness: Optional[float] = Field(None, ge=0, le=1, description="Demographics data completeness")
+    housing_completeness: Optional[float] = Field(None, ge=0, le=1, description="Housing data completeness")
+    employment_completeness: Optional[float] = Field(None, ge=0, le=1, description="Employment data completeness")
+    education_completeness: Optional[float] = Field(None, ge=0, le=1, description="Education data completeness")
+    seifa_completeness: Optional[float] = Field(None, ge=0, le=1, description="SEIFA data completeness")
+    temporal_quality_flag: bool = Field(..., description="Temporal alignment quality")
+    consistency_score: float = Field(..., ge=0, le=1, description="Cross-domain consistency")
+    
+    # Integration metadata
+    integration_sk: Optional[int] = Field(None, description="Integration surrogate key")
+    source_datasets: List[str] = Field(..., description="Contributing datasets")
+    integration_timestamp: Optional[datetime] = Field(None, description="Integration processing time")
+    
+    # Data source
+    data_source: DataSource = Field(..., description="Source of integrated data")
+    
+    @field_validator('census_year')
+    @classmethod
+    def validate_census_year(cls, v: int) -> int:
+        """Validate census year is a valid ABS census year."""
+        valid_years = {1911, 1921, 1933, 1947, 1954, 1961, 1966, 1971, 1976, 
+                      1981, 1986, 1991, 1996, 2001, 2006, 2011, 2016, 2021, 2026, 2031}
+        if v not in valid_years:
+            raise ValueError(f"Invalid census year: {v}")
+        return v
+    
+    @field_validator('state_territory')
+    @classmethod
+    def validate_state_territory(cls, v: str) -> str:
+        """Validate Australian state/territory codes."""
+        valid_states = {'NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT', 'OT'}
+        if v.upper() not in valid_states:
+            raise ValueError(f"Invalid state/territory: {v}")
+        return v.upper()
+    
+    @field_validator('socioeconomic_profile')
+    @classmethod
+    def validate_socioeconomic_profile(cls, v: str) -> str:
+        """Validate socioeconomic profile categories."""
+        valid_profiles = {'high', 'medium-high', 'medium-low', 'low'}
+        if v.lower() not in valid_profiles:
+            raise ValueError(f"Invalid socioeconomic profile: {v}")
+        return v.lower()
+    
+    @field_validator('seifa_advantage_category')
+    @classmethod
+    def validate_seifa_category(cls, v: Optional[str]) -> Optional[str]:
+        """Validate SEIFA advantage categories."""
+        if v is None:
+            return v
+        valid_categories = {'very_high', 'high', 'moderate', 'low', 'very_low'}
+        if v.lower() not in valid_categories:
+            raise ValueError(f"Invalid SEIFA advantage category: {v}")
+        return v.lower()
+    
+    @field_validator('latitude', 'longitude')
+    @classmethod
+    def validate_australian_coordinates(cls, v: Optional[float], info) -> Optional[float]:
+        """Validate coordinates are within plausible range for Australia."""
+        if v is None:
+            return v
+        
+        field_name = info.field_name
+        if field_name == 'latitude':
+            # Australia's latitude range: approximately -44 to -10 degrees
+            if v < -44.0 or v > -10.0:
+                raise ValueError(f"Latitude {v} outside Australia's range (-44.0 to -10.0)")
+        elif field_name == 'longitude':
+            # Australia's longitude range: approximately 113 to 154 degrees  
+            if v < 113.0 or v > 154.0:
+                raise ValueError(f"Longitude {v} outside Australia's range (113.0 to 154.0)")
+        
+        return v
+    
+    @model_validator(mode='after')
+    def validate_integrated_consistency(self) -> 'IntegratedCensusData':
+        """Validate integrated data consistency."""
+        # Check working age population consistency
+        if (self.working_age_population and self.total_population and 
+            self.working_age_population > self.total_population):
+            raise ValueError("Working age population cannot exceed total population")
+        
+        # Check percentage fields are valid
+        percentage_fields = [
+            ('indigenous_percentage', self.indigenous_percentage),
+            ('home_ownership_rate', self.home_ownership_rate),
+            ('unemployment_rate', self.unemployment_rate),
+            ('participation_rate', self.participation_rate),
+            ('university_qualification_rate', self.university_qualification_rate)
+        ]
+        
+        for field_name, value in percentage_fields:
+            if value is not None and (value < 0 or value > 100):
+                raise ValueError(f"{field_name} must be between 0 and 100")
+        
+        # Validate completeness scores sum
+        if self.data_completeness_score > 0:
+            domain_scores = [
+                self.demographics_completeness or 0,
+                self.housing_completeness or 0,
+                self.employment_completeness or 0,
+                self.education_completeness or 0,
+                self.seifa_completeness or 0
+            ]
+            # Allow some tolerance for rounding
+            calculated_avg = sum(domain_scores) / len(domain_scores)
+            if abs(calculated_avg - self.data_completeness_score) > 0.01:
+                raise ValueError("Data completeness score inconsistent with domain scores")
+        
+        return self
+    
+    def get_schema_name(self) -> str:
+        """Return the schema name."""
+        return "IntegratedCensusData"
+    
+    def get_data_quality_assessment(self) -> str:
+        """Assess overall data quality level."""
+        if self.data_completeness_score >= 0.9 and self.consistency_score >= 0.9:
+            return "high"
+        elif self.data_completeness_score >= 0.7 and self.consistency_score >= 0.7:
+            return "medium"
+        else:
+            return "low"
+    
+    def validate_data_integrity(self) -> List[str]:
+        """Validate integrated data integrity."""
+        errors = []
+        
+        # Check critical fields
+        if self.total_population == 0:
+            errors.append("Total population is zero")
+        
+        # Check data completeness
+        if self.data_completeness_score < 0.5:
+            errors.append(f"Data completeness below threshold: {self.data_completeness_score:.2f}")
+        
+        # Check temporal quality
+        if not self.temporal_quality_flag:
+            errors.append("Temporal alignment issues detected")
+        
+        # Check consistency
+        if self.consistency_score < 0.7:
+            errors.append(f"Cross-domain consistency below threshold: {self.consistency_score:.2f}")
+        
+        # Check derived indicators
+        if self.livability_index and self.livability_index < 0:
+            errors.append("Invalid livability index calculation")
+        
+        return errors
+
+
 # Migration functions for census schemas
 
 def migrate_census_v1_to_v2(old_data: Dict[str, Any]) -> Dict[str, Any]:

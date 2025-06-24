@@ -20,8 +20,8 @@ from collections import defaultdict
 
 import pandas as pd
 from huggingface_hub import HfApi, dataset_info
-from src.utils.logging import get_logger
-from src.utils.config import get_config
+from ..utils.logging import get_logger
+from ..utils.config import get_config
 
 logger = get_logger(__name__)
 

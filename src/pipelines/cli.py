@@ -296,9 +296,34 @@ def execute_pipeline(
         
         pipeline_config = clean_config(pipeline_config)
         
-        # Initialize pipeline
+        # Initialize pipeline with correct parameters
         logger.info("Initialising pipeline", config_keys=list(pipeline_config.keys()))
-        pipeline = MasterETLPipeline(config=pipeline_config)
+        
+        # Extract pipeline initialization parameters from config
+        pipeline_name = pipeline_config.get('name', args.pipeline)
+        
+        # Create quality assurance config from pipeline config
+        from .master_etl_pipeline import QualityAssuranceConfig, QualityLevel
+        from .validation_pipeline import ValidationMode
+        
+        quality_config = QualityAssuranceConfig(
+            enabled=pipeline_config.get('quality_config', {}).get('enable_validation', True),
+            quality_level=QualityLevel.COMPREHENSIVE if args.integration_level == 'comprehensive' else QualityLevel.STANDARD,
+            validation_mode=ValidationMode.SELECTIVE,
+            halt_on_critical_errors=not pipeline_config.get('quality_config', {}).get('skip_quality_checks', False),
+            generate_quality_reports=pipeline_config.get('monitoring_config', {}).get('generate_quality_reports', True),
+            monitor_performance=pipeline_config.get('monitoring_config', {}).get('monitor_performance', True),
+            track_data_lineage=pipeline_config.get('monitoring_config', {}).get('track_data_lineage', True)
+        )
+        
+        # Initialize pipeline with proper parameters
+        pipeline = MasterETLPipeline(
+            name=pipeline_name,
+            quality_config=quality_config,
+            enable_checkpoints=pipeline_config.get('monitoring_config', {}).get('enable_checkpoints', True),
+            parallel_stages=args.max_workers is not None and args.max_workers > 1,
+            max_workers=args.max_workers or 4
+        )
         
         # Check input data availability
         if not input_path.exists():
@@ -319,12 +344,24 @@ def execute_pipeline(
         
         logger.info("Executing pipeline stages...")
         
-        # This is a simplified execution - the actual MasterETLPipeline
-        # would handle the complex orchestration
-        execution_result = pipeline.execute(
-            input_path=str(input_path),
-            output_path=str(output_path),
-            resume_from=args.resume_from
+        # Prepare source and target configurations
+        source_config = {
+            'input_path': str(input_path),
+            'integration_level': integration_level,
+            'processing_config': pipeline_config.get('processing_config', {}),
+            'geographic_config': pipeline_config.get('geographic_config', {})
+        }
+        
+        target_config = {
+            'output_path': str(output_path),
+            'output_config': pipeline_config.get('output_config', {}),
+            'quality_threshold': args.quality_threshold
+        }
+        
+        # Run the complete ETL pipeline
+        execution_result = pipeline.run_complete_etl(
+            source_config=source_config,
+            target_config=target_config
         )
         
         execution_time = time.time() - start_time
@@ -334,14 +371,23 @@ def execute_pipeline(
             reports_dir, execution_result, args, execution_time
         )
         
-        if execution_result.get('success', False):
+        # Check execution success based on pipeline state
+        pipeline_successful = (
+            execution_result.get('execution_status') == 'completed' and
+            execution_result.get('final_data_records', 0) > 0
+        )
+        
+        if pipeline_successful:
             logger.info("Pipeline execution completed successfully",
                        duration=f"{execution_time:.2f}s",
-                       output_path=str(output_path))
+                       output_path=str(output_path),
+                       final_records=execution_result.get('final_data_records', 0),
+                       quality_score=execution_result.get('quality_assessment', {}).get('overall_quality_score', 0))
             return True
         else:
             logger.error("Pipeline execution failed",
-                        errors=execution_result.get('errors', []))
+                        execution_status=execution_result.get('execution_status'),
+                        stage_results=execution_result.get('stage_results', {}))
             return False
         
     except Exception as e:

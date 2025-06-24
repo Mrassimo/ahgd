@@ -17,8 +17,8 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import psutil
 
-from src.utils.logging import get_logger
-from src.utils.config import get_config
+from ..utils.logging import get_logger
+from ..utils.config import get_config
 
 logger = get_logger(__name__)
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .data_dictionary_generator import DataDictionaryGenerator
-from src.utils.logging import get_logger
+from ..utils.logging import get_logger
 
 logger = get_logger(__name__)
 

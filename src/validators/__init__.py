@@ -16,7 +16,7 @@ Available Validators:
 - ValidationReporter: Comprehensive validation reporting
 
 Example Usage:
-    from src.validators import QualityChecker, ValidationOrchestrator
+    from ..validators import QualityChecker, ValidationOrchestrator
     
     # Create quality checker
     quality_checker = QualityChecker()

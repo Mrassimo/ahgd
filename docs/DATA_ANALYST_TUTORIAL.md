@@ -249,7 +249,7 @@ def create_health_map(data, indicator, title):
     # Merge with geographic data
     map_data = aus_boundaries.merge(data, on='sa2_code', how='inner')
     
-    # Create base map centered on Australia
+    # Create base map centred on Australia
     m = folium.Map(location=[-25.2744, 133.7751], zoom_start=5)
     
     # Add choropleth layer

@@ -17,8 +17,8 @@ from typing import Any, Dict, List, Optional, Set, Union
 from concurrent.futures import ThreadPoolExecutor, Future
 import threading
 
-from src.utils.logging import get_logger
-from src.utils.interfaces import AHGDException
+from ..utils.logging import get_logger
+from ..utils.interfaces import AHGDException
 
 logger = get_logger(__name__)
 

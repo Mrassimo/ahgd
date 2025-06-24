@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Set, Union, Callable, Tuple
 import pandas as pd
 import numpy as np
 
-from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, AHGDException
+from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, AHGDException, PipelineError
 from .validation_pipeline import (
     ValidationPipeline, StageValidator, QualityGatekeeper,
     ValidationAction, ValidationMode, StageValidationResult
@@ -502,15 +502,48 @@ class PipelineStageManager:
         """Execute a stage instance."""
         # Determine execution method based on stage type
         if hasattr(stage_instance, 'extract'):
-            # Extractor
-            return stage_instance.extract()
+            # Extractor - provide source configuration from context
+            source_config = context.metadata.get('source_config', {})
+            input_path = source_config.get('input_path', 'data_raw')
+            
+            # Create source specification for extractor
+            source = {'path': input_path, 'type': 'directory'}
+            
+            # Execute extraction and collect results into DataFrame
+            extraction_results = []
+            for batch in stage_instance.extract(source):
+                if isinstance(batch, list):
+                    extraction_results.extend(batch)
+                else:
+                    extraction_results.append(batch)
+            
+            # Convert results to DataFrame if we have data
+            if extraction_results:
+                return pd.DataFrame(extraction_results)
+            else:
+                # Return empty DataFrame with basic structure if no results
+                return pd.DataFrame()
+                
         elif hasattr(stage_instance, 'transform'):
             # Transformer
+            if input_data is None or input_data.empty:
+                logger.warning("Transformer received empty input data")
+                return pd.DataFrame()
             return stage_instance.transform(input_data)
+            
         elif hasattr(stage_instance, 'load'):
             # Loader
-            stage_instance.load(input_data)
+            if input_data is None or input_data.empty:
+                logger.warning("Loader received empty input data")
+                return input_data
+            
+            # Get target configuration from context
+            target_config = context.metadata.get('target_config', {})
+            output_path = target_config.get('output_path', 'output/processed_data.parquet')
+            
+            stage_instance.load(input_data, output_path)
             return input_data  # Pass through data
+            
         elif hasattr(stage_instance, 'execute'):
             # Generic execution
             return stage_instance.execute(input_data, context)
@@ -1224,13 +1257,19 @@ class MasterETLPipeline(BasePipeline):
     
     def _load_default_stage_definitions(self) -> List[PipelineStageDefinition]:
         """Load default stage definitions."""
+        # Load default configuration for extractors/transformers/loaders
+        default_extractor_config = get_config('extractors', {'batch_size': 1000})
+        default_transformer_config = get_config('transformers', {'batch_size': 1000})
+        default_loader_config = get_config('loaders', {'batch_size': 1000})
+        
         return [
             PipelineStageDefinition(
                 stage_id="data_extraction",
                 stage_name="Data Extraction",
                 stage_type=PipelineStageType.EXTRACTION,
-                stage_class="src.extractors.aihw_extractor.AIHWExtractor",
+                stage_class="src.extractors.aihw_extractor.AIHWMortalityExtractor",
                 dependencies=[],
+                configuration={'config': default_extractor_config},
                 validation_required=True,
                 quality_level=QualityLevel.STANDARD
             ),
@@ -1240,6 +1279,7 @@ class MasterETLPipeline(BasePipeline):
                 stage_type=PipelineStageType.TRANSFORMATION,
                 stage_class="src.transformers.geographic_standardiser.GeographicStandardiser",
                 dependencies=["data_extraction"],
+                configuration={'config': default_transformer_config},
                 validation_required=True,
                 quality_level=QualityLevel.COMPREHENSIVE
             ),
@@ -1247,8 +1287,9 @@ class MasterETLPipeline(BasePipeline):
                 stage_id="data_integration",
                 stage_name="Data Integration",
                 stage_type=PipelineStageType.INTEGRATION,
-                stage_class="src.transformers.data_integrator.DataIntegrator",
+                stage_class="src.transformers.data_integrator.MasterDataIntegrator",
                 dependencies=["data_transformation"],
+                configuration={'config': default_transformer_config},
                 validation_required=True,
                 quality_level=QualityLevel.COMPREHENSIVE
             ),
@@ -1256,8 +1297,9 @@ class MasterETLPipeline(BasePipeline):
                 stage_id="data_loading",
                 stage_name="Data Loading",
                 stage_type=PipelineStageType.LOADING,
-                stage_class="src.loaders.base.BaseLoader",
+                stage_class="src.loaders.production_loader.ProductionLoader",
                 dependencies=["data_integration"],
+                configuration={'config': default_loader_config},
                 validation_required=True,
                 quality_level=QualityLevel.STANDARD
             )

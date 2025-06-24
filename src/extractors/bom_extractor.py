@@ -23,6 +23,7 @@ from ..utils.interfaces import (
     DataBatch,
     DataRecord,
     ExtractionError,
+    DataExtractionError,
     SourceMetadata,
 )
 from ..utils.logging import get_logger
@@ -101,13 +102,28 @@ class BOMClimateExtractor(BaseExtractor):
             if not self.validate_source(source):
                 raise ExtractionError(f"Invalid BOM climate source: {source}")
             
-            # Extract data based on parameters
+            # Extract data based on parameters - NO FALLBACKS to demo data
             if station_ids:
-                yield from self._extract_station_data(station_ids, start_date, end_date, data_type)
+                try:
+                    yield from self._extract_station_data(station_ids, start_date, end_date, data_type)
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"BOM climate data extraction failed for stations",
+                        source=str(station_ids),
+                        source_type="api"
+                    ) from extraction_error
             else:
-                # Fallback to demo data for development
-                yield from self._extract_demo_climate_data()
+                # No station IDs provided - this is a configuration error, not a fallback case
+                raise DataExtractionError(
+                    "No station data available for BOM climate extraction. "
+                    "Station IDs must be provided for real data extraction.",
+                    source=str(source),
+                    source_type="config"
+                )
                 
+        except DataExtractionError:
+            # Re-raise DataExtractionError as-is
+            raise
         except Exception as e:
             logger.error(f"BOM climate extraction failed: {e}")
             raise ExtractionError(f"BOM climate extraction failed: {e}")
@@ -135,8 +151,12 @@ class BOMClimateExtractor(BaseExtractor):
                 yield from self._parse_climate_csv(response.text, station_id, start_date, end_date)
                 
             except requests.RequestException as e:
-                logger.warning(f"Failed to extract data from station {station_id}: {e}")
-                continue
+                logger.error(f"Failed to extract data from station {station_id}: {e}")
+                raise DataExtractionError(
+                    f"BOM climate data extraction failed for station {station_id}",
+                    source=station_id,
+                    source_type="api"
+                ) from e
     
     def _build_station_url(self, station_id: str, data_type: str) -> str:
         """Build BOM data URL for station."""
@@ -286,46 +306,6 @@ class BOMClimateExtractor(BaseExtractor):
             logger.error(f"Climate record validation failed: {e}")
             return None
     
-    def _extract_demo_climate_data(self) -> Iterator[DataBatch]:
-        """Generate demo climate data for development."""
-        logger.info("Generating demo BOM climate data")
-        
-        demo_records = []
-        stations = [
-            ('066062', 'Sydney Observatory Hill', -33.8607, 151.2050),
-            ('086071', 'Melbourne Regional Office', -37.8103, 144.9633),
-            ('040913', 'Brisbane Aero', -27.3917, 153.1292),
-        ]
-        
-        # Generate data for last 30 days
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
-        
-        for station_id, station_name, lat, lon in stations:
-            current_date = start_date
-            while current_date <= end_date:
-                demo_record = {
-                    'station_id': station_id,
-                    'station_name': station_name,
-                    'measurement_date': current_date.strftime('%Y-%m-%d'),
-                    'latitude': lat,
-                    'longitude': lon,
-                    'temperature_max_celsius': 25.5,
-                    'temperature_min_celsius': 15.2,
-                    'rainfall_mm': 2.4,
-                    'relative_humidity_9am_percent': 65.0,
-                    'relative_humidity_3pm_percent': 55.0,
-                    'wind_speed_kmh': 12.8,
-                    'solar_exposure_mj_per_m2': 18.5,
-                    'heat_stress_indicator': 'low',
-                    'data_source_id': 'BOM_CLIMATE_DEMO',
-                    'data_source_name': 'BOM Climate Demo Data',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-                current_date += timedelta(days=1)
-        
-        yield demo_records
     
     def get_source_metadata(
         self,
@@ -380,63 +360,22 @@ class BOMWeatherStationExtractor(BaseExtractor):
     def extract(self, source, **kwargs) -> Iterator[DataBatch]:
         """Extract BOM weather station data."""
         logger.info("Extracting BOM weather station mappings")
-        yield from self._extract_demo_station_data()
+        
+        # Weather station real data extraction not yet implemented
+        # In production, this would attempt to connect to BOM weather station metadata APIs
+        raise DataExtractionError(
+            "Real data extraction not implemented for BOM Weather Station extractor. "
+            "Production systems must implement actual weather station metadata source connections.",
+            source=str(source),
+            source_type="station_api"
+        )
     
-    def _extract_demo_station_data(self) -> Iterator[DataBatch]:
-        """Generate demo weather station data."""
-        demo_records = []
-        
-        # Demo weather stations with SA2 mappings
-        stations = [
-            {
-                'station_id': '066062',
-                'station_name': 'Sydney Observatory Hill',
-                'latitude': -33.8607,
-                'longitude': 151.2050,
-                'elevation_m': 39,
-                'state': 'NSW',
-                'nearest_sa2_code': '101021001',
-                'nearest_sa2_name': 'Sydney - Haymarket - The Rocks',
-                'distance_to_sa2_km': 1.2,
-            },
-            {
-                'station_id': '086071',
-                'station_name': 'Melbourne Regional Office',
-                'latitude': -37.8103,
-                'longitude': 144.9633,
-                'elevation_m': 31,
-                'state': 'VIC',
-                'nearest_sa2_code': '201011001',
-                'nearest_sa2_name': 'Melbourne - CBD',
-                'distance_to_sa2_km': 0.8,
-            },
-        ]
-        
-        for station_data in stations:
-            demo_record = {
-                'station_id': station_data['station_id'],
-                'station_name': station_data['station_name'],
-                'latitude': station_data['latitude'],
-                'longitude': station_data['longitude'],
-                'elevation_metres': station_data['elevation_m'],
-                'state': station_data['state'],
-                'nearest_sa2_code': station_data['nearest_sa2_code'],
-                'nearest_sa2_name': station_data['nearest_sa2_name'],
-                'distance_to_sa2_km': station_data['distance_to_sa2_km'],
-                'operational_status': 'active',
-                'data_source_id': 'BOM_STATIONS_DEMO',
-                'data_source_name': 'BOM Weather Stations Demo',
-                'extraction_timestamp': datetime.now().isoformat(),
-            }
-            demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get weather station source metadata."""
         return SourceMetadata(
             source_id='bom_weather_stations',
-            source_type='demo',
+            source_type='station_api',
             schema_version='1.0.0',
         )
     
@@ -458,54 +397,22 @@ class BOMEnvironmentalExtractor(BaseExtractor):
     def extract(self, source, **kwargs) -> Iterator[DataBatch]:
         """Extract BOM environmental data."""
         logger.info("Extracting BOM environmental indicators")
-        yield from self._extract_demo_environmental_data()
+        
+        # Environmental data real extraction not yet implemented
+        # In production, this would attempt to connect to BOM air quality and environmental APIs
+        raise DataExtractionError(
+            "Real data extraction not implemented for BOM Environmental extractor. "
+            "Production systems must implement actual environmental data source connections.",
+            source=str(source),
+            source_type="environmental_api"
+        )
     
-    def _extract_demo_environmental_data(self) -> Iterator[DataBatch]:
-        """Generate demo environmental data."""
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '201011001']
-        
-        for sa2_code in sa2_codes:
-            # Air quality indicators
-            air_quality_record = {
-                'geographic_id': sa2_code,
-                'geographic_level': 'SA2',
-                'indicator_type': 'air_quality',
-                'measurement_date': datetime.now().strftime('%Y-%m-%d'),
-                'pm25_concentration_ug_m3': 8.5,
-                'pm10_concentration_ug_m3': 15.2,
-                'no2_concentration_ug_m3': 25.8,
-                'o3_concentration_ug_m3': 45.2,
-                'air_quality_index': 42,  # Good
-                'air_quality_category': 'Good',
-                'data_source_id': 'BOM_AIR_QUALITY_DEMO',
-                'data_source_name': 'BOM Air Quality Demo',
-                'extraction_timestamp': datetime.now().isoformat(),
-            }
-            demo_records.append(air_quality_record)
-            
-            # UV index
-            uv_record = {
-                'geographic_id': sa2_code,
-                'geographic_level': 'SA2',
-                'indicator_type': 'uv_index',
-                'measurement_date': datetime.now().strftime('%Y-%m-%d'),
-                'uv_index_max': 8,
-                'uv_category': 'Very High',
-                'sun_protection_required': True,
-                'data_source_id': 'BOM_UV_DEMO',
-                'data_source_name': 'BOM UV Index Demo',
-                'extraction_timestamp': datetime.now().isoformat(),
-            }
-            demo_records.append(uv_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get environmental source metadata."""
         return SourceMetadata(
             source_id='bom_environmental',
-            source_type='demo',
+            source_type='environmental_api',
             schema_version='1.0.0',
         )
     

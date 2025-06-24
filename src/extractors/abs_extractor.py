@@ -26,6 +26,7 @@ from ..utils.interfaces import (
     DataBatch,
     DataRecord,
     ExtractionError,
+    DataExtractionError,
     SourceMetadata,
 )
 from ..utils.logging import get_logger
@@ -109,26 +110,48 @@ class ABSGeographicExtractor(BaseExtractor):
             else:
                 raise ExtractionError(f"Unsupported source type: {type(source)}")
             
-            # Try real ABS data first
-            try:
-                if not source_path:
-                    # Use default ABS URLs from config
+            # Try real ABS data - NO FALLBACKS to demo data
+            if not source_path:
+                # Use default ABS URLs from config
+                try:
                     source_path = self._get_default_abs_url(geographic_level, year)
-                
-                if source_path and source_path.startswith('http'):
-                    logger.info(f"Attempting real ABS extraction from: {source_path}")
+                except Exception as e:
+                    raise DataExtractionError(
+                        f"No ABS URL available for {geographic_level} {year}: {e}",
+                        source=str(source),
+                        source_type="url"
+                    )
+            
+            if source_path and source_path.startswith('http'):
+                logger.info(f"Attempting real ABS extraction from: {source_path}")
+                try:
                     yield from self._extract_from_url(source_path, geographic_level, year)
-                elif isinstance(source_path, (str, type(None))) and source_path and Path(source_path).exists():
-                    logger.info(f"Extracting from local file: {source_path}")
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"ABS data extraction failed from URL",
+                        source=source_path,
+                        source_type="url"
+                    ) from extraction_error
+            elif isinstance(source_path, (str, type(None))) and source_path and Path(source_path).exists():
+                logger.info(f"Extracting from local file: {source_path}")
+                try:
                     yield from self._extract_from_file(Path(source_path), geographic_level)
-                else:
-                    raise ExtractionError("No valid source provided")
-                    
-            except Exception as real_extraction_error:
-                logger.warning(f"Real ABS extraction failed: {real_extraction_error}")
-                logger.info("Falling back to demo data for development")
-                yield from self._extract_demo_geographic_data(geographic_level)
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"ABS data extraction failed from file",
+                        source=source_path,
+                        source_type="file"
+                    ) from extraction_error
+            else:
+                raise DataExtractionError(
+                    "No valid ABS source provided",
+                    source=str(source_path) if source_path else "None",
+                    source_type="unknown"
+                )
                 
+        except DataExtractionError:
+            # Re-raise DataExtractionError as-is
+            raise
         except Exception as e:
             logger.error(f"ABS geographic extraction failed: {e}")
             raise ExtractionError(f"ABS geographic extraction failed: {e}")
@@ -534,74 +557,6 @@ class ABSGeographicExtractor(BaseExtractor):
         else:
             return 'Inner Regional Australia'
     
-    def _extract_demo_geographic_data(self, geographic_level: str) -> Iterator[DataBatch]:
-        """Generate demo geographic data for development."""
-        logger.info(f"Generating demo ABS {geographic_level} boundary data")
-        
-        demo_records = []
-        
-        if geographic_level == 'SA2':
-            # Demo SA2 records
-            demo_sa2s = [
-                {
-                    'code': '101021001',
-                    'name': 'Sydney - Haymarket - The Rocks',
-                    'sa3_code': '10102',
-                    'sa3_name': 'Sydney Inner City',
-                    'sa4_code': '101',
-                    'sa4_name': 'Sydney - City and Inner South',
-                    'state_code': '1',
-                    'state_name': 'New South Wales',
-                    'area_sq_km': 2.5,
-                },
-                {
-                    'code': '101021002',
-                    'name': 'Sydney - CBD',
-                    'sa3_code': '10102',
-                    'sa3_name': 'Sydney Inner City',
-                    'sa4_code': '101',
-                    'sa4_name': 'Sydney - City and Inner South',
-                    'state_code': '1',
-                    'state_name': 'New South Wales',
-                    'area_sq_km': 1.8,
-                },
-                {
-                    'code': '201011001',
-                    'name': 'Melbourne - CBD',
-                    'sa3_code': '20101',
-                    'sa3_name': 'Melbourne',
-                    'sa4_code': '201',
-                    'sa4_name': 'Melbourne - Inner',
-                    'state_code': '2',
-                    'state_name': 'Victoria',
-                    'area_sq_km': 2.1,
-                },
-            ]
-            
-            for sa2_data in demo_sa2s:
-                demo_record = {
-                    'geographic_id': sa2_data['code'],
-                    'geographic_level': 'SA2',
-                    'geographic_name': sa2_data['name'],
-                    'area_square_km': sa2_data['area_sq_km'],
-                    'coordinate_system': 'GDA2020',
-                    'geographic_hierarchy': {
-                        'sa3_code': sa2_data['sa3_code'],
-                        'sa3_name': sa2_data['sa3_name'],
-                        'sa4_code': sa2_data['sa4_code'],
-                        'sa4_name': sa2_data['sa4_name'],
-                        'state_code': sa2_data['state_code'],
-                        'state_name': sa2_data['state_name'],
-                    },
-                    'urbanisation': UrbanRuralClassification.MAJOR_URBAN.value,
-                    'remoteness_category': 'Major Cities of Australia',
-                    'data_source_id': 'ABS_ASGS_DEMO',
-                    'data_source_name': 'ABS ASGS Demo Data',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(
         self,
@@ -745,7 +700,7 @@ class ABSCensusExtractor(BaseExtractor):
         logger.info(f"Extracting ABS {self.census_year} Census data")
         
         try:
-            # Try real ABS Census data first
+            # Try real ABS Census data - NO FALLBACKS to demo data
             if isinstance(source, dict):
                 source_url = source.get('url')
                 table_id = source.get('table_id', 'G01')
@@ -758,21 +713,48 @@ class ABSCensusExtractor(BaseExtractor):
             
             # Use default Census DataPack URL if not provided
             if not source_url:
-                source_url = self._get_default_census_url(table_id)
+                try:
+                    source_url = self._get_default_census_url(table_id)
+                except Exception as e:
+                    raise DataExtractionError(
+                        f"No ABS Census URL available for table {table_id}: {e}",
+                        source=str(source),
+                        source_type="url"
+                    )
             
             if source_url and source_url.startswith('http'):
                 logger.info(f"Attempting real ABS Census extraction from: {source_url}")
-                yield from self._extract_census_from_url(source_url, table_id)
+                try:
+                    yield from self._extract_census_from_url(source_url, table_id)
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"ABS Census data extraction failed from URL",
+                        source=source_url,
+                        source_type="url"
+                    ) from extraction_error
             elif isinstance(source, Path) or (isinstance(source, str) and Path(source).exists()):
                 logger.info(f"Extracting Census from local file: {source}")
-                yield from self._extract_census_from_file(Path(source), table_id)
+                try:
+                    yield from self._extract_census_from_file(Path(source), table_id)
+                except Exception as extraction_error:
+                    raise DataExtractionError(
+                        f"ABS Census data extraction failed from file",
+                        source=str(source),
+                        source_type="file"
+                    ) from extraction_error
             else:
-                raise ExtractionError("No valid Census source provided")
+                raise DataExtractionError(
+                    "No valid ABS Census source provided",
+                    source=str(source),
+                    source_type="unknown"
+                )
                 
-        except Exception as real_extraction_error:
-            logger.warning(f"Real ABS Census extraction failed: {real_extraction_error}")
-            logger.info("Falling back to demo Census data")
-            yield from self._extract_demo_census_data()
+        except DataExtractionError:
+            # Re-raise DataExtractionError as-is
+            raise
+        except Exception as e:
+            logger.error(f"ABS Census extraction failed: {e}")
+            raise ExtractionError(f"ABS Census extraction failed: {e}")
     
     def _get_default_census_url(self, table_id: str) -> str:
         """Get default ABS Census DataPack URL."""
@@ -957,43 +939,12 @@ class ABSCensusExtractor(BaseExtractor):
             logger.info(f"Final batch: {len(batch)} Census records, Total processed: {records_processed}")
             yield batch
 
-    def _extract_demo_census_data(self) -> Iterator[DataBatch]:
-        """Generate demo census data."""
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '201011001']
-        
-        for sa2_code in sa2_codes:
-            demo_record = {
-                'geographic_id': sa2_code,
-                'geographic_level': 'SA2',
-                'census_year': self.census_year,
-                'total_population': 5420,
-                'male_population': 2710,
-                'female_population': 2710,
-                'median_age': 34.5,
-                'median_household_income': 1685,  # Weekly
-                'unemployment_rate': 4.2,
-                'population_by_age_sex': {
-                    '0-4': {'Male': 150, 'Female': 145},
-                    '5-9': {'Male': 155, 'Female': 150},
-                    '25-34': {'Male': 450, 'Female': 455},
-                    '35-44': {'Male': 380, 'Female': 385},
-                },
-                'indigenous_population_count': 25,
-                'born_overseas_count': 1850,
-                'data_source_id': 'ABS_CENSUS_DEMO',
-                'data_source_name': 'ABS Census Demo Data',
-                'extraction_timestamp': datetime.now().isoformat(),
-            }
-            demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get census source metadata."""
         return SourceMetadata(
             source_id='abs_census',
-            source_type='demo',
+            source_type='census_datapack',
             schema_version='1.0.0',
         )
     
@@ -1016,45 +967,22 @@ class ABSSEIFAExtractor(BaseExtractor):
     def extract(self, source, **kwargs) -> Iterator[DataBatch]:
         """Extract ABS SEIFA data."""
         logger.info(f"Extracting ABS SEIFA {self.seifa_year} data")
-        yield from self._extract_demo_seifa_data()
+        
+        # SEIFA real data extraction not yet implemented
+        # In production, this would attempt to download from ABS SEIFA data sources
+        raise DataExtractionError(
+            "Real data extraction not implemented for ABS SEIFA extractor. "
+            "Production systems must implement actual SEIFA data source connections.",
+            source=str(source),
+            source_type="seifa_api"
+        )
     
-    def _extract_demo_seifa_data(self) -> Iterator[DataBatch]:
-        """Generate demo SEIFA data."""
-        demo_records = []
-        sa2_codes = ['101021001', '101021002', '201011001']
-        
-        for sa2_code in sa2_codes:
-            # Create SEIFA records for each index type
-            seifa_indices = [
-                (SEIFAIndexType.IRSD, 'Index of Relative Socio-economic Disadvantage', 1045, 8),
-                (SEIFAIndexType.IRSAD, 'Index of Relative Socio-economic Advantage and Disadvantage', 1125, 9),
-                (SEIFAIndexType.IER, 'Index of Economic Resources', 1087, 7),
-                (SEIFAIndexType.IEO, 'Index of Education and Occupation', 1098, 8),
-            ]
-            
-            for index_type, index_name, score, decile in seifa_indices:
-                demo_record = {
-                    'geographic_id': sa2_code,
-                    'geographic_level': 'SA2',
-                    'seifa_year': self.seifa_year,
-                    'index_type': index_type.value,
-                    'index_name': index_name,
-                    'score': score,
-                    'decile': decile,
-                    'percentile': decile * 10 - 5,  # Approximate percentile
-                    'data_source_id': 'ABS_SEIFA_DEMO',
-                    'data_source_name': 'ABS SEIFA Demo Data',
-                    'extraction_timestamp': datetime.now().isoformat(),
-                }
-                demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get SEIFA source metadata."""
         return SourceMetadata(
             source_id='abs_seifa',
-            source_type='demo',
+            source_type='seifa_api',
             schema_version='1.0.0',
         )
     
@@ -1076,39 +1004,22 @@ class ABSPostcodeExtractor(BaseExtractor):
     def extract(self, source, **kwargs) -> Iterator[DataBatch]:
         """Extract ABS postcode correspondence data."""
         logger.info("Extracting ABS postcode to SA2 correspondence")
-        yield from self._extract_demo_postcode_data()
+        
+        # Postcode correspondence real data extraction not yet implemented
+        # In production, this would attempt to download from ABS postcode correspondence files
+        raise DataExtractionError(
+            "Real data extraction not implemented for ABS Postcode extractor. "
+            "Production systems must implement actual postcode correspondence data source connections.",
+            source=str(source),
+            source_type="postcode_api"
+        )
     
-    def _extract_demo_postcode_data(self) -> Iterator[DataBatch]:
-        """Generate demo postcode data."""
-        demo_records = []
-        
-        # Demo postcode to SA2 mappings
-        mappings = [
-            ('2000', '101021001', 'Sydney - Haymarket - The Rocks'),
-            ('2000', '101021002', 'Sydney - CBD'),
-            ('3000', '201011001', 'Melbourne - CBD'),
-            ('3001', '201011001', 'Melbourne - CBD'),
-        ]
-        
-        for postcode, sa2_code, sa2_name in mappings:
-            demo_record = {
-                'postcode': postcode,
-                'sa2_code': sa2_code,
-                'sa2_name': sa2_name,
-                'correspondence_year': 2021,
-                'data_source_id': 'ABS_POSTCODE_DEMO',
-                'data_source_name': 'ABS Postcode Correspondence Demo',
-                'extraction_timestamp': datetime.now().isoformat(),
-            }
-            demo_records.append(demo_record)
-        
-        yield demo_records
     
     def get_source_metadata(self, source) -> SourceMetadata:
         """Get postcode source metadata."""
         return SourceMetadata(
             source_id='abs_postcode',
-            source_type='demo',
+            source_type='postcode_api',
             schema_version='1.0.0',
         )
     

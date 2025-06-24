@@ -19,8 +19,8 @@ def read_requirements():
     return requirements
 
 setup(
-    name="ahgd",
-    version="0.1.0",
+    name="ahgd-etl",
+    version="1.0.0",
     author="AHGD Development Team",
     author_email="contact@ahgd-project.org",
     description="Australian Health Geography Data repository with robust ETL pipeline",
@@ -74,10 +74,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "ahgd-extract=src.extractors.cli:main",
-            "ahgd-transform=src.transformers.cli:main",
-            "ahgd-validate=src.validators.cli:main",
-            "ahgd-pipeline=src.pipelines.cli:main",
+            "ahgd-etl=main:main",
         ],
     },
     include_package_data=True,

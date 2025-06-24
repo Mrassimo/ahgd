@@ -462,6 +462,8 @@ models/**/*.joblib
 results/
 outputs/
 !outputs/.gitkeep
+output/
+!output/.gitkeep
 experiments/
 !experiments/.gitkeep
 scratch/

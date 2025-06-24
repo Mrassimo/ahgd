@@ -14,6 +14,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import geopandas as gpd
+from shapely.geometry import Point
 
 from .base import BaseTransformer, MissingValueStrategy
 from ..utils.interfaces import (
@@ -595,6 +597,11 @@ class GeographicStandardiser(BaseTransformer):
             self.geographic_validator = None
             self.validation_orchestrator = None
         
+        # SA2 boundaries for coordinate calculation
+        self.sa2_boundaries = None
+        self.sa2_centroids = {}
+        self._load_sa2_boundaries()
+        
         # Statistics
         self._transformation_stats = {
             'total_records': 0,
@@ -603,8 +610,105 @@ class GeographicStandardiser(BaseTransformer):
             'multi_sa2_mappings': 0,
             'direct_sa2_records': 0,
             'mapping_methods': {},
-            'validation_results': {}
+            'validation_results': {},
+            'coordinates_calculated': 0
         }
+    
+    def _load_sa2_boundaries(self):
+        """Load SA2 boundary data for coordinate calculation."""
+        try:
+            # Look for SA2 boundary files in data/raw
+            boundary_files = [
+                'sa2_boundaries/SA2_2021_AUST_GDA2020.shp',
+                'SA2_2021_AUST_GDA2020.shp',
+                'sa2_boundaries.shp'
+            ]
+            
+            data_dir = Path(self.config.get('data_directory', 'data/raw'))
+            boundary_file = None
+            
+            for filename in boundary_files:
+                file_path = data_dir / filename
+                if file_path.exists():
+                    boundary_file = file_path
+                    break
+            
+            if boundary_file:
+                self.logger.info(f"Loading SA2 boundaries from {boundary_file}")
+                self.sa2_boundaries = gpd.read_file(boundary_file)
+                
+                # Ensure we're using GDA2020 (EPSG:7844) coordinate system
+                if self.sa2_boundaries.crs is None:
+                    self.sa2_boundaries.set_crs('EPSG:7844', inplace=True)
+                elif self.sa2_boundaries.crs != 'EPSG:7844':
+                    self.sa2_boundaries = self.sa2_boundaries.to_crs('EPSG:7844')
+                
+                # Pre-calculate centroids for all SA2 areas
+                self._calculate_sa2_centroids()
+                
+                self.logger.info(f"Loaded {len(self.sa2_boundaries)} SA2 boundaries")
+            else:
+                self.logger.warning("No SA2 boundary files found. Coordinate calculation will be disabled.")
+                
+        except Exception as e:
+            self.logger.error(f"Failed to load SA2 boundaries: {str(e)}")
+            self.sa2_boundaries = None
+    
+    def _calculate_sa2_centroids(self):
+        """Pre-calculate centroids for all SA2 areas."""
+        if self.sa2_boundaries is None:
+            return
+        
+        try:
+            # Calculate centroids in WGS84 (EPSG:4326) for lat/long coordinates
+            boundaries_wgs84 = self.sa2_boundaries.to_crs('EPSG:4326')
+            
+            # Get the SA2 code column (try common variations)
+            sa2_code_columns = ['SA2_CODE21', 'SA2_MAINCODE_2021', 'SA2_CODE', 'sa2_code']
+            sa2_code_col = None
+            
+            for col in sa2_code_columns:
+                if col in boundaries_wgs84.columns:
+                    sa2_code_col = col
+                    break
+            
+            if sa2_code_col is None:
+                self.logger.error("Could not find SA2 code column in boundary data")
+                return
+            
+            # Calculate centroids
+            centroids = boundaries_wgs84.geometry.centroid
+            
+            # Store centroids in lookup dictionary
+            for idx, sa2_code in enumerate(boundaries_wgs84[sa2_code_col]):
+                if idx < len(centroids):
+                    centroid = centroids.iloc[idx]
+                    self.sa2_centroids[str(sa2_code)] = {
+                        'longitude': float(centroid.x),
+                        'latitude': float(centroid.y)
+                    }
+            
+            self.logger.info(f"Calculated centroids for {len(self.sa2_centroids)} SA2 areas")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to calculate SA2 centroids: {str(e)}")
+            self.sa2_centroids = {}
+    
+    def get_sa2_coordinates(self, sa2_code: str) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Get latitude and longitude coordinates for an SA2 code.
+        
+        Args:
+            sa2_code: SA2 code to lookup
+            
+        Returns:
+            Tuple[Optional[float], Optional[float]]: (latitude, longitude) or (None, None)
+        """
+        if sa2_code in self.sa2_centroids:
+            coords = self.sa2_centroids[sa2_code]
+            return coords['latitude'], coords['longitude']
+        
+        return None, None
     
     def validate_geographic_data(
         self,
@@ -919,6 +1023,8 @@ class GeographicStandardiser(BaseTransformer):
         schema = {
             self.output_sa2_column: "string",
             self.output_allocation_column: "float",
+            "latitude": "float",
+            "longitude": "float",
         }
         
         if self.include_mapping_metadata:
@@ -1016,6 +1122,15 @@ class GeographicStandardiser(BaseTransformer):
             # Add SA2 standardisation
             output_record[self.output_sa2_column] = mapping.target_sa2_code
             output_record[self.output_allocation_column] = mapping.allocation_factor
+            
+            # Add latitude and longitude coordinates
+            latitude, longitude = self.get_sa2_coordinates(mapping.target_sa2_code)
+            output_record['latitude'] = latitude
+            output_record['longitude'] = longitude
+            
+            # Track coordinate calculation statistics
+            if latitude is not None and longitude is not None:
+                self._transformation_stats['coordinates_calculated'] += 1
             
             # Add metadata if requested
             if self.include_mapping_metadata:

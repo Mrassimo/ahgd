@@ -3,8 +3,8 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ahgd"
-version = "0.1.0"
+name = "ahgd-etl"
+version = "1.0.0"
 description = "Australian Health Geography Data repository with robust ETL pipeline"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -83,17 +83,13 @@ geo = [
 "Documentation" = "https://your-org.github.io/ahgd"
 
 [project.scripts]
-ahgd-extract = "src.extractors.cli:main"
-ahgd-transform = "src.pipelines.cli:main"
-ahgd-validate = "src.validators.cli:main"
-ahgd-loader = "src.loaders.cli:main"
-ahgd-generate-docs = "src.documentation.cli:main"
-
-[tool.setuptools]
-package-dir = {"" = "src"}
+ahgd-etl = "main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.yml", "*.json", "*.csv"]
