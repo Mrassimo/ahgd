@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: raw_abs_census
+      - name: raw_aihw_mortality
+      - name: raw_bom_climate
+      - name: raw_medicare_utilisation
+      - name: raw_abs_geographic
+      - name: raw_abs_seifa

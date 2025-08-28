@@ -1,0 +1,6 @@
+ahgd_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../ahgd.db

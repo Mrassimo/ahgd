@@ -67,194 +67,7 @@ def cli(ctx, force_real_data, parallel, max_workers, verbose, quiet, config):
 
 
 # Full pipeline execution command
-@cli.command()
-@click.option('--input-dir', default='data_raw',
-              help='Input directory containing raw data')
-@click.option('--output-dir', default='output',
-              help='Output directory for final processed data')
-@click.option('--memory-limit', type=float, default=8.0,
-              help='Memory limit in GB for processing')
-@click.option('--integration-level', 
-              type=click.Choice(['minimal', 'standard', 'comprehensive', 'enhanced']),
-              default='standard',
-              help='Data integration level (default: standard)')
-@click.option('--quality-threshold', type=float, default=85.0,
-              help='Minimum quality threshold for data acceptance (default: 85.0)')
-@click.option('--formats', multiple=True, default=['parquet', 'csv'],
-              help='Output formats for final data')
-@click.option('--force', is_flag=True,
-              help='Force overwrite existing outputs')
-@click.pass_context
-def run(ctx, input_dir, output_dir, memory_limit, integration_level, 
-        quality_threshold, formats, force):
-    """Run the complete AHGD ETL pipeline (extract → transform → validate → load)."""
-    
-    logger = get_logger(__name__)
-    global_options = ctx.obj
-    
-    click.echo("🚀 AHGD ETL Pipeline - Complete Execution")
-    click.echo("=" * 60)
-    
-    if global_options['parallel']:
-        click.echo(f"🔧 Parallel mode: {global_options['max_workers']} workers")
-        click.echo(f"💾 Memory limit: {memory_limit} GB")
-    
-    if global_options['force_real_data']:
-        click.echo("🌐 Real data mode: Mock fallbacks disabled")
-    
-    click.echo(f"📁 Input directory: {input_dir}")
-    click.echo(f"📁 Output directory: {output_dir}")
-    click.echo(f"📊 Integration level: {integration_level}")
-    click.echo(f"✅ Quality threshold: {quality_threshold}%")
-    click.echo(f"📋 Output formats: {', '.join(formats)}")
-    
-    # Create directories
-    input_path = Path(input_dir)
-    output_path = Path(output_dir)
-    processed_dir = Path('data_processed')
-    
-    for directory in [input_path, output_path, processed_dir]:
-        directory.mkdir(parents=True, exist_ok=True)
-    
-    try:
-        start_time = time.time()
-        
-        # Stage 1: Extraction
-        click.echo("\n📥 Stage 1: Data Extraction")
-        click.echo("-" * 30)
-        
-        if global_options['parallel']:
-            # Run extraction with parallel support
-            extraction_args = [
-                '--all', '--output', str(input_path), '--format', 'parquet',
-                '--max-workers', str(global_options['max_workers'])
-            ]
-        else:
-            extraction_args = [
-                '--all', '--output', str(input_path), '--format', 'parquet'
-            ]
-        
-        if force:
-            extraction_args.append('--force')
-        if global_options['verbose']:
-            extraction_args.append('--verbose')
-        elif global_options['quiet']:
-            extraction_args.append('--quiet')
-        
-        # Temporarily override sys.argv for extractor CLI
-        original_argv = sys.argv
-        sys.argv = ['ahgd-extract'] + extraction_args
-        
-        try:
-            extractor_result = extractor_main()
-            if extractor_result != 0:
-                raise RuntimeError("Data extraction failed")
-        finally:
-            sys.argv = original_argv
-        
-        click.echo("✅ Data extraction completed")
-        
-        # Stage 2: Transformation & Integration
-        click.echo("\n🔄 Stage 2: Data Transformation & Integration")
-        click.echo("-" * 45)
-        
-        transformation_args = [
-            '--input', str(input_path),
-            '--output', str(processed_dir / 'master_health_record.parquet'),
-            '--integration-level', integration_level,
-            '--quality-threshold', str(quality_threshold)
-        ]
-        
-        if global_options['parallel']:
-            transformation_args.extend(['--max-workers', str(global_options['max_workers'])])
-        if global_options['verbose']:
-            transformation_args.append('--verbose')
-        elif global_options['quiet']:
-            transformation_args.append('--quiet')
-        
-        original_argv = sys.argv
-        sys.argv = ['ahgd-transform'] + transformation_args
-        
-        try:
-            pipeline_result = pipeline_main()
-            if pipeline_result != 0:
-                raise RuntimeError("Data transformation failed")
-        finally:
-            sys.argv = original_argv
-        
-        click.echo("✅ Data transformation completed")
-        
-        # Stage 3: Validation
-        click.echo("\n✅ Stage 3: Data Validation")
-        click.echo("-" * 25)
-        
-        validation_args = [
-            '--input', str(processed_dir / 'master_health_record.parquet'),
-            '--rules', 'schemas/',
-            '--quality-threshold', str(quality_threshold),
-            '--report', str(output_path / 'validation_report.html')
-        ]
-        
-        if global_options['parallel']:
-            validation_args.extend(['--parallel', '--max-workers', str(global_options['max_workers'])])
-        if global_options['verbose']:
-            validation_args.append('--verbose')
-        elif global_options['quiet']:
-            validation_args.append('--quiet')
-        
-        original_argv = sys.argv
-        sys.argv = ['ahgd-validate'] + validation_args
-        
-        try:
-            validation_result = validator_main()
-            if validation_result != 0:
-                raise RuntimeError("Data validation failed")
-        finally:
-            sys.argv = original_argv
-        
-        click.echo("✅ Data validation completed")
-        
-        # Stage 4: Loading & Export
-        click.echo("\n📤 Stage 4: Data Loading & Export")
-        click.echo("-" * 30)
-        
-        loading_args = [
-            '--input', str(processed_dir / 'master_health_record.parquet'),
-            '--output', str(output_path),
-            '--formats'] + list(formats) + [
-            '--compress', '--optimise-web'
-        ]
-        
-        if global_options['parallel']:
-            loading_args.extend(['--parallel', '--max-workers', str(global_options['max_workers'])])
-        if force:
-            loading_args.append('--force')
-        if global_options['verbose']:
-            loading_args.append('--verbose')
-        elif global_options['quiet']:
-            loading_args.append('--quiet')
-        
-        original_argv = sys.argv
-        sys.argv = ['ahgd-load'] + loading_args
-        
-        try:
-            loading_result = loader_main()
-            if loading_result != 0:
-                raise RuntimeError("Data loading failed")
-        finally:
-            sys.argv = original_argv
-        
-        click.echo("✅ Data loading completed")
-        
-        total_time = time.time() - start_time
-        
-        click.echo(f"\n🎉 Pipeline completed successfully in {total_time:.2f} seconds!")
-        click.echo(f"📁 Final outputs available in: {output_path}")
-        
-    except Exception as e:
-        click.echo(f"❌ Pipeline execution failed: {e}")
-        logger.error(f"Pipeline execution failed: {e}")
-        sys.exit(1)
+# The 'run' command is deprecated in V2. Use Airflow for orchestration.
 
 
 # Individual stage commands with direct integration to existing CLIs
@@ -595,7 +408,6 @@ def list_commands():
     click.echo("=" * 40)
     
     commands = {
-        'run': 'Execute complete ETL pipeline (extract → transform → validate → load)',
         'extract': 'Extract raw data from Australian government sources',
         'transform': 'Transform raw data into standardised format',
         'validate': 'Validate processed data quality and consistency',
@@ -610,7 +422,8 @@ def list_commands():
         click.echo(f"\n📌 {cmd}")
         click.echo(f"   {desc}")
     
-    click.echo(f"\n💡 Use 'ahgd-etl <command> --help' for detailed command options")
+    click.echo("\n💡 The 'run' command has been deprecated in V2. Please use Apache Airflow for full pipeline orchestration.")
+    click.echo(f"💡 Use 'ahgd-etl <command> --help' for detailed command options")
     click.echo(f"💡 Use '--parallel' flag for faster processing on multi-core systems")
     click.echo(f"💡 Use '--force-real-data' to prevent mock data fallbacks")
 

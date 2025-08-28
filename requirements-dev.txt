@@ -6,117 +6,110 @@
 -r requirements.txt
 
 # Testing Framework
-pytest==7.4.4
-pytest-cov==4.1.0
-pytest-mock==3.12.0
-pytest-asyncio==0.21.1
-pytest-xdist==3.5.0
-pytest-benchmark==4.0.0
-pytest-sugar==0.9.7
-pytest-html==4.1.1
-pytest-json-report==1.5.0
+pytest
+pytest-cov
+pytest-mock
+pytest-asyncio
+pytest-xdist
+pytest-benchmark
+pytest-sugar
+pytest-html
+pytest-json-report
 
 # Code Quality & Formatting
-black==23.12.1
-isort==5.13.2
-flake8==6.1.0
-bandit==1.7.5
-safety==2.3.5
-pre-commit==3.6.0
+black
+isort
+flake8
+bandit
+safety
+pre-commit
 
 # Type Checking
-mypy==1.8.0
-types-requests==2.31.0
-types-PyYAML==6.0.12
-types-python-dateutil==2.8.19
+mypy
+types-requests
+types-PyYAML
+types-python-dateutil
 
 # Code Analysis & Linting
-pylint==3.0.3
-pycodestyle==2.11.1
-pyflakes==3.1.0
-pydocstyle==6.3.0
-mccabe==0.7.0
+pylint
+pycodestyle
+pyflakes
+pydocstyle
+mccabe
 
 # Documentation
-sphinx==7.2.6
-sphinx-rtd-theme==2.0.0
-sphinx-autoapi==3.0.0
-myst-parser==2.0.0
-sphinxcontrib-mermaid==0.9.2
+sphinx
+sphinx-rtd-theme
+sphinx-autoapi
+myst-parser
+sphinxcontrib-mermaid
 
 # Development Tools (Security Fixes: CVE-2025-47194, CVE-2025-30167)
-ipython==8.18.1
-jupyter==1.0.0
-notebook==7.3.0
-jupyterlab==4.0.9
-ipykernel==6.27.1
-jupyter-server==2.15.0
-jupyter-core==5.8.1
+ipython
+jupyter
+notebook
+jupyterlab
+ipykernel
+jupyter-server
+jupyter-core
 
 # Data Visualization (Development)
-matplotlib==3.8.2
-seaborn==0.13.0
-plotly==5.17.0
-altair==5.2.0
-bokeh==3.3.2
+matplotlib
+seaborn
+plotly
+altair
+bokeh
 
 # Profiling & Performance
-memory-profiler==0.61.0
-line-profiler==4.1.1
-py-spy==0.3.14
-scalene==1.5.26
 
 # Development Utilities
-watchdog==3.0.0
-python-dotenv[cli]==1.0.0
-invoke==2.2.0
-fabric==3.2.2
+watchdog
+python-dotenv[cli]
+invoke
+fabric
 
 # Database Development Tools
-alembic==1.13.1
-sqlalchemy-utils==0.41.1
+alembic
+sqlalchemy-utils
 
 # Mock & Test Data Generation
-faker==21.0.0
-factory-boy==3.3.0
-responses==0.24.1
-freezegun==1.2.2
+faker
+factory-boy
+responses
+freezegun
 
 # Environment & Dependency Management
-pip-tools==7.3.0
-pipdeptree==2.13.1
-pipenv==2023.11.15
+pip-tools
+pipdeptree
+pipenv
 
 # Debugging
-debugpy==1.8.0
-pdb-attach==3.2.0
-pudb==2023.1
+debugpy
+pdb-attach
+pudb
 
 # Code Coverage
-coverage==7.3.4
-coveralls==3.3.1
+coverage
+coveralls
 
 # Build Tools
-build==1.0.3
-wheel==0.42.0
-setuptools==69.0.3
-twine==4.0.2
+build
+wheel
+setuptools
+twine
 
 # Orchestration
-apache-airflow==2.8.1
-apache-airflow-providers-docker==3.9.0
 
 # API Development & Testing
-httpx==0.25.2
-fastapi==0.104.1
-uvicorn==0.24.0
-starlette==0.27.0
+httpx
+fastapi
+uvicorn
+starlette
 
 # Browser Automation & Testing (Security Fix: CVE-2025-47241)
-browser-use==0.1.45
 
 # Security Fix: CVE-2025-47287 - Tornado DoS vulnerability
-tornado==6.5
+tornado
 
 # Additional Development Security Fixes
 # Note: See requirements.txt for additional security fixes applied
