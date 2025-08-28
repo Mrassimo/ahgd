@@ -102,6 +102,10 @@ wheel==0.42.0
 setuptools==69.0.3
 twine==4.0.2
 
+# Orchestration
+apache-airflow==2.8.1
+apache-airflow-providers-docker==3.9.0
+
 # API Development & Testing
 httpx==0.25.2
 fastapi==0.104.1

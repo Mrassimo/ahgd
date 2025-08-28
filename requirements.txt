@@ -3,9 +3,10 @@
 # Generated: 2025-06-20
 
 # Data Processing Core
-pandas==2.1.4
-numpy==2.3.1
 polars==0.20.3
+duckdb==0.9.2
+dbt-duckdb==1.7.1
+numpy==2.3.1
 pyarrow==14.0.2
 
 # Geospatial Data Processing

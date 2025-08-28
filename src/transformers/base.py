@@ -10,12 +10,11 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 import logging
-import pandas as pd
+import polars as pl
 
 from ..utils.interfaces import (
     AuditTrail,
     ColumnMapping,
-    DataBatch,
     DataRecord,
     ProcessingMetadata,
     ProcessingStatus,
@@ -24,6 +23,9 @@ from ..utils.interfaces import (
     ValidationResult,
     ValidationSeverity,
 )
+
+# Type hint for data batch
+DataBatch = pl.DataFrame
 
 
 class MissingValueStrategy:
@@ -201,55 +203,32 @@ class BaseTransformer(ABC):
         """
         if not self.column_mappings:
             return data
-        
-        transformed_data = []
-        
-        for record in data:
-            transformed_record = {}
-            
-            for mapping in self.column_mappings:
-                source_value = record.get(mapping.source_column)
-                
-                # Handle missing required columns
-                if source_value is None and mapping.is_required:
-                    if mapping.default_value is not None:
-                        source_value = mapping.default_value
-                    else:
-                        self.logger.warning(
-                            f"Required column '{mapping.source_column}' is missing"
-                        )
-                        continue
-                
-                # Apply transformation if specified
-                if mapping.transformation and source_value is not None:
-                    try:
-                        source_value = self._apply_transformation(
-                            source_value, 
-                            mapping.transformation
-                        )
-                    except Exception as e:
-                        self.logger.error(
-                            f"Transformation failed for column '{mapping.source_column}': {e}"
-                        )
-                        continue
-                
-                # Convert data type
-                if source_value is not None:
-                    try:
-                        source_value = self._convert_data_type(
-                            source_value, 
-                            mapping.data_type
-                        )
-                    except Exception as e:
-                        self.logger.error(
-                            f"Data type conversion failed for column '{mapping.source_column}': {e}"
-                        )
-                        continue
-                
-                transformed_record[mapping.target_column] = source_value
-            
-            transformed_data.append(transformed_record)
-        
+
+        select_expressions = []
+
+        for mapping in self.column_mappings:
+            source_column = mapping.source_column
+            target_column = mapping.target_column
+
+            # Start with the source column
+            expr = pl.col(source_column)
+
+            # Handle missing required columns with default values
+            if mapping.is_required and mapping.default_value is not None:
+                expr = expr.fill_null(mapping.default_value)
+
+            # Apply transformation if specified
+            if mapping.transformation:
+                expr = self._apply_transformation_expr(expr, mapping.transformation)
+
+            # Convert data type
+            expr = self._convert_data_type_expr(expr, mapping.data_type)
+
+            # Rename to target column
+            expr = expr.alias(target_column)
+
+            select_expressions.append(expr)
+
         # Log transformation
         self._transformation_log.append({
             'type': 'column_mapping',
@@ -257,8 +236,8 @@ class BaseTransformer(ABC):
             'mappings_applied': len(self.column_mappings),
             'timestamp': datetime.now()
         })
-        
-        return transformed_data
+
+        return data.select(select_expressions)
     
     def standardise_columns(self, data: DataBatch) -> DataBatch:
         """
@@ -270,23 +249,8 @@ class BaseTransformer(ABC):
         Returns:
             DataBatch: Data with standardised columns
         """
-        standardised_data = []
-        
-        for record in data:
-            standardised_record = {}
-            
-            for key, value in record.items():
-                # Standardise column name
-                standardised_key = self._standardise_column_name(key)
-                
-                # Standardise value format
-                standardised_value = self._standardise_value(value)
-                
-                standardised_record[standardised_key] = standardised_value
-            
-            standardised_data.append(standardised_record)
-        
-        return standardised_data
+        rename_mapping = {col: self._standardise_column_name(col) for col in data.columns}
+        return data.rename(rename_mapping)
     
     def get_audit_trail(self) -> Optional[AuditTrail]:
         """
@@ -344,22 +308,23 @@ class BaseTransformer(ABC):
         Returns:
             List[str]: List of schema violations
         """
-        if not self.target_schema or not data:
+        if not self.target_schema or data.height == 0:
             return []
-        
+
         violations = []
-        sample_record = data[0]
-        
+        current_columns = set(data.columns)
+        target_columns = set(self.target_schema.keys())
+
         # Check for missing required columns
-        for column, data_type in self.target_schema.items():
-            if column not in sample_record:
-                violations.append(f"Missing required column: {column}")
-        
+        missing_columns = target_columns - current_columns
+        for col in missing_columns:
+            violations.append(f"Missing required column: {col}")
+
         # Check for unexpected columns
-        for column in sample_record.keys():
-            if column not in self.target_schema:
-                violations.append(f"Unexpected column: {column}")
-        
+        unexpected_columns = current_columns - target_columns
+        for col in unexpected_columns:
+            violations.append(f"Unexpected column: {col}")
+
         return violations
     
     def _handle_missing_values(self, data: DataBatch) -> DataBatch:
@@ -373,30 +338,87 @@ class BaseTransformer(ABC):
             DataBatch: Data with missing values handled
         """
         if self.missing_value_strategy == MissingValueStrategy.DROP:
-            return [record for record in data if all(v is not None for v in record.values())]
-        
-        # For other strategies, we'd typically work with pandas DataFrame
-        df = pd.DataFrame(data)
+            return data.drop_nulls()
         
         if self.missing_value_strategy == MissingValueStrategy.FILL_ZERO:
-            df = df.fillna(0)
+            return data.fill_null(0)
         elif self.missing_value_strategy == MissingValueStrategy.FILL_MEAN:
-            df = df.fillna(df.mean())
+            return data.fill_null(strategy="mean")
         elif self.missing_value_strategy == MissingValueStrategy.FILL_MEDIAN:
-            df = df.fillna(df.median())
+            return data.fill_null(strategy="median")
         elif self.missing_value_strategy == MissingValueStrategy.FILL_MODE:
-            df = df.fillna(df.mode().iloc[0])
+            return data.fill_null(strategy="mode")
         elif self.missing_value_strategy == MissingValueStrategy.FILL_FORWARD:
-            df = df.fillna(method='ffill')
+            return data.fill_null(strategy="forward")
         elif self.missing_value_strategy == MissingValueStrategy.FILL_BACKWARD:
-            df = df.fillna(method='bfill')
+            return data.fill_null(strategy="backward")
         elif self.missing_value_strategy == MissingValueStrategy.FILL_INTERPOLATE:
-            df = df.interpolate()
+            return data.interpolate()
         elif self.missing_value_strategy == MissingValueStrategy.FILL_CUSTOM:
             fill_values = self.missing_value_config.get('fill_values', {})
-            df = df.fillna(value=fill_values)
+            return data.fill_null(fill_values)
         
-        return df.to_dict('records')
+        return data
+
+    def _apply_transformation_expr(self, expr: pl.Expr, transformation: str) -> pl.Expr:
+        """
+        Apply a specific transformation to a polars expression.
+        
+        Args:
+            expr: Input polars expression
+            transformation: Transformation to apply
+            
+        Returns:
+            pl.Expr: Transformed polars expression
+        """
+        if transformation == "upper":
+            return expr.str.to_uppercase()
+        elif transformation == "lower":
+            return expr.str.to_lowercase()
+        elif transformation == "strip":
+            return expr.str.strip_chars()
+        elif transformation == "int":
+            return expr.cast(pl.Int64)
+        elif transformation == "float":
+            return expr.cast(pl.Float64)
+        else:
+            self.logger.warning(f"Unknown transformation: {transformation}")
+            return expr
+
+    def _convert_data_type_expr(self, expr: pl.Expr, target_type: str) -> pl.Expr:
+        """
+        Convert a polars expression to the target data type.
+        
+        Args:
+            expr: Input polars expression
+            target_type: Target data type
+            
+        Returns:
+            pl.Expr: Converted polars expression
+        """
+        if target_type == "string":
+            return expr.cast(pl.Utf8)
+        elif target_type == "integer":
+            return expr.cast(pl.Int64)
+        elif target_type == "float":
+            return expr.cast(pl.Float64)
+        elif target_type == "boolean":
+            return expr.cast(pl.Boolean)
+        else:
+            return expr
+
+    def _standardise_column_name(self, column_name: str) -> str:
+        """
+        Standardise a column name.
+        
+        Args:
+            column_name: Original column name
+            
+        Returns:
+            str: Standardised column name
+        """
+        # Convert to lowercase, replace spaces with underscores
+        return column_name.lower().replace(' ', '_').replace('-', '_')
     
     def _apply_transformation(self, value: Any, transformation: str) -> Any:
         """
