@@ -4,7 +4,14 @@ This document provides context for the Gemini code assistant to understand the A
 
 ## Project Overview
 
-The AHGD project is a production-grade ETL (Extract, Transform, Load) pipeline written in Python. Its primary purpose is to integrate health, environmental, and socio-economic data from various Australian government sources into a unified, analysis-ready dataset. The data is standardized to the Statistical Area Level 2 (SA2) geographic level.
+The AHGD project is a modern, production-grade ETL (Extract, Transform, Load) pipeline written in Python. Its primary purpose is to integrate health, environmental, and socio-economic data from various Australian government sources into a unified, analysis-ready dataset at the Statistical Area Level 2 (SA2) geographic level.
+
+This project has been significantly upgraded to a V2 architecture, leveraging modern data tools for enhanced performance, scalability, and maintainability. Key technologies include:
+
+*   **Polars**: For high-performance data manipulation, replacing pandas.
+*   **DuckDB**: An in-process analytical database for efficient intermediate data storage and querying.
+*   **dbt (data build tool)**: For robust, version-controlled, and testable data transformation and modeling.
+*   **Apache Airflow**: For scalable and observable workflow orchestration, replacing custom CLI and DVC-based orchestration.
 
 The project is designed to be robust and maintainable, with a strong emphasis on code quality, testing, and documentation. It uses a modular architecture, with separate components for data extraction, transformation, validation, and loading.
 
@@ -35,7 +42,7 @@ The ETL pipeline is orchestrated through a command-line interface (CLI) built wi
 
 The pipeline is configured through YAML files located in the `configs` directory. `dvc` is used to define and manage the stages of the ETL pipeline, as specified in `dvc.yaml`.
 
-## Building and Running
+## Building and Running (V2 - Airflow Orchestrated)
 
 ### Setup
 
@@ -45,35 +52,22 @@ The pipeline is configured through YAML files located in the `configs` directory
     cd ahgd
     ```
 
-2.  **Set up the environment:**
+2.  **Build and launch the Airflow environment:**
+    This will build the Docker images and start the Airflow webserver, scheduler, and a PostgreSQL database.
     ```bash
-    ./setup_env.sh --dev
+    docker-compose build
+    docker-compose up -d
     ```
 
-3.  **Activate the virtual environment:**
-    ```bash
-    source venv/bin/activate
-    ```
+3.  **Access Airflow UI:**
+    Open your browser and navigate to `http://localhost:8080`. Log in with username `admin` and password `admin`.
+
+4.  **Unpause the `ahgd_etl_v2` DAG:**
+    In the Airflow UI, find the `ahgd_etl_v2` DAG and toggle it to "On" (unpause).
 
 ### Running the ETL Pipeline
 
-The main entry point for the ETL pipeline is the `ahgd-etl` command-line script.
-
-*   **Run the complete pipeline:**
-    ```bash
-    ahgd-etl run
-    ```
-
-*   **Run individual stages:**
-    *   **Extract:** `ahgd-etl extract`
-    *   **Transform:** `ahgd-etl transform`
-    *   **Validate:** `ahgd-etl validate`
-    *   **Load:** `ahgd-etl load`
-
-*   **Get help on any command:**
-    ```bash
-    ahgd-etl <command> --help
-    ```
+To trigger the complete ETL pipeline, manually trigger the `ahgd_etl_v2` DAG in the Airflow UI. You can monitor the progress of the pipeline directly in the Airflow UI, observing the status of each task (extraction, loading to DuckDB, dbt build, dbt test, export).
 
 ### Testing
 
@@ -96,6 +90,8 @@ The project has a comprehensive test suite using `pytest`.
 *   **Testing:** All new code should be accompanied by unit tests. The project aims for a high test coverage (80%+).
 *   **Commits:** Commits should follow conventional commit standards. `pre-commit` hooks are used to enforce code quality before committing.
 *   **Documentation:** All new features should be documented. The project uses Sphinx for generating documentation.
+*   **dbt Development:** For data transformation logic, dbt models should be developed following dbt best practices (staging, intermediate, marts layers). All dbt models should have tests defined in `.yml` files.
+*   **Airflow Development:** New DAGs should be developed following Airflow best practices, with clear task dependencies and appropriate operators. DAGs should be idempotent and retryable.
 
 ## Project Structure
 
@@ -111,6 +107,13 @@ The project has a comprehensive test suite using `pytest`.
 *   `tests/`: Contains the test suite for the project.
 *   `configs/`: Configuration files for the ETL pipeline, including settings for different environments (development, testing, production).
 *   `schemas/`: Pydantic schemas for data validation.
+*   `dags/`: Airflow DAGs for pipeline orchestration.
+*   `ahgd_dbt/`: dbt project for data transformation and modeling.
+    *   `models/`: dbt models (staging, intermediate, marts).
+    *   `analyses/`: dbt analyses.
+    *   `macros/`: dbt macros.
+    *   `seeds/`: dbt seeds.
+    *   `tests/`: dbt tests.
 *   `docs/`: Project documentation, including the data dictionary, API documentation, and technical guides.
 *   `data/`: (Managed by DVC) Raw, processed, and final data files.
     *   `data_raw/`: Raw data extracted from the sources.
