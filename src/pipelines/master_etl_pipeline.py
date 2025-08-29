@@ -15,8 +15,8 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union, Callable, Tuple
-import pandas as pd
-import numpy as np
+import polars as pl
+import duckdb
 
 from .base_pipeline import BasePipeline, PipelineContext, StageResult, StageState, AHGDException, PipelineError
 from .validation_pipeline import (
@@ -153,25 +153,28 @@ class PipelineStageManager:
         self,
         stage_id: str,
         context: PipelineContext,
-        input_data: Optional[pd.DataFrame] = None
-    ) -> Tuple[pd.DataFrame, StageResult]:
+        con: duckdb.DuckDBPyConnection,
+        input_table: Optional[str] = None
+    ) -> Tuple[str, StageResult]:
         """
         Execute a specific pipeline stage.
         
         Args:
             stage_id: Stage identifier
             context: Pipeline context
-            input_data: Input data for the stage
+            con: DuckDB connection
+            input_table: Input table name for the stage
             
         Returns:
-            Tuple of (output_data, stage_result)
+            Tuple of (output_table_name, stage_result)
         """
         if stage_id not in self.stage_definitions:
             raise PipelineError(f"Unknown stage: {stage_id}")
         
         stage_def = self.stage_definitions[stage_id]
         start_time = datetime.now()
-        
+        output_table = f"{stage_id}_output"
+
         logger.info(
             "Executing pipeline stage",
             stage_id=stage_id,
@@ -179,6 +182,10 @@ class PipelineStageManager:
         )
         
         try:
+            input_data = None
+            if input_table:
+                input_data = con.table(input_table).pl()
+
             # Pre-stage validation
             if stage_def.validation_required and input_data is not None:
                 validation_result = self._validate_stage_input(stage_id, input_data, context)
@@ -190,6 +197,10 @@ class PipelineStageManager:
             stage_instance = self.stage_instances[stage_id]
             output_data = self._execute_stage_instance(stage_instance, input_data, context)
             
+            # Write output to duckdb
+            if output_data is not None:
+                con.register(output_table, output_data)
+
             # Post-stage validation
             if stage_def.validation_required and output_data is not None:
                 validation_result = self._validate_stage_output(stage_id, output_data, context)
@@ -203,7 +214,7 @@ class PipelineStageManager:
                 state=StageState.COMPLETED,
                 start_time=start_time,
                 end_time=datetime.now(),
-                output=output_data,
+                output=output_table,
                 metrics={
                     "input_records": len(input_data) if input_data is not None else 0,
                     "output_records": len(output_data) if output_data is not None else 0,
@@ -222,10 +233,10 @@ class PipelineStageManager:
                 "Stage execution completed",
                 stage_id=stage_id,
                 duration=stage_result.duration,
-                output_records=stage_result.metrics.get("output_records", 0)
+                output_table=output_table
             )
             
-            return output_data, stage_result
+            return output_table, stage_result
             
         except Exception as e:
             # Create failed result
@@ -442,7 +453,7 @@ class PipelineStageManager:
     def _validate_stage_input(
         self,
         stage_id: str,
-        input_data: pd.DataFrame,
+        input_data: pl.DataFrame,
         context: PipelineContext
     ) -> StageValidationResult:
         """Validate stage input data."""
@@ -455,7 +466,7 @@ class PipelineStageManager:
     def _validate_stage_output(
         self,
         stage_id: str,
-        output_data: pd.DataFrame,
+        output_data: pl.DataFrame,
         context: PipelineContext
     ) -> StageValidationResult:
         """Validate stage output data."""
@@ -496,9 +507,9 @@ class PipelineStageManager:
     def _execute_stage_instance(
         self,
         stage_instance: Any,
-        input_data: Optional[pd.DataFrame],
+        input_data: Optional[pl.DataFrame],
         context: PipelineContext
-    ) -> Optional[pd.DataFrame]:
+    ) -> Optional[pl.DataFrame]:
         """Execute a stage instance."""
         # Determine execution method based on stage type
         if hasattr(stage_instance, 'extract'):
@@ -519,21 +530,21 @@ class PipelineStageManager:
             
             # Convert results to DataFrame if we have data
             if extraction_results:
-                return pd.DataFrame(extraction_results)
+                return pl.DataFrame(extraction_results)
             else:
                 # Return empty DataFrame with basic structure if no results
-                return pd.DataFrame()
+                return pl.DataFrame()
                 
         elif hasattr(stage_instance, 'transform'):
             # Transformer
-            if input_data is None or input_data.empty:
+            if input_data is None or input_data.height == 0:
                 logger.warning("Transformer received empty input data")
-                return pd.DataFrame()
+                return pl.DataFrame()
             return stage_instance.transform(input_data)
             
         elif hasattr(stage_instance, 'load'):
             # Loader
-            if input_data is None or input_data.empty:
+            if input_data is None or input_data.height == 0:
                 logger.warning("Loader received empty input data")
                 return input_data
             
@@ -1059,6 +1070,7 @@ class MasterETLPipeline(BasePipeline):
         name: str = "master_etl_pipeline",
         stage_definitions: Optional[List[PipelineStageDefinition]] = None,
         quality_config: Optional[QualityAssuranceConfig] = None,
+        db_path: str = "ahgd.db",
         **kwargs
     ):
         """
@@ -1068,6 +1080,7 @@ class MasterETLPipeline(BasePipeline):
             name: Pipeline name
             stage_definitions: List of stage definitions
             quality_config: Quality assurance configuration
+            db_path: Path to the DuckDB database file
             **kwargs: Additional pipeline arguments
         """
         super().__init__(name, **kwargs)
@@ -1082,9 +1095,13 @@ class MasterETLPipeline(BasePipeline):
         self.quality_manager = QualityAssuranceManager(self.quality_config)
         self.validation_pipeline = ValidationPipeline("master_validation")
         
+        # DuckDB connection
+        self.db_path = db_path
+        self.con = duckdb.connect(database=self.db_path, read_only=False)
+
         # Pipeline state
-        self.current_data: Optional[pd.DataFrame] = None
-        self.stage_outputs: Dict[str, pd.DataFrame] = {}
+        self.current_table: Optional[str] = None
+        self.stage_outputs: Dict[str, str] = {}
         self.validation_results: Dict[str, StageValidationResult] = {}
         
         logger.info(
@@ -1093,6 +1110,10 @@ class MasterETLPipeline(BasePipeline):
             stages_count=len(self.stage_definitions),
             quality_level=self.quality_config.quality_level.value
         )
+
+    def cleanup(self):
+        """Clean up resources, like closing the database connection."""
+        self.con.close()
     
     def define_stages(self) -> List[str]:
         """Define pipeline stages."""
@@ -1113,36 +1134,34 @@ class MasterETLPipeline(BasePipeline):
         logger.info("Executing master ETL stage", stage=stage_name)
         
         try:
-            # Get input data for stage
-            input_data = self._get_stage_input_data(stage_name, context)
+            # Get input table for stage
+            input_table = self._get_stage_input_table(stage_name, context)
             
             # Execute stage through stage manager
-            output_data, stage_result = self.stage_manager.execute_stage(
-                stage_name, context, input_data
+            output_table, stage_result = self.stage_manager.execute_stage(
+                stage_name, context, self.con, input_table
             )
             
             # Store stage output
-            if output_data is not None:
-                self.stage_outputs[stage_name] = output_data
-                context.add_output(f"{stage_name}_output", output_data)
+            if output_table is not None:
+                self.stage_outputs[stage_name] = output_table
+                context.add_output(f"{stage_name}_output", output_table)
             
             # Update current data pointer
-            if output_data is not None:
-                self.current_data = output_data
+            if output_table is not None:
+                self.current_table = output_table
             
             # Track data flow if moving to next stage
             next_stages = self._get_next_stages(stage_name)
             for next_stage in next_stages:
-                if output_data is not None:
-                    processed_data = self.data_flow_controller.transfer_data(
-                        stage_name, next_stage, output_data, context
-                    )
-                    context.add_output(f"{stage_name}_to_{next_stage}", processed_data)
+                if output_table is not None:
+                    # In the new model, data flow is managed by dbt, so we just pass the table name
+                    context.add_output(f"{stage_name}_to_{next_stage}", output_table)
             
             logger.info(
                 "Master ETL stage completed",
                 stage=stage_name,
-                output_records=len(output_data) if output_data is not None else 0
+                output_table=output_table
             )
             
             return stage_result
@@ -1185,7 +1204,7 @@ class MasterETLPipeline(BasePipeline):
             
             # Assess final quality
             quality_assessment = self.quality_manager.assess_pipeline_quality(
-                self.stage_results, pipeline_context
+                self.stage_manager.stage_results, pipeline_context
             )
             
             # Generate comprehensive results
@@ -1197,12 +1216,11 @@ class MasterETLPipeline(BasePipeline):
                     name: {
                         "state": result.state.value,
                         "duration": result.duration,
-                        "output_records": result.metrics.get("output_records", 0) if result.metrics else 0,
+                        "output_table": result.output,
                         "error": str(result.error) if result.error else None
                     }
-                    for name, result in self.stage_results.items()
+                    for name, result in self.stage_manager.stage_results.items()
                 },
-                "data_flow_status": self.data_flow_controller.get_flow_status(),
                 "quality_assessment": quality_assessment,
                 "validation_results": {
                     name: {
@@ -1211,7 +1229,7 @@ class MasterETLPipeline(BasePipeline):
                     }
                     for name, result in self.validation_results.items()
                 },
-                "final_data_records": len(self.current_data) if self.current_data is not None else 0,
+                "final_table": self.current_table,
                 "execution_summary": self._generate_execution_summary()
             }
             
@@ -1219,7 +1237,7 @@ class MasterETLPipeline(BasePipeline):
                 "Complete ETL pipeline execution finished",
                 status=self.state.value,
                 overall_quality_score=quality_assessment.get("overall_quality_score", 0),
-                final_records=results["final_data_records"]
+                final_table=results["final_table"]
             )
             
             return results
@@ -1229,7 +1247,10 @@ class MasterETLPipeline(BasePipeline):
                 "Complete ETL pipeline execution failed",
                 error=str(e)
             )
+            self.cleanup()
             raise PipelineError(f"Complete ETL execution failed: {str(e)}") from e
+        finally:
+            self.cleanup()
     
     def get_pipeline_status(self) -> Dict[str, Any]:
         """Get comprehensive pipeline status."""
@@ -1244,15 +1265,13 @@ class MasterETLPipeline(BasePipeline):
                     stage_id: result.state.value
                     for stage_id, result in self.stage_manager.stage_results.items()
                 },
-                "data_flow_status": self.stage_manager.data_flow_status
             },
-            "data_flow_status": self.data_flow_controller.get_flow_status(),
             "quality_metrics": self.quality_manager.quality_metrics,
             "validation_summary": {
                 name: result.gate_status.value
                 for name, result in self.validation_results.items()
             },
-            "current_data_size": len(self.current_data) if self.current_data is not None else 0
+            "current_table": self.current_table
         }
     
     def _load_default_stage_definitions(self) -> List[PipelineStageDefinition]:
@@ -1334,17 +1353,17 @@ class MasterETLPipeline(BasePipeline):
             )
         ]
     
-    def _get_stage_input_data(self, stage_name: str, context: PipelineContext) -> Optional[pd.DataFrame]:
-        """Get input data for a stage."""
-        # First stage gets no input data (extracts from source)
+    def _get_stage_input_table(self, stage_name: str, context: PipelineContext) -> Optional[str]:
+        """Get input table for a stage."""
+        # First stage gets no input table (extracts from source)
         if not self.stage_manager.stage_definitions[stage_name].dependencies:
             return None
         
-        # Get data from previous stage or current data
-        if self.current_data is not None:
-            return self.current_data
+        # Get table from previous stage or current table
+        if self.current_table is not None:
+            return self.current_table
         
-        # Look for data in context from previous stages
+        # Look for table in context from previous stages
         for dep_stage in self.stage_manager.stage_definitions[stage_name].dependencies:
             output_key = f"{dep_stage}_output"
             if output_key in context.stage_outputs:

@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: master_health_record
+    columns:
+      - name: sa2_code
+        tests:
+          - unique
+          - not_null
+
+  - name: derived_health_indicators
+    columns:
+      - name: sa2_code
+        tests:
+          - unique
+          - not_null

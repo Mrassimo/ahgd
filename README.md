@@ -2,7 +2,9 @@
 
 ## About the Project
 
-The Australian Health Geography Data (AHGD) repository is a production-grade ETL pipeline that integrates health, environmental, and socio-economic data from multiple Australian government sources into a unified, analysis-ready dataset at the Statistical Area Level 2 (SA2) geographic level.
+The Australian Health Geography Data (AHGD) repository is a modern, production-grade ETL pipeline that integrates health, environmental, and socio-economic data from multiple Australian government sources into a unified, analysis-ready dataset at the Statistical Area Level 2 (SA2) geographic level.
+
+This repository has been upgraded to a V2 architecture, leveraging modern data tools like Polars for high-performance data manipulation, DuckDB for efficient in-process analytical processing, dbt (data build tool) for robust data transformation and modeling, and Apache Airflow for scalable workflow orchestration.
 
 This repository provides researchers, policymakers, and healthcare professionals with comprehensive, quality-assured data covering all 2,473 SA2 areas across Australia, enabling evidence-based decision-making and advanced health analytics.
 
@@ -10,6 +12,7 @@ This repository provides researchers, policymakers, and healthcare professionals
 
 - **Comprehensive Integration**: Combines data from AIHW, ABS, BOM, and Medicare/PBS
 - **SA2 Geographic Granularity**: Standardised to Australian Statistical Geography Standard
+- **Modern Data Stack**: Leverages Polars for data processing, DuckDB for analytical queries, dbt for data modeling, and Apache Airflow for orchestration.
 - **Production-Grade ETL**: Robust pipeline with retry logic, checkpointing, and monitoring
 - **Multi-Format Export**: Parquet, CSV, GeoJSON, and JSON formats
 - **Quality Assured**: Multi-layered validation including statistical, geographic, and temporal checks
@@ -25,54 +28,70 @@ The AHGD integrates authoritative data from:
 - **Bureau of Meteorology (BOM)**: Climate and environmental health indicators
 - **Department of Health**: Medicare statistics, PBS data, immunisation rates
 
-## 🚀 Quick Start
+## 🚀 Quick Start (V2 - Airflow Orchestrated)
 
-### Installation
+### Prerequisites
 
-```bash
-# Clone the repository
-git clone https://github.com/Mrassimo/ahgd.git
-cd ahgd
+*   Docker and Docker Compose installed
+*   Python 3.9+ (for local development/testing outside Docker)
 
-# Set up the environment
-./setup_env.sh --dev
+### Installation & Setup
 
-# Activate virtual environment
-source venv/bin/activate
-```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/Mrassimo/ahgd.git
+    cd ahgd
+    ```
 
-### Example Usage
+2.  **Build and launch the Airflow environment:**
+    This will build the Docker images and start the Airflow webserver, scheduler, and a PostgreSQL database.
+    ```bash
+    docker-compose build
+    docker-compose up -d
+    ```
+
+3.  **Access Airflow UI:**
+    Open your browser and navigate to `http://localhost:8080`. Log in with username `admin` and password `admin`.
+
+4.  **Unpause the `ahgd_etl_v2` DAG:**
+    In the Airflow UI, find the `ahgd_etl_v2` DAG and toggle it to "On" (unpause).
+
+### Running the ETL Pipeline
+
+To trigger the complete ETL pipeline:
+
+1.  **Manually trigger the DAG:**
+    In the Airflow UI, click the "Play" button for the `ahgd_etl_v2` DAG. This will start a new DAG run.
+
+2.  **Monitor progress:**
+    You can monitor the progress of the pipeline directly in the Airflow UI, observing the status of each task (extraction, loading to DuckDB, dbt build, dbt test, export).
+
+### Example Usage (Post-ETL)
+
+Once the Airflow pipeline has completed successfully, the processed data will be available in the `ahgd.db` DuckDB database (mounted as `./ahgd.db` in your project root). You can query it directly using DuckDB or connect from Python:
 
 ```python
-import pandas as pd
+import duckdb
+import polars as pl
 
-# Load the master dataset from Hugging Face Hub
-# Note: Install dependencies first: pip install pandas pyarrow fsspec
-try:
-    df = pd.read_parquet("hf://datasets/massomo/ahgd/data_processed/ahgd_master_dataset.parquet")
-    print("Successfully loaded the dataset.")
-    print(f"Dataset shape: {df.shape}")
-    print(f"SA2 areas covered: {df['sa2_code'].nunique()}")
-    
-    # --- Example Analysis: Top 5 most disadvantaged areas in NSW ---
-    print("\nTop 5 most disadvantaged SA2 areas in New South Wales (by SEIFA IRSD score):")
-    nsw_data = df[df['state_name'] == 'New South Wales']
-    top_5_disadvantaged = nsw_data.nsmallest(5, 'seifa_irsd_score')
-    print(top_5_disadvantaged[['sa2_name', 'seifa_irsd_score', 'population_total']])
-    
-    # --- Example: Health indicators by remoteness ---
-    print("\nAverage health indicators by remoteness category:")
-    health_by_remoteness = df.groupby('remoteness_category').agg({
-        'diabetes_prevalence': 'mean',
-        'mental_health_issues_rate': 'mean',
-        'gp_visits_per_capita': 'mean'
-    }).round(2)
-    print(health_by_remoteness)
-    
-except Exception as e:
-    print(f"Failed to load dataset. Error: {e}")
-    print("Please ensure you have run 'pip install pandas pyarrow fsspec'.")
+# Connect to the DuckDB database
+con = duckdb.connect(database='./ahgd.db', read_only=True)
+
+# Query the master health record
+master_df = con.sql("SELECT * FROM master_health_record").pl()
+print("Successfully loaded the master health record.")
+print(f"Dataset shape: {master_df.shape}")
+
+# Example Analysis: Top 5 most disadvantaged areas in NSW (using Polars)
+print("\nTop 5 most disadvantaged SA2 areas in New South Wales (by SEIFA IRSD score):")
+nsw_data = master_df.filter(pl.col('state_name') == 'New South Wales')
+top_5_disadvantaged = nsw_data.sort('seifa_irsd_score').head(5)
+print(top_5_disadvantaged.select(['sa2_name', 'seifa_irsd_score', 'total_population']))
+
+# Close the connection
+con.close()
 ```
+
 
 ## 📁 Project Structure
 
@@ -89,6 +108,13 @@ ahgd/
 ├── tests/                 # Comprehensive test suite
 ├── configs/              # Environment-specific configurations
 ├── schemas/              # Pydantic v2 data schemas
+├── dags/                   # Airflow DAGs for pipeline orchestration
+├── ahgd_dbt/               # dbt project for data transformation and modeling
+│   ├── models/             # dbt models (staging, intermediate, marts)
+│   ├── analyses/           # dbt analyses
+│   ├── macros/             # dbt macros
+│   ├── seeds/              # dbt seeds
+│   └── tests/              # dbt tests
 ├── docs/                 # Documentation
 │   ├── api/              # API documentation
 │   ├── technical/        # Technical documentation
@@ -157,27 +183,25 @@ Every record includes a quality score (0-1) based on:
 - Consistency: Cross-dataset agreement
 - Timeliness: Data currency
 
-## 🛠️ ETL Pipeline
+## 🛠️ ETL Pipeline (V2 - Airflow, dbt, Polars, DuckDB)
 
-### Pipeline Stages
+The AHGD ETL pipeline has been re-architected to leverage a modern data stack for improved performance, scalability, and maintainability.
 
-1. **Extract**: Automated data retrieval from government APIs and portals
-2. **Transform**: Standardisation, geographic harmonisation, and integration
-3. **Validate**: Multi-layer quality assurance
-4. **Load**: Export to multiple formats with optimisation
+### Pipeline Stages & Technologies
+
+1.  **Extract (Python/Polars)**: Automated data retrieval from government APIs and portals, processed efficiently with Polars.
+2.  **Load to DuckDB (Python/Polars)**: Raw data is loaded into a local DuckDB database for high-performance analytical processing.
+3.  **Transform (dbt/SQL)**: Data transformation, standardization, geographic harmonization, and integration are managed declaratively using dbt models (SQL). dbt builds and tests are executed against the DuckDB database.
+4.  **Validate (dbt Tests)**: Multi-layer quality assurance and data validation are integrated into the dbt models as tests.
+5.  **Load/Export (Python/Polars)**: Final, processed data is exported from DuckDB to multiple formats (e.g., Parquet, CSV, GeoJSON) for consumption.
+
+### Orchestration
+
+The entire pipeline is orchestrated using **Apache Airflow**. The `ahgd_etl_v2` DAG defines the end-to-end workflow, managing dependencies, retries, and monitoring of each stage.
 
 ### Running the Pipeline
 
-```bash
-# Run complete pipeline
-ahgd-pipeline --config configs/production.yaml
-
-# Run individual stages
-ahgd-extract --source aihw --output data_raw/
-ahgd-transform --input data_raw/ --output data_processed/
-ahgd-validate --input data_processed/ --rules schemas/
-ahgd-load --input data_processed/ --output data_final/ --formats parquet,csv
-```
+To run the pipeline, ensure your Docker environment is set up (as per Quick Start) and trigger the `ahgd_etl_v2` DAG in the Airflow UI.
 
 ## 🔒 Security
 
@@ -213,6 +237,8 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ### Development Setup
 
+For local development and testing of individual components (extractors, transformers, etc.) outside of the Airflow environment:
+
 ```bash
 # Install development dependencies
 pip install -e ".[dev]"
@@ -225,6 +251,10 @@ black src/ tests/
 isort src/ tests/
 mypy src/
 ```
+
+For dbt development, navigate to the `ahgd_dbt` directory and use `dbt` CLI commands (e.g., `dbt run`, `dbt test`, `dbt docs generate`).
+
+For Airflow development, refer to the `dags/ahgd_etl_v2.py` file and the Docker Compose setup.
 
 ## 📄 License
 

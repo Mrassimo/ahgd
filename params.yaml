@@ -1,7 +1,0 @@
-# DVC Pipeline Parameters
-# Simple parameter definitions to avoid conflicts with configs/default.yaml
-
-# Pipeline-specific configurations
-pipeline:
-  enabled: true
-  run_all_extractors: true

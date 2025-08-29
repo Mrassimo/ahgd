@@ -10,8 +10,7 @@ import logging
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Any, Union, Tuple
-import pandas as pd
-import numpy as np
+import polars as pl
 from dataclasses import dataclass, field
 
 from .base import BaseTransformer, MissingValueStrategy
@@ -100,28 +99,25 @@ class MasterDataIntegrator(BaseTransformer):
         Transform input data into MasterHealthRecord instances.
         
         Args:
-            data: Batch of raw data records grouped by SA2
-            **kwargs: Additional parameters including SA2 codes
+            data: DataFrame of raw data records
+            **kwargs: Additional parameters
             
         Returns:
-            DataBatch: List of MasterHealthRecord instances
+            DataFrame of MasterHealthRecord instances
         """
         try:
+            # The data is expected to be a DataFrame with one row per source per SA2
+            # We need to group by SA2 and then process each group
+            grouped = data.group_by('sa2_code')
+
             master_records = []
-            
-            for record_data in data:
-                sa2_code = record_data.get('sa2_code')
-                if not sa2_code:
-                    self.logger.warning("Skipping record without SA2 code")
-                    continue
-                
-                # Create master health record for this SA2
-                master_record = self.create_master_health_record(sa2_code, record_data)
+            for sa2_code, group_df in grouped:
+                master_record = self.create_master_health_record(sa2_code, group_df)
                 if master_record:
                     master_records.append(master_record.__dict__)
-            
+
             self.logger.info(f"Created {len(master_records)} master health records")
-            return master_records
+            return pl.DataFrame(master_records)
             
         except Exception as e:
             self.logger.error(f"Master data integration failed: {e}")
@@ -130,14 +126,14 @@ class MasterDataIntegrator(BaseTransformer):
     def create_master_health_record(
         self, 
         sa2_code: str, 
-        source_data: Dict[str, Any]
+        group_df: pl.DataFrame
     ) -> Optional[MasterHealthRecord]:
         """
         Create a complete MasterHealthRecord for a specific SA2.
         
         Args:
             sa2_code: 9-digit SA2 code
-            source_data: Raw data from multiple sources for this SA2
+            group_df: DataFrame with data for a single SA2
             
         Returns:
             MasterHealthRecord: Complete integrated health record
@@ -145,8 +141,8 @@ class MasterDataIntegrator(BaseTransformer):
         try:
             self.logger.debug(f"Creating master health record for SA2: {sa2_code}")
             
-            # Extract and organise data by source
-            source_records = self._organise_source_data(sa2_code, source_data)
+            # Organise data by source
+            source_records = self._organise_source_data(sa2_code, group_df)
             
             # Build geographic components
             geographic_data = self._integrate_geographic_data(sa2_code, source_records)
@@ -263,54 +259,44 @@ class MasterDataIntegrator(BaseTransformer):
     def _organise_source_data(
         self, 
         sa2_code: str, 
-        raw_data: Dict[str, Any]
+        group_df: pl.DataFrame
     ) -> List[DataSourceRecord]:
         """
         Organise raw data into structured source records with quality metrics.
         
         Args:
             sa2_code: SA2 identifier
-            raw_data: Raw data dictionary from multiple sources
+            group_df: DataFrame for a single SA2 with data from multiple sources
             
         Returns:
             List[DataSourceRecord]: Organised source data with quality metrics
         """
         source_records = []
-        
-        # Expected source types and their priorities
-        source_types = {
-            'census': 1,
-            'seifa': 2,
-            'health_indicators': 3,
-            'geographic_boundaries': 4,
-            'medicare_pbs': 5,
-            'environmental': 6
-        }
-        
-        for source_type, priority in source_types.items():
-            if source_type in raw_data:
-                source_data = raw_data[source_type]
-                
-                # Calculate quality scores
-                quality_score = self._assess_data_quality(source_data, source_type)
-                coverage_score = self._assess_coverage(source_data, source_type)
-                reliability_score = self.source_priorities.get(source_type, {}).get('reliability', 1.0)
-                
-                source_record = DataSourceRecord(
-                    source_name=source_type,
-                    source_priority=priority,
-                    data=source_data,
-                    quality_score=quality_score,
-                    last_updated=source_data.get('last_updated', datetime.utcnow()),
-                    coverage_score=coverage_score,
-                    reliability_score=reliability_score
-                )
-                
-                source_records.append(source_record)
-        
+
+        for row in group_df.to_dicts():
+            source_type = row.get('source')
+            if not source_type:
+                continue
+
+            priority = self.source_priorities.get(source_type, 99)
+            quality_score = self._assess_data_quality(row, source_type)
+            coverage_score = self._assess_coverage(row, source_type)
+            reliability_score = self.source_priorities.get(source_type, {}).get('reliability', 1.0)
+
+            source_record = DataSourceRecord(
+                source_name=source_type,
+                source_priority=priority,
+                data=row,
+                quality_score=quality_score,
+                last_updated=row.get('last_updated', datetime.utcnow()),
+                coverage_score=coverage_score,
+                reliability_score=reliability_score
+            )
+            source_records.append(source_record)
+
         # Sort by overall quality (highest first)
         source_records.sort(key=lambda x: x.overall_quality, reverse=True)
-        
+
         return source_records
     
     def _integrate_geographic_data(
@@ -373,30 +359,26 @@ class MasterDataIntegrator(BaseTransformer):
         Returns:
             Best value for the field, or None if not found
         """
-        candidates = []
-        
+        best_candidate = None
         for record in source_records:
             if field_name in record.data and record.data[field_name] is not None:
-                candidates.append((record.data[field_name], record.overall_quality, record.source_name))
+                if best_candidate is None or record.overall_quality > best_candidate[1]:
+                    best_candidate = (record.data[field_name], record.overall_quality, record.source_name)
         
-        if not candidates:
+        if not best_candidate:
             return None
-        
-        # Sort by quality score (highest first)
-        candidates.sort(key=lambda x: x[1], reverse=True)
-        
-        selected_value = candidates[0][0]
-        selected_source = candidates[0][2]
+
+        selected_value, quality, source = best_candidate
         
         # Record decision for audit
-        alternatives = {source: value for value, _, source in candidates[1:]}
+        alternatives = {rec.source_name: rec.data.get(field_name) for rec in source_records if rec.source_name != source and field_name in rec.data}
         decision = IntegrationDecision(
             field_name=field_name,
-            selected_source=selected_source,
+            selected_source=source,
             selected_value=selected_value,
             alternative_sources=alternatives,
             decision_reason="highest_quality_score",
-            confidence_score=candidates[0][1]
+            confidence_score=quality
         )
         self.integration_decisions.append(decision)
         
@@ -564,54 +546,39 @@ class SA2DataAggregator:
         self.logger = get_logger(__name__) if logger is None else logger
         self.aggregation_methods = config.get('methods', {})
     
-    def aggregate_health_data(self, sa2_code: str, source_data: List[DataSourceRecord]) -> Dict[str, Any]:
+    def aggregate_health_data(self, data: pl.DataFrame) -> pl.DataFrame:
         """
-        Aggregate health data from multiple sources for a specific SA2.
+        Aggregate health data from multiple sources for each SA2.
         
         Args:
-            sa2_code: SA2 identifier
-            source_data: List of source data records
+            data: DataFrame with health data for multiple SA2s
             
         Returns:
-            Dictionary of aggregated health indicators
+            DataFrame with aggregated health indicators per SA2
         """
-        aggregated_data = {}
         
-        # Group data by indicator type
-        health_indicators = {}
-        for record in source_data:
-            if 'health' in record.source_name:
-                health_indicators.update(record.data)
-        
-        # Apply aggregation methods
-        for indicator, values in health_indicators.items():
-            if isinstance(values, list):
-                # Multiple values - apply statistical aggregation
-                method = self.aggregation_methods.get(indicator, 'mean')
-                aggregated_data[indicator] = self._apply_aggregation_method(values, method)
-            else:
-                aggregated_data[indicator] = values
-        
-        return aggregated_data
+        agg_expressions = []
+        for indicator, method in self.aggregation_methods.items():
+            if indicator in data.columns:
+                agg_expressions.append(self._apply_aggregation_method(indicator, method).alias(indicator))
+
+        return data.group_by("sa2_code").agg(agg_expressions)
     
-    def _apply_aggregation_method(self, values: List[float], method: str) -> float:
-        """Apply statistical aggregation method to a list of values."""
-        if not values:
-            return 0.0
-        
+    def _apply_aggregation_method(self, col: str, method: str) -> pl.Expr:
+        """Apply statistical aggregation method to a column."""
         if method == 'mean':
-            return np.mean(values)
+            return pl.mean(col)
         elif method == 'median':
-            return np.median(values)
+            return pl.median(col)
         elif method == 'weighted_mean':
-            # Would implement weighted averaging based on data quality
-            return np.mean(values)
+            # Assuming weights are in a column named 'quality_weight'
+            return (pl.col(col) * pl.col('quality_weight')).sum() / pl.col('quality_weight').sum()
         elif method == 'max':
-            return np.max(values)
+            return pl.max(col)
         elif method == 'min':
-            return np.min(values)
+            return pl.min(col)
         else:
-            return np.mean(values)  # Default to mean
+            return pl.mean(col)  # Default to mean
 
 
 class HealthIndicatorCalculator:

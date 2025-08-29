@@ -37,7 +37,11 @@ dependencies = [
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "semver>=3.0.0",
-    "python-dateutil>=2.8.0"]
+    "python-dateutil>=2.8.0",
+    "polars>=0.19.0",
+    "duckdb>=0.9.0",
+    "dbt-duckdb>=1.6.0",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -55,6 +59,8 @@ dev = [
     "memory-profiler>=0.60.0",
     "psutil>=5.9.0",
     "scipy>=1.9.0",
+    "apache-airflow>=2.7.0",
+    "apache-airflow-providers-docker>=3.5.0",
 ]
 docs = [
     "sphinx>=4.0.0",
