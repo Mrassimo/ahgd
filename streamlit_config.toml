@@ -1,0 +1,54 @@
+# AHGD V3 Streamlit Configuration
+# Optimized for performance and user experience
+
+[global]
+developmentMode = false
+showWarningOnDirectExecution = false
+
+[server]
+headless = true
+port = 8501
+address = "0.0.0.0"
+maxUploadSize = 200
+maxMessageSize = 200
+enableCORS = false
+enableXsrfProtection = true
+enableWebsocketCompression = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "0.0.0.0"
+serverPort = 8501
+
+[client]
+caching = true
+displayEnabled = true
+showErrorDetails = true
+
+[runner]
+magicEnabled = true
+installTracer = false
+fixMatplotlib = true
+postScriptGC = true
+fastReruns = true
+
+[logger]
+level = "INFO"
+messageFormat = "%(asctime)s %(levelname)s: %(message)s"
+
+[theme]
+base = "light"
+primaryColor = "#1f77b4"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f2f6"
+textColor = "#262730"
+font = "sans serif"
+
+# Performance optimizations
+[deprecation]
+showfileUploaderEncoding = false
+showPyplotGlobalUse = false
+
+# Cache configuration for better performance
+[cache]
+allowGlobalWidgets = false

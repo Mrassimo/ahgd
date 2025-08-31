@@ -1,0 +1,155 @@
+{
+  "description": "Expected structure for a complete integrated master health record",
+  "version": "1.0.0",
+  "record_type": "master_health_record",
+  "example_record": {
+    "sa2_code": "101011007",
+    "sa2_name": "Sydney - Haymarket - The Rocks",
+    "sa3_code": "10101",
+    "sa3_name": "Sydney Inner City",
+    "sa4_code": "101",
+    "sa4_name": "Sydney - City and Inner South",
+    "state_code": "1",
+    "state_name": "New South Wales",
+    
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [151.2093, -33.8688],
+          [151.2105, -33.8650],
+          [151.2150, -33.8665],
+          [151.2140, -33.8700],
+          [151.2093, -33.8688]
+        ]
+      ]
+    },
+    "centroid_lat": -33.8670,
+    "centroid_lon": 151.2120,
+    "area_sqkm": 0.85,
+    
+    "total_population": 3245,
+    "population_density": 3817.65,
+    "median_age": 32.5,
+    "indigenous_population_pct": 1.2,
+    
+    "seifa_irsad_score": 1089,
+    "seifa_irsad_decile": 10,
+    "seifa_ieo_score": 1125,
+    "seifa_ieo_decile": 10,
+    "seifa_ier_score": 1098,
+    "seifa_ier_decile": 9,
+    "seifa_iod_score": 1067,
+    "seifa_iod_decile": 8,
+    
+    "gp_services_per_1000": 1.85,
+    "specialist_services_per_1000": 0.92,
+    "hospital_beds_per_1000": 2.1,
+    "mental_health_services_count": 3,
+    
+    "life_expectancy": 84.2,
+    "infant_mortality_rate": 2.8,
+    "preventable_hospitalisations_rate": 1850.5,
+    "chronic_disease_prevalence_pct": 18.7,
+    
+    "pbs_dispensing_rate_per_1000": 425.8,
+    "high_cost_medicine_access_score": 0.89,
+    
+    "data_version": "2024.1.0",
+    "last_updated": "2024-06-21T10:30:00Z",
+    "completeness_score": 0.96,
+    "quality_flags": [
+      "high_confidence",
+      "complete_seifa",
+      "validated_geography"
+    ],
+    "source_datasets": [
+      "abs_census_2021",
+      "aihw_health_indicators",
+      "seifa_2021",
+      "pbs_prescribing_data",
+      "abs_geographic_boundaries"
+    ],
+    
+    "health_inequality_index": 0.23,
+    "healthcare_access_index": 0.87,
+    "overall_health_score": 78.5
+  },
+  
+  "validation_rules": {
+    "required_fields": [
+      "sa2_code", "sa2_name", "sa3_code", "sa4_code", "state_code",
+      "geometry", "centroid_lat", "centroid_lon", "area_sqkm",
+      "total_population", "seifa_irsad_score", "seifa_irsad_decile",
+      "life_expectancy", "data_version", "last_updated", "completeness_score"
+    ],
+    "data_types": {
+      "sa2_code": "string",
+      "total_population": "integer",
+      "seifa_irsad_score": "integer",
+      "seifa_irsad_decile": "integer",
+      "life_expectancy": "decimal",
+      "centroid_lat": "decimal",
+      "centroid_lon": "decimal",
+      "area_sqkm": "decimal",
+      "completeness_score": "decimal",
+      "last_updated": "datetime",
+      "quality_flags": "array",
+      "source_datasets": "array"
+    },
+    "constraints": {
+      "sa2_code": {
+        "pattern": "^[0-9]{9}$",
+        "length": 9
+      },
+      "seifa_irsad_decile": {
+        "min": 1,
+        "max": 10
+      },
+      "life_expectancy": {
+        "min": 70.0,
+        "max": 90.0
+      },
+      "completeness_score": {
+        "min": 0.0,
+        "max": 1.0
+      },
+      "centroid_lat": {
+        "min": -55.0,
+        "max": -10.0
+      },
+      "centroid_lon": {
+        "min": 110.0,
+        "max": 160.0
+      }
+    }
+  },
+  
+  "quality_standards": {
+    "minimum_completeness": 0.90,
+    "required_source_datasets": 3,
+    "geographic_validation": {
+      "coordinate_system": "GDA2020",
+      "precision_meters": 10.0,
+      "boundary_validation": true
+    },
+    "health_indicators": {
+      "life_expectancy_required": true,
+      "seifa_indices_required": true,
+      "population_data_required": true
+    }
+  },
+  
+  "australian_standards_compliance": {
+    "aihw_compliance": {
+      "health_indicator_definitions": "AIHW METeOR 2023",
+      "geographic_classifications": "ASGS 2021",
+      "data_quality_framework": "AIHW DQF v2.1"
+    },
+    "abs_compliance": {
+      "statistical_areas": "ASGS 2021",
+      "census_integration": "2021 Census",
+      "seifa_methodology": "SEIFA 2021"
+    }
+  }
+}

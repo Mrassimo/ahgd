@@ -1,3 +1,8 @@
+# ============================================
+# AHGD V3: Comprehensive .gitignore
+# Keep only source code, exclude ALL data
+# ============================================
+
 # Python-generated files
 __pycache__/
 *.py[cod]
@@ -31,62 +36,184 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE
+# IDE and editors
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.sublime-project
+.sublime-workspace
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb_checkpoints/
 
-# Data files (keep structure but ignore actual data)
-data/raw/*.csv
-data/raw/*.xlsx
-data/raw/*.json
-data/raw/*.parquet
-data/processed/*.csv
-data/processed/*.xlsx
-data/processed/*.json
-data/processed/*.parquet
+# ============================================
+# DATA FILES - EXCLUDE ALL REAL DATA
+# ============================================
 
-# Large data files (>100MB) - GitHub limit
-data/raw/demographics/2021_GCP_AUS_SA2.zip
-data/raw/demographics/2021_GCP_NSW_SA2.zip
-data/raw/health/mbs_demographics_historical_1993_2015.zip
+# Real government data downloads (MASSIVE FILES)
+real_data/
+real_data/**/*
+*.zip
+*.tar
+*.gz
+*.7z
+*.rar
+
+# All data directories and caches
+data/
+data/**/*
+cache/
+cache/**/*
+outputs/
+outputs/**/*
+
+# Parquet storage (can be hundreds of MB)
+data/demo_polars_cache/
+data/benchmark_cache/
+data/parquet_store/
+data/test_storage/
+*.parquet
+
+# DuckDB databases
+*.db
+*.duckdb
+health_analytics.db
+health_data_polars.duckdb
+
+# Performance and monitoring data
+performance_metrics.db
+benchmark_results.json
+
+# ============================================
+# GENERATED FILES AND OUTPUTS
+# ============================================
+
+# Large HTML visualizations
 docs/assets/initial_map.html
+docs/initial_map.html
+*.html
 
-# Large zip files and downloads
-data/raw/**/*.zip
-data/raw/**/*.7z
-data/raw/**/*.gz
+# Generated documentation
+docs/generated/
 
-# Large HTML visualisations (>50MB)
-docs/assets/initial_map.html
+# Temporary processing files
+*.tmp
+*.temp
+temp/
+tmp/
 
-# Logs
-*.log
-logs/*.log
+# Excel and CSV files (could be large datasets)
+*.xlsx
+*.xls
+*.csv
 
-# OS
+# JSON data files (not config)
+data*.json
+results*.json
+export*.json
+
+# ============================================
+# SYSTEM AND OS FILES
+# ============================================
+
+# macOS
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+
+# Windows
 ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+# Linux
+.directory
+
+# ============================================
+# DEVELOPMENT AND DEPLOYMENT
+# ============================================
 
 # Environment variables
 .env
 .env.local
 .env.*.local
+.user.yml
+
+# Logs and monitoring
+*.log
+logs/
+logs/**/*
 
 # Streamlit
 .streamlit/
 
-# Temporary files
-*.tmp
-*.temp
-docs/assets/initial_map.html
+# Docker volumes and data
+volumes/
+docker-data/
+
+# DVC (Data Version Control)
+.dvc/
+*.dvc
+
+# DLT (Data Load Tool) state
+.dlt/
+.dlt/**/*
+
+# DBT (Data Build Tool)
+dbt_packages/
+target/
+logs/
+profiles.yml
+
+# ============================================
+# SPECIFIC TO THIS PROJECT
+# ============================================
+
+# Large Australian Census files
+*Census*.csv
+*census*.csv
+2021_GCP_*.csv
+
+# Geographic boundary files (shapefiles are large)
+*.shp
+*.shx
+*.dbf
+*.prj
+
+# Any government data extracts
+*_extract_*
+*_raw_*
+*government_data*
+
+# Test and sample data that might be large
+sample_*.parquet
+test_*.csv
+demo_*.db
+
+# Architecture diagrams and large assets
+architecture_*.png
+diagram_*.svg
+
+# Backup and archive files
+*.bak
+*.backup
+archive/
+backup/
+
+# ============================================
+# KEEP ONLY SOURCE CODE AND CONFIGS
+# ============================================
+# This gitignore is designed to keep:
+# - Python source code (*.py)
+# - Configuration files (*.yml, *.yaml, *.toml)
+# - Documentation (*.md)
+# - Requirements (requirements.txt, pyproject.toml)
+# - Docker configs (Dockerfile*, docker-compose*)
+# - CI/CD configs (.github/)
+# - Small sample configs and schemas
+# ============================================

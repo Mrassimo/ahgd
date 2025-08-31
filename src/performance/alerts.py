@@ -15,8 +15,12 @@ import json
 import logging
 import smtplib
 import threading
-from email.mime.text import MimeText
-from email.mime.multipart import MimeMultipart
+try:
+    from email.mime.text import MimeText
+    from email.mime.multipart import MimeMultipart
+except ImportError:
+    MimeText = None
+    MimeMultipart = None
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Callable, Union, Set
 from dataclasses import dataclass, field, asdict
@@ -208,6 +212,11 @@ class EmailAlertChannel(AlertChannel_Interface):
             return False
         
         try:
+            # Check if email modules are available
+            if MimeMultipart is None or MimeText is None:
+                self.logger.warning("Email functionality not available - MimeText/MimeMultipart not imported")
+                return False
+            
             # Create message
             msg = MimeMultipart()
             msg['From'] = self.config.email_from

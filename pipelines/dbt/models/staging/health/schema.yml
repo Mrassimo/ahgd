@@ -1,0 +1,274 @@
+version: 2
+
+sources:
+  - name: health_analytics
+    description: "Health service and outcomes data from Australian government sources"
+    tables:
+      - name: mbs_data
+        description: "Medicare Benefits Schedule service utilisation data"
+        columns:
+          - name: geographic_code
+            description: "SA1 geographic code"
+            tests:
+              - not_null
+          - name: mbs_item_number
+            description: "MBS item number"
+            tests:
+              - not_null
+          - name: service_count
+            description: "Number of services provided"
+            tests:
+              - not_null
+
+      - name: pbs_data
+        description: "Pharmaceutical Benefits Scheme prescription data"
+        columns:
+          - name: geographic_code
+            description: "SA1 geographic code"
+            tests:
+              - not_null
+          - name: pbs_item_code
+            description: "PBS item code"
+            tests:
+              - not_null
+
+      - name: aihw_mortality
+        description: "AIHW mortality data from MORT and GRIM datasets"
+        columns:
+          - name: geographic_code
+            description: "SA1 geographic code"
+            tests:
+              - not_null
+          - name: death_count
+            description: "Number of deaths"
+            tests:
+              - not_null
+
+      - name: phidu_chronic_disease
+        description: "PHIDU chronic disease prevalence data"
+        columns:
+          - name: geographic_code
+            description: "SA1 geographic code"
+            tests:
+              - not_null
+          - name: prevalence_rate
+            description: "Disease prevalence rate (%)"
+            tests:
+              - not_null
+
+models:
+  - name: stg_mbs_data
+    description: "Staging table for MBS health service utilisation data with validation and standardisation"
+    columns:
+      - name: sa1_code
+        description: "SA1 geographic code (11 digits)"
+        tests:
+          - not_null
+          - unique:
+              config:
+                where: "financial_year = '2015-16' AND mbs_item_number = '23' AND age_group = 'ALL_AGES' AND gender = 'ALL'"
+      
+      - name: mbs_item_number
+        description: "MBS item number (1-6 digits)"
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_mbs_items')
+              field: item_number
+              config:
+                severity: warn
+      
+      - name: service_type
+        description: "Categorised service type"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['MEDICAL', 'DIAGNOSTIC', 'PATHOLOGY', 'ALLIED_HEALTH', 'SPECIALIST', 'SURGICAL', 'EMERGENCY', 'MENTAL_HEALTH']
+      
+      - name: service_count
+        description: "Number of services provided"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      
+      - name: benefit_paid
+        description: "Total Medicare benefit paid (AUD)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      
+      - name: financial_year
+        description: "Financial year (YYYY-YY format)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: '2010-11'
+              max_value: '2025-26'
+      
+      - name: data_quality_score
+        description: "Composite data quality score (0.0-1.0)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0.6
+              max_value: 1.0
+              inclusive: true
+
+  - name: stg_pbs_data
+    description: "Staging table for PBS pharmaceutical utilisation data with validation and standardisation"
+    columns:
+      - name: sa1_code
+        description: "SA1 geographic code (11 digits)"
+        tests:
+          - not_null
+      
+      - name: pbs_item_code
+        description: "PBS item code (4 digits + optional letter)"
+        tests:
+          - not_null
+      
+      - name: prescription_count
+        description: "Number of prescriptions dispensed"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      
+      - name: government_benefit
+        description: "Government benefit paid (AUD)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      
+      - name: atc_therapeutic_category
+        description: "ATC therapeutic category derived from ATC code"
+        tests:
+          - accepted_values:
+              values: 
+                - 'ALIMENTARY_TRACT_METABOLISM'
+                - 'BLOOD_BLOOD_FORMING_ORGANS'
+                - 'CARDIOVASCULAR_SYSTEM'
+                - 'DERMATOLOGICALS'
+                - 'GENITO_URINARY_REPRODUCTIVE'
+                - 'HORMONAL_PREPARATIONS'
+                - 'ANTI_INFECTIVES_SYSTEMIC'
+                - 'ANTINEOPLASTIC_IMMUNOMODULATING'
+                - 'MUSCULO_SKELETAL_SYSTEM'
+                - 'NERVOUS_SYSTEM'
+                - 'ANTIPARASITIC_PRODUCTS'
+                - 'RESPIRATORY_SYSTEM'
+                - 'SENSORY_ORGANS'
+                - 'VARIOUS'
+                - 'UNKNOWN_THERAPEUTIC_GROUP'
+
+  - name: stg_aihw_mortality
+    description: "Staging table for AIHW mortality data with validation and standardisation"
+    columns:
+      - name: sa1_code
+        description: "SA1 geographic code (11 digits)"
+        tests:
+          - not_null
+      
+      - name: cause_of_death
+        description: "Primary cause of death category"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['ALL_CAUSES', 'CANCER', 'CARDIOVASCULAR', 'RESPIRATORY', 'DIABETES', 'MENTAL_HEALTH', 'SUICIDE', 'ACCIDENT', 'DEMENTIA', 'KIDNEY_DISEASE', 'LIVER_DISEASE', 'COPD', 'OTHER']
+      
+      - name: death_count
+        description: "Number of deaths"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+      
+      - name: calendar_year
+        description: "Calendar year of death"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1900
+              max_value: 2030
+              inclusive: true
+      
+      - name: data_source
+        description: "Source dataset (MORT/GRIM/NMD)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['MORT', 'GRIM', 'NMD']
+      
+      - name: cause_category
+        description: "Broader cause grouping"
+        tests:
+          - accepted_values:
+              values: 
+                - 'NEOPLASMS'
+                - 'CIRCULATORY_DISEASES'
+                - 'RESPIRATORY_DISEASES'
+                - 'ENDOCRINE_METABOLIC'
+                - 'MENTAL_BEHAVIOURAL'
+                - 'EXTERNAL_CAUSES'
+                - 'GENITOURINARY_DISEASES'
+                - 'DIGESTIVE_DISEASES'
+                - 'OTHER_CAUSES'
+
+  - name: stg_phidu_chronic_disease
+    description: "Staging table for PHIDU chronic disease prevalence data with validation and standardisation"
+    columns:
+      - name: sa1_code
+        description: "SA1 geographic code (11 digits)"
+        tests:
+          - not_null
+      
+      - name: disease_type
+        description: "Type of chronic disease"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['DIABETES', 'CARDIOVASCULAR', 'CANCER', 'MENTAL_HEALTH', 'RESPIRATORY', 'ARTHRITIS', 'KIDNEY_DISEASE', 'DEMENTIA', 'STROKE', 'OSTEOPOROSIS']
+      
+      - name: prevalence_rate
+        description: "Disease prevalence rate (%)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              inclusive: true
+      
+      - name: pha_code
+        description: "Population Health Area code"
+        tests:
+          - not_null
+      
+      - name: disease_group
+        description: "Broader disease grouping"
+        tests:
+          - accepted_values:
+              values:
+                - 'METABOLIC_CARDIOVASCULAR'
+                - 'NEOPLASMS'
+                - 'MENTAL_NEUROLOGICAL'
+                - 'RESPIRATORY_DISEASES'
+                - 'MUSCULOSKELETAL'
+                - 'RENAL_DISEASES'
+                - 'OTHER_CHRONIC'
+      
+      - name: sa2_mapping_percentage
+        description: "Percentage of PHA mapped to this SA1"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 5.0
+              max_value: 100.0
+              inclusive: true

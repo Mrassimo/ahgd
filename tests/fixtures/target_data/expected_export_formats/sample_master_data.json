@@ -1,0 +1,74 @@
+{
+  "metadata": {
+    "export_timestamp": "2024-06-21T10:30:00Z",
+    "data_version": "2024.1.0",
+    "total_records": 2473,
+    "export_format": "json",
+    "compression": "gzip",
+    "schema_version": "1.0.0",
+    "data_quality": {
+      "completeness_score": 0.95,
+      "validation_status": "passed",
+      "quality_flags": ["validated", "complete"]
+    }
+  },
+  "data": [
+    {
+      "sa2_code": "101011007",
+      "sa2_name": "Sydney - Haymarket - The Rocks",
+      "state_code": "1",
+      "state_name": "New South Wales",
+      "total_population": 3245,
+      "population_density": 3817.65,
+      "seifa_irsad_score": 1089,
+      "seifa_irsad_decile": 10,
+      "life_expectancy": 84.2,
+      "gp_services_per_1000": 1.85,
+      "health_inequality_index": 0.23,
+      "healthcare_access_index": 0.87,
+      "overall_health_score": 78.5,
+      "centroid_lat": -33.8670,
+      "centroid_lon": 151.2120,
+      "area_sqkm": 0.85,
+      "data_version": "2024.1.0",
+      "last_updated": "2024-06-21T10:30:00Z",
+      "completeness_score": 0.96,
+      "quality_flags": ["high_confidence", "complete_seifa", "validated_geography"],
+      "source_datasets": ["abs_census_2021", "aihw_health_indicators", "seifa_2021"]
+    },
+    {
+      "sa2_code": "101011008",
+      "sa2_name": "Sydney - CBD - Circular Quay",
+      "state_code": "1",
+      "state_name": "New South Wales",
+      "total_population": 2876,
+      "population_density": 4245.32,
+      "seifa_irsad_score": 1095,
+      "seifa_irsad_decile": 10,
+      "life_expectancy": 84.5,
+      "gp_services_per_1000": 2.1,
+      "health_inequality_index": 0.21,
+      "healthcare_access_index": 0.89,
+      "overall_health_score": 79.2,
+      "centroid_lat": -33.8620,
+      "centroid_lon": 151.2110,
+      "area_sqkm": 0.68,
+      "data_version": "2024.1.0",
+      "last_updated": "2024-06-21T10:30:00Z",
+      "completeness_score": 0.97,
+      "quality_flags": ["high_confidence", "complete_seifa", "validated_geography"],
+      "source_datasets": ["abs_census_2021", "aihw_health_indicators", "seifa_2021"]
+    }
+  ],
+  "summary_statistics": {
+    "total_population": 25688308,
+    "average_life_expectancy": 82.8,
+    "median_seifa_score": 1003,
+    "coverage": {
+      "total_sa2s": 2473,
+      "with_health_data": 2398,
+      "with_complete_seifa": 2456,
+      "with_geographic_data": 2473
+    }
+  }
+}

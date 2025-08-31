@@ -1,0 +1,127 @@
+# AHGD V3: Modern Analytics Engineering dbt Project
+# High-performance health data transformation with DuckDB
+
+name: 'ahgd_v3'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'ahgd_v3'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Configuring models
+models:
+  ahgd_v3:
+    # Apply materializations and configurations to all models
+    +materialized: view
+    +on_schema_change: "fail"
+    
+    # Staging models - Raw data ingestion layer
+    staging:
+      +materialized: view
+      +schema: staging
+      +docs:
+        show: true
+      # ABS (Australian Bureau of Statistics) data
+      abs:
+        +tags: ["abs", "government", "staging"]
+      # AIHW (Australian Institute of Health and Welfare) data  
+      aihw:
+        +tags: ["aihw", "health", "staging"]
+      # BOM (Bureau of Meteorology) data
+      bom:
+        +tags: ["bom", "climate", "staging"]
+      # Medicare/PBS data
+      medicare:
+        +tags: ["medicare", "healthcare", "staging"]
+    
+    # Intermediate models - Business logic and transformations
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +docs:
+        show: true
+      +tags: ["intermediate"]
+      
+    # Marts - Final analytical models
+    marts:
+      +materialized: table
+      +schema: marts
+      +docs:
+        show: true
+      +post-hook: "{{ log('Refreshed mart: ' ~ this, info=True) }}"
+      
+      # Core health analytics
+      health:
+        +tags: ["health", "analytics", "core"]
+      
+      # Geographic analytics  
+      geographic:
+        +tags: ["geographic", "analytics", "spatial"]
+        
+      # Demographic analytics
+      demographic:
+        +tags: ["demographic", "analytics", "population"]
+
+# Test configurations
+tests:
+  +severity: error
+  +store_failures: true
+  +schema: test_failures
+
+# Snapshot configurations  
+snapshots:
+  ahgd_v3:
+    +target_schema: snapshots
+    +strategy: timestamp
+    +updated_at: updated_at
+
+# Seeds configuration
+seeds:
+  ahgd_v3:
+    +schema: seeds
+    +quote_columns: false
+    
+# Variables for the project
+vars:
+  # Date variables for incremental models
+  start_date: '2020-01-01'
+  end_date: '2024-12-31'
+  
+  # Geographic boundaries
+  current_asgs_year: '2021'
+  
+  # Data quality thresholds
+  quality_score_threshold: 0.8
+  completeness_threshold: 0.9
+  
+  # Performance optimizations
+  default_chunk_size: 50000
+  max_parallel_jobs: 4
+
+# Macros and custom configurations
+dispatch:
+  - macro_namespace: dbt_utils
+    search_order: ['ahgd_v3', 'dbt_utils']
+    
+# Documentation
+docs:
+  ahgd_v3:
+    +show: true
+
+# Analysis configurations
+analyses:
+  ahgd_v3:
+    +schema: analyses

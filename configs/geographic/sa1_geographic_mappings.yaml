@@ -1,0 +1,390 @@
+# Geographic Mappings Configuration for AHGD SA1 Standardisation
+#
+# This file defines mapping rules and correspondence tables for converting
+# various geographic units to the SA1 framework as required by the Australian
+# Bureau of Statistics (ABS 2021 standards).
+
+# Default mapping settings
+default_settings:
+  target_geographic_unit: "SA1"
+  allocation_method: "population_weighted"  # population_weighted, area_weighted, equal
+  minimum_allocation_threshold: 0.01  # Ignore allocations less than 1%
+  total_allocation_tolerance: 0.05    # Allow 5% deviation from total allocation = 1.0
+  enable_temporal_mapping: true       # Support time-based correspondence
+  cache_mappings: true
+  validate_mappings: true
+
+# SA1 Framework Configuration (ABS 2021)
+sa1_framework:
+  total_sa1_count: 61845  # As of 2021 Census (including 34 non-spatial special purpose codes)
+  code_format: "^\\d{11}$"  # 11-digit numeric code (ABS 2021 standard)
+  hierarchy_validation: true
+  
+  # SA1 naming conventions
+  naming_rules:
+    max_length: 150  # SA1 names can be longer than SA2s
+    allowed_characters: "^[A-Za-z0-9 \\-\\(\\)]+$"
+    standardise_case: "title"  # title, upper, lower, preserve
+    
+  # Population constraints (SA1 characteristics)
+  population_constraints:
+    min_population: 100      # Rural SA1s can be smaller
+    max_population: 1200     # Urban SA1s maximum
+    target_population: 400   # Average SA1 population
+    typical_range_min: 200   # Typical minimum
+    typical_range_max: 800   # Typical maximum
+
+# Mesh Block to SA1 Mapping (Direct hierarchical relationship)
+mesh_block_mapping:
+  
+  # Data sources
+  data_sources:
+    primary:
+      name: "ABS Mesh Block to SA1 Correspondence"
+      url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3"
+      format: "csv"
+      encoding: "utf-8"
+      update_frequency: "quinquennial"  # Every 5 years with census
+      
+  # Mapping methodology
+  methodology:
+    allocation_basis: "direct_containment"  # Mesh Blocks are building blocks for SA1s
+    relationship: "many_to_one"
+    validation: "code_hierarchy_check"
+    
+  # Quality rules
+  quality_rules:
+    require_full_coverage: true    # Every Mesh Block must belong to exactly one SA1
+    max_mesh_blocks_per_sa1: 200  # Reasonable limit for complex SA1s
+    
+# Postcode to SA1 Mapping
+postcode_mapping:
+  
+  # Data sources for postcode correspondences
+  data_sources:
+    primary:
+      name: "ABS Postcode to SA1 Correspondence"
+      url: "https://www.abs.gov.au/statistics/standards/australian-statistical-geography-standard-asgs-edition-3"
+      format: "csv"
+      encoding: "utf-8"
+      update_frequency: "annual"
+      
+    secondary:
+      name: "Australia Post Postcode Database"
+      url: "https://auspost.com.au/business/postcode-data"
+      format: "csv"
+      status: "supplementary"
+      
+  # Mapping methodology
+  methodology:
+    allocation_basis: "population_weighted"
+    population_data_source: "abs_census_2021"
+    mesh_block_level: true  # Use mesh blocks for fine-grained allocation to SA1s
+    
+  # Quality rules
+  quality_rules:
+    require_full_coverage: true    # Every postcode must map to at least one SA1
+    max_sa1_per_postcode: 200     # Large postcodes can contain many SA1s
+    min_allocation_factor: 0.001   # 0.1% minimum allocation
+    
+  # Validation rules
+  validation_rules:
+    check_allocation_sum: true     # Sum of allocations should equal 1.0
+    check_sa1_validity: true       # All SA1 codes must be valid 11-digit codes
+    check_postcode_validity: true  # All postcodes must be valid Australian postcodes
+    
+  # Special cases
+  special_cases:
+    
+    # Large postcodes spanning multiple SA1s
+    multi_sa1_postcodes:
+      strategy: "population_weighted"
+      examples:
+        - postcode: "2000"  # Sydney CBD
+          note: "High density, many SA1s"
+        - postcode: "6000"  # Perth CBD  
+          note: "Central business district"
+          
+    # Postcodes with minimal population
+    low_population_postcodes:
+      strategy: "area_weighted"
+      threshold_population: 50  # Lower threshold for SA1s
+      
+    # Business-only postcodes
+    business_postcodes:
+      strategy: "address_point_weighted"
+      allocation_basis: "address_count"
+
+# Address Point to SA1 Mapping
+address_mapping:
+  
+  # Data sources
+  data_sources:
+    primary:
+      name: "GNAF (Geocoded National Address File)"
+      provider: "Australian Government"
+      format: "csv"
+      precision: "address_point"
+      
+  # Mapping methodology
+  methodology:
+    allocation_basis: "point_in_polygon"  # Direct spatial allocation
+    spatial_precision: "high"
+    fallback_strategy: "nearest_sa1"
+    
+  # Quality rules
+  quality_rules:
+    require_spatial_match: true
+    max_distance_fallback: 1000  # metres
+
+# Statistical Area Hierarchy Mapping
+statistical_area_mapping:
+  
+  # SA1 is the base unit - all others are aggregations
+  sa1_to_sa2:
+    methodology: "direct_containment"  # SA1s are contained within SA2s
+    validation: "code_prefix_check"    # SA2 code = first 9 digits of SA1 code
+    relationship: "many_to_one"
+    
+  sa1_to_sa3:
+    methodology: "hierarchical_aggregation"  # Via SA2
+    validation: "code_prefix_check"          # SA3 code = first 5 digits of SA1 code
+    relationship: "many_to_one"
+    
+  sa1_to_sa4:
+    methodology: "hierarchical_aggregation"  # Via SA3
+    validation: "code_prefix_check"          # SA4 code = first 3 digits of SA1 code  
+    relationship: "many_to_one"
+    
+  sa1_to_state:
+    methodology: "hierarchical_aggregation"  # Via SA4
+    validation: "state_digit_check"          # First digit of SA1 code
+    relationship: "many_to_one"
+
+# Temporal Mapping (Historical Correspondences)
+temporal_mapping:
+  
+  # Support for different census years
+  census_years:
+    - year: 2021
+      status: "current"
+      sa1_count: 61845
+      code_format: "11_digit"
+      
+    - year: 2016
+      status: "historical"
+      sa1_count: 57523
+      code_format: "7_digit_and_11_digit"
+      correspondence_available: true
+      migration_notes: "ABS transitioned from 7-digit to 11-digit SA1 codes"
+      
+    - year: 2011
+      status: "historical"
+      sa1_count: 54805
+      code_format: "7_digit"
+      correspondence_available: true
+      
+  # Temporal correspondence rules
+  correspondence_rules:
+    default_allocation: "population_proportion"
+    handle_boundary_changes: true
+    handle_code_format_changes: true  # Important for SA1 7->11 digit transition
+    track_new_sa1s: true
+    track_split_sa1s: true
+    track_merged_sa1s: true
+    
+  # Change tracking
+  change_tracking:
+    log_changes: true
+    change_threshold: 0.05  # Log changes affecting >5% of area/population (lower threshold for SA1s)
+    impact_assessment: true
+
+# Custom Geographic Units to SA1 Mapping
+custom_units:
+  
+  # Electoral boundaries
+  electoral_boundaries:
+    federal_electorates:
+      allocation_basis: "population_weighted"
+      data_source: "aec"
+      aggregation_level: "sa1"  # Build electorates from SA1s
+      
+    state_electorates:
+      allocation_basis: "population_weighted"
+      data_source: "state_electoral_commissions"
+      aggregation_level: "sa1"
+      
+  # Tourism regions
+  tourism_regions:
+    allocation_basis: "tourism_activity_weighted"
+    data_source: "tra"  # Tourism Research Australia
+    aggregation_level: "sa1"
+    
+  # Economic regions
+  economic_regions:
+    anzsic_regions:
+      allocation_basis: "employment_weighted"
+      data_source: "abs_business_register"
+      aggregation_level: "sa1"
+
+# Data Quality and Validation
+data_quality:
+  
+  # Completeness checks
+  completeness_checks:
+    all_mesh_blocks_mapped: true
+    all_addresses_mapped: true
+    all_postcodes_mapped: true
+    no_orphaned_sa1s: true
+    hierarchy_complete: true  # All SA1s have valid parent SA2, SA3, SA4
+    
+  # Consistency checks
+  consistency_checks:
+    allocation_sum_tolerance: 0.01  # 1% tolerance
+    hierarchy_consistency: true     # SA1->SA2->SA3->SA4 code consistency
+    temporal_consistency: true
+    code_format_consistency: true   # All SA1 codes are 11 digits
+    
+  # Accuracy validation
+  accuracy_validation:
+    sample_verification_rate: 0.05  # Verify 5% of mappings
+    ground_truth_comparison: true
+    address_point_validation: true  # Validate using address points
+    expert_review_required: true
+    
+  # Error handling
+  error_handling:
+    missing_mappings: "error"      # error, warn, default
+    invalid_allocations: "error"   # error, warn, normalise
+    boundary_overlaps: "warn"      # error, warn, ignore
+    invalid_sa1_codes: "error"     # Strict validation for SA1 codes
+
+# Performance Optimisation
+performance:
+  
+  # Caching strategy
+  caching:
+    enable_mapping_cache: true
+    cache_size_mb: 200  # Larger cache for SA1s (more units)
+    cache_ttl_hours: 24
+    persistent_cache: true
+    
+  # Spatial indexing
+  spatial_indexing:
+    enable_rtree_index: true
+    index_granularity: "sa1"
+    rebuild_frequency: "weekly"
+    
+  # Batch processing
+  batch_processing:
+    batch_size: 10000  # Larger batches for SA1s
+    parallel_workers: 6  # More workers for SA1 processing
+    memory_limit_mb: 1024  # More memory for SA1 operations
+
+# Output Formats
+output_formats:
+  
+  # Standard correspondence tables
+  correspondence_tables:
+    format: "csv"
+    encoding: "utf-8"
+    include_metadata: true
+    
+    columns:
+      - source_code
+      - source_type  
+      - target_sa1_code
+      - sa2_code      # Include parent SA2
+      - sa3_code      # Include parent SA3
+      - sa4_code      # Include parent SA4
+      - state_code    # Include state
+      - allocation_factor
+      - mapping_method
+      - confidence_score
+      - data_source
+      - reference_date
+      
+  # Spatial formats
+  spatial_formats:
+    geojson:
+      precision: 6
+      include_properties: true
+      include_hierarchy: true  # Include SA2, SA3, SA4 in properties
+      
+    shapefile:
+      coordinate_system: "GDA2020"
+      include_dbf: true
+      
+  # Database formats
+  database_formats:
+    duckdb:  # Preferred for SA1 processing
+      table_prefix: "sa1_mapping_"
+      spatial_index: true
+      
+    postgresql:
+      table_prefix: "sa1_mapping_"
+      spatial_index: true
+      
+    sqlite:
+      spatial_extension: "spatialite"
+      
+# Reference Data Management
+reference_data:
+  
+  # Update schedules
+  update_schedules:
+    abs_correspondences: "quinquennial"  # Every 5 years with census
+    abs_updates: "annual"                # Annual updates from ABS
+    address_data: "quarterly"            # Address updates
+    postcode_data: "quarterly"           # As Australia Post updates
+    
+  # Data validation
+  data_validation:
+    checksum_verification: true
+    schema_validation: true
+    completeness_testing: true
+    sa1_code_validation: true  # Validate 11-digit format
+    hierarchy_validation: true  # Validate SA1->SA2->SA3->SA4 consistency
+    
+  # Version control
+  version_control:
+    track_versions: true
+    maintain_history: true
+    rollback_capability: true
+    
+# Integration Points
+integration:
+  
+  # External data sources
+  external_sources:
+    abs_api:
+      base_url: "https://api.abs.gov.au"
+      authentication_required: false
+      rate_limit: 1000  # requests per hour
+      
+    gnaf_api:
+      base_url: "https://data.gov.au/geoserver/geocoded-addressing"
+      authentication_required: false
+      
+  # Export destinations
+  export_destinations:
+    data_warehouse:
+      connection_string: "${DATABASE_URL}"
+      table_schema: "sa1_geographic"
+      
+    file_system:
+      base_path: "data_processed/sa1_mappings"
+      retention_days: 365
+
+# British English Configuration
+localisation:
+  spelling: "british_english"
+  terminology:
+    optimise: "optimise"      # not "optimize"
+    standardise: "standardise"  # not "standardize"
+    colour: "colour"           # not "color"
+    centre: "centre"           # not "center"
+  
+  date_format: "DD/MM/YYYY"   # Australian date format
+  decimal_separator: "."
+  thousands_separator: ","

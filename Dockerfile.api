@@ -1,0 +1,73 @@
+# AHGD V3: FastAPI Backend Service
+# High-performance API for health data analytics
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libgdal-dev \
+    libproj-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
+
+# Install core FastAPI and data stack
+RUN pip install --no-cache-dir \
+    'fastapi>=0.108.0' \
+    'uvicorn[standard]>=0.25.0' \
+    'pydantic>=2.5.0' \
+    'pydantic-settings>=2.1.0'
+
+# Install data processing libraries
+RUN pip install --no-cache-dir \
+    'polars[all]>=0.20.0' \
+    'duckdb>=0.9.0' \
+    'pyarrow>=15.0.0' \
+    'redis>=5.0.0'
+
+# Install additional API libraries
+RUN pip install --no-cache-dir \
+    'httpx>=0.26.0' \
+    'websockets>=12.0' \
+    'python-multipart>=0.0.6' \
+    'python-jose[cryptography]>=3.3.0' \
+    'bcrypt>=4.1.0'
+
+# Install geospatial libraries (lightweight versions)
+RUN pip install --no-cache-dir \
+    'shapely>=2.0.0' \
+    'pyproj>=3.6.0'
+
+# Install monitoring and logging
+RUN pip install --no-cache-dir \
+    'prometheus-client>=0.19.0' \
+    'structlog>=23.2.0' \
+    'rich>=13.7.0'
+
+# Copy source code
+COPY src /app/src
+COPY configs /app/configs
+
+# Create necessary directories
+RUN mkdir -p /app/logs \
+    && mkdir -p /app/cache \
+    && mkdir -p /app/temp
+
+# Set environment variables
+ENV PYTHONPATH=/app/src
+ENV FASTAPI_ENV=production
+
+# Expose the FastAPI port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Start the FastAPI application
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

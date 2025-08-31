@@ -1,0 +1,168 @@
+# DLT Configuration for Australian Health Data Analytics
+# Defines extraction, validation, and loading behavior for all data sources
+
+[runtime]
+# DLT runtime configuration
+log_level = "INFO"
+progress_bar = true
+request_timeout = 300
+request_retry_attempts = 3
+
+[sources]
+# Configure data source behavior
+
+[sources.abs_data]
+# Australian Bureau of Statistics data sources
+name = "abs_data"
+base_url = "https://www.abs.gov.au"
+request_delay = 1.0  # Respectful scraping delay
+user_agent = "AHGD-Analytics/1.0 (Research Project)"
+
+[sources.aihw_data]
+# Australian Institute of Health and Welfare
+name = "aihw_data"  
+base_url = "https://data.gov.au"
+request_delay = 0.5
+
+[sources.phidu_data]
+# Public Health Information Development Unit
+name = "phidu_data"
+base_url = "https://phidu.torrens.edu.au"
+request_delay = 2.0  # More conservative for academic server
+
+[sources.climate_data]
+# Bureau of Meteorology climate data
+name = "climate_data"
+base_url = "http://www.bom.gov.au"
+request_delay = 1.5
+
+# Destination configuration
+[destination]
+# DuckDB destination settings
+type = "duckdb"
+credentials = "health_analytics.db"
+
+[destination.config]
+# DuckDB-specific configuration
+create_indexes = true
+enable_spatial = true  # For geographic data
+memory_limit = "8GB"
+threads = 4
+
+# Schema and table configuration
+[schema]
+naming = "snake_case"  # Convert CamelCase to snake_case
+max_table_name_length = 64
+add_dlt_metadata = true
+add_dlt_id = true
+
+# Data validation settings
+[validation]
+# Global validation rules
+enable_pydantic_validation = true
+fail_on_validation_errors = false  # Log errors but continue processing
+max_validation_errors = 100
+
+[validation.geographic]
+# Geographic data validation
+validate_sa_codes = true
+validate_coordinates = true
+validate_state_mappings = true
+
+[validation.health]
+# Health data validation
+validate_age_groups = true
+validate_service_codes = true
+validate_date_ranges = true
+
+# Load settings
+[load]
+# Loading behavior
+write_disposition = "merge"  # Upsert new/changed records
+batch_size = 10000
+max_parallel_load_jobs = 4
+
+[load.sa1_boundaries]
+# SA1 boundary specific settings (large dataset)
+batch_size = 5000
+max_parallel_load_jobs = 2
+
+[load.sa2_boundaries]  
+batch_size = 1000
+max_parallel_load_jobs = 1
+
+# Extract settings
+[extract]
+# Global extraction settings
+max_parallel_items = 4
+file_timeout = 1800  # 30 minutes for large files
+
+[extract.geographic]
+# Geographic data extraction
+download_both_coordinate_systems = true  # GDA2020 and GDA94
+validate_zip_files = true
+extract_to_temp = true
+
+[extract.health]
+# Health data extraction
+validate_excel_files = true
+skip_empty_sheets = true
+infer_data_types = true
+
+# Pipeline-specific settings
+[pipeline.sa1_migration]
+# SA1 data migration pipeline
+description = "Migrate from SA2 to SA1 level data"
+priority = "high"
+schedule = "0 2 * * 0"  # Weekly Sunday at 2 AM
+max_runtime_minutes = 480  # 8 hours
+
+[pipeline.seifa_sa1]
+description = "SEIFA data at SA1 level"
+priority = "high"  
+schedule = "0 3 * * 0"  # After SA1 boundaries
+
+[pipeline.health_services]
+description = "MBS/PBS health service data"
+priority = "medium"
+schedule = "0 4 * * 0"
+
+[pipeline.mortality_data]
+description = "AIHW mortality and morbidity data"
+priority = "medium"
+schedule = "0 5 * * 0"
+
+[pipeline.chronic_disease]
+description = "PHIDU chronic disease prevalence"
+priority = "medium"
+schedule = "0 6 * * 0"
+
+[pipeline.climate_environment]
+description = "Climate and environmental health data"
+priority = "low"
+schedule = "0 7 * * 0"
+
+# Monitoring and alerting
+[monitoring]
+enable_monitoring = true
+log_pipeline_metrics = true
+send_completion_notifications = false  # Set to true with proper email config
+
+[monitoring.performance]
+log_memory_usage = true
+log_processing_times = true
+alert_on_long_runtimes = true
+max_acceptable_runtime_minutes = 120
+
+[monitoring.data_quality]
+log_validation_errors = true
+alert_on_high_error_rates = true
+max_acceptable_error_rate = 0.05  # 5%
+
+# Development and debugging
+[dev]
+# Development mode settings
+sample_data = false  # Set to true for testing with smaller datasets
+debug_mode = false
+preserve_temp_files = false
+log_sql_queries = false

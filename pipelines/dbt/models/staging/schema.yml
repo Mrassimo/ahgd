@@ -1,0 +1,259 @@
+# DBT Schema Documentation for Staging Models
+# Defines sources, models, tests, and documentation for raw data staging
+
+version: 2
+
+# Data sources (loaded by DLT)
+sources:
+  - name: raw_data
+    description: "Raw Australian health and geographic data loaded via DLT pipelines"
+    database: health_analytics
+    schema: main
+    
+    # DLT metadata tracking
+    meta:
+      loader: "DLT (Data Load Tool)"
+      refresh_frequency: "Weekly"
+      data_steward: "AHGD Analytics Team"
+    
+    tables:
+      # Geographic boundary data
+      - name: sa1_boundaries_raw
+        description: "Raw SA1 boundary data from ABS (61,845 areas)"
+        columns:
+          - name: sa1_code
+            description: "11-digit SA1 code"
+            tests:
+              - unique
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "length(sa1_code) = 11"
+          
+          - name: sa1_name
+            description: "SA1 area name"
+            tests:
+              - not_null
+          
+          - name: sa2_code  
+            description: "Parent SA2 code (9 digits)"
+            tests:
+              - not_null
+              - dbt_utils.expression_is_true:
+                  expression: "length(sa2_code) = 9"
+          
+          - name: state_code
+            description: "State/territory code (1-8)"
+            tests:
+              - not_null
+              - accepted_values:
+                  values: ['1', '2', '3', '4', '5', '6', '7', '8']
+          
+          - name: population_total
+            description: "Total population from census"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "population_total >= 0"
+          
+          - name: area_sqkm
+            description: "Area in square kilometres"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "area_sqkm > 0"
+                  
+          - name: geometry_wkt
+            description: "Well-Known Text boundary geometry"
+            
+          - name: _dlt_load_id
+            description: "DLT load identifier for lineage"
+            
+          - name: _dlt_id  
+            description: "DLT unique record identifier"
+      
+      - name: sa2_boundaries_raw
+        description: "Raw SA2 boundary data from ABS (2,454 areas)"
+        columns:
+          - name: sa2_code
+            description: "9-digit SA2 code"
+            tests:
+              - unique
+              - not_null
+              
+          - name: sa2_name
+            description: "SA2 area name"
+            tests:
+              - not_null
+              
+          - name: state_name
+            description: "State/territory name"
+            tests:
+              - accepted_values:
+                  values: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+      
+      # SEIFA socio-economic data
+      - name: seifa_sa1_raw
+        description: "SEIFA socio-economic indexes at SA1 level"
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+              - relationships:
+                  to: source('raw_data', 'sa1_boundaries_raw')
+                  field: sa1_code
+          
+          - name: irsd_score
+            description: "Index of Relative Socio-economic Disadvantage score"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "irsd_score > 0"
+          
+          - name: irsd_decile_australia
+            description: "IRSD national decile (1-10)"
+            tests:
+              - accepted_values:
+                  values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          
+          - name: population
+            description: "Census population for SEIFA calculation"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "population > 0"
+      
+      # Health service data
+      - name: mbs_services_raw
+        description: "Medicare Benefits Schedule service data"
+        columns:
+          - name: geographic_code
+            description: "Geographic area code (SA1 or SA2)"
+            tests:
+              - not_null
+              
+          - name: mbs_item_number
+            description: "MBS item number"
+            tests:
+              - not_null
+              
+          - name: service_count
+            description: "Number of services provided"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "service_count >= 0"
+          
+          - name: benefit_paid
+            description: "Medicare benefit paid (AUD)"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "benefit_paid >= 0"
+                  
+          - name: financial_year
+            description: "Financial year (YYYY-YY format)"
+            tests:
+              - not_null
+      
+      # Mortality data
+      - name: aihw_mortality_raw
+        description: "AIHW mortality data (MORT/GRIM datasets)"
+        columns:
+          - name: geographic_code
+            description: "Geographic area code"
+            tests:
+              - not_null
+              
+          - name: cause_of_death
+            description: "Cause of death category"
+            tests:
+              - not_null
+              
+          - name: death_count
+            description: "Number of deaths"  
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "death_count >= 0"
+          
+          - name: calendar_year
+            description: "Year of death"
+            tests:
+              - dbt_utils.expression_is_true:
+                  expression: "calendar_year BETWEEN 2000 AND 2030"
+
+# Staging models
+models:
+  - name: stg_sa1_boundaries
+    description: "Cleaned and validated SA1 boundary data with standardised codes"
+    columns:
+      - name: sa1_code
+        description: "Standardised 11-digit SA1 code"
+        tests:
+          - unique
+          - not_null
+          
+      - name: sa1_name_clean
+        description: "Cleaned SA1 name"
+        
+      - name: sa2_code
+        description: "Parent SA2 code"
+        
+      - name: state_name_std
+        description: "Standardised state/territory abbreviation"
+        tests:
+          - accepted_values:
+              values: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+              
+      - name: population_census
+        description: "Census population count"
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "population_census >= 0"
+              
+      - name: area_sqkm
+        description: "Area in square kilometres"
+        
+      - name: population_density
+        description: "Population per square kilometre"
+        
+      - name: is_valid_geometry
+        description: "Whether boundary geometry is valid"
+        
+      - name: dbt_valid_from
+        description: "DBT validity start timestamp"
+        
+      - name: data_quality_score
+        description: "Overall data quality score (0-1)"
+
+  - name: stg_seifa_sa1
+    description: "SEIFA socio-economic data validated and enriched at SA1 level"
+    columns:
+      - name: sa1_code
+        description: "SA1 area code"
+        tests:
+          - unique
+          - not_null
+          
+      - name: irsd_score
+        description: "IRSD disadvantage score"
+        
+      - name: irsd_decile_australia
+        description: "National disadvantage decile"
+        
+      - name: irsd_quintile_australia
+        description: "National disadvantage quintile"
+        
+      - name: disadvantage_category
+        description: "Categorical disadvantage level"
+        tests:
+          - accepted_values:
+              values: ['very_high', 'high', 'moderate', 'low', 'very_low']
+              
+      - name: population_seifa
+        description: "Population used for SEIFA calculation"
+
+# Model tests
+tests:
+  - name: test_sa1_sa2_relationship
+    description: "Verify all SA1s have valid parent SA2 relationships"
+    
+  - name: test_population_consistency
+    description: "Check population data consistency between sources"
+    
+  - name: test_geographic_coverage
+    description: "Ensure complete geographic coverage without gaps"

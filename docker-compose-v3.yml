@@ -1,0 +1,251 @@
+# AHGD V3: Modern Analytics Engineering Platform
+# Zero-click deployment with: docker-compose -f docker-compose-v3.yml up
+
+x-airflow-common:
+  &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.v3
+  environment:
+    - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+    - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=True
+    - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+    - AIRFLOW__CORE__ENABLE_XCOM_PICKLING=True
+    - PYTHONPATH=/opt/airflow/src
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./src:/opt/airflow/src
+    - ./configs:/opt/airflow/configs
+    - ./schemas:/opt/airflow/schemas
+    - ./data:/opt/airflow/data
+    - ./duckdb_data:/opt/airflow/duckdb_data
+    - ahgd_duckdb_volume:/opt/airflow/db
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - ahgd_network
+
+services:
+  # =============================================================================
+  # DATABASE LAYER
+  # =============================================================================
+  
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-airflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: ${POSTGRES_DB:-airflow}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ahgd_network
+
+  # DuckDB Service - High-performance OLAP database
+  duckdb:
+    image: python:3.11-slim
+    working_dir: /app
+    command: >
+      bash -c "
+      pip install duckdb polars pyarrow fastapi uvicorn &&
+      python -c '
+      import duckdb
+      import os
+      os.makedirs(\"/data/duckdb\", exist_ok=True)
+      conn = duckdb.connect(\"/data/duckdb/ahgd_v3.db\")
+      conn.execute(\"CREATE SCHEMA IF NOT EXISTS ahgd_analytics\")
+      conn.execute(\"CREATE SCHEMA IF NOT EXISTS ahgd_staging\")
+      print(\"DuckDB initialized successfully\")
+      ' &&
+      python -m http.server 8083
+      "
+    ports:
+      - "8083:8083"
+    volumes:
+      - ahgd_duckdb_volume:/data/duckdb
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import duckdb; duckdb.connect('/data/duckdb/ahgd_v3.db').close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ahgd_network
+
+  # Redis - Caching and session management
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - ahgd_network
+
+  # =============================================================================
+  # ORCHESTRATION LAYER - Apache Airflow
+  # =============================================================================
+
+  airflow-init:
+    <<: *airflow-common
+    command: >
+      bash -c "
+      airflow db init &&
+      airflow users create \
+        --role Admin \
+        --username ${AIRFLOW_ADMIN_USERNAME:-admin} \
+        --email ${AIRFLOW_ADMIN_EMAIL:-admin@ahgd.org} \
+        --firstname ${AIRFLOW_ADMIN_FIRSTNAME:-AHGD} \
+        --lastname ${AIRFLOW_ADMIN_LASTNAME:-Admin} \
+        --password ${AIRFLOW_ADMIN_PASSWORD:-change_me_in_production} &&
+      echo 'Airflow initialized successfully'
+      "
+    networks:
+      - ahgd_network
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ahgd_network
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "$${HOSTNAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ahgd_network
+
+  # =============================================================================
+  # ANALYTICS LAYER - Streamlit Dashboard
+  # =============================================================================
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./streamlit_app:/app/streamlit_app
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ./data:/app/data
+      - ahgd_duckdb_volume:/app/db
+    environment:
+      - DUCKDB_PATH=/app/db/ahgd_v3.db
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    depends_on:
+      duckdb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8501/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - ahgd_network
+
+  # =============================================================================
+  # API LAYER - FastAPI Backend
+  # =============================================================================
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./configs:/app/configs
+      - ahgd_duckdb_volume:/app/db
+    environment:
+      - DUCKDB_PATH=/app/db/ahgd_v3.db
+      - REDIS_URL=redis://redis:6379/1
+      - ENVIRONMENT=development
+    depends_on:
+      duckdb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - ahgd_network
+
+  # =============================================================================
+  # DOCUMENTATION - MkDocs Site
+  # =============================================================================
+
+  docs:
+    image: squidfunk/mkdocs-material:latest
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./docs:/docs
+      - ./mkdocs.yml:/docs/mkdocs.yml
+    command: serve --dev-addr=0.0.0.0:8000
+    networks:
+      - ahgd_network
+
+# =============================================================================
+# VOLUMES & NETWORKS
+# =============================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  ahgd_duckdb_volume:
+    driver: local
+
+networks:
+  ahgd_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16

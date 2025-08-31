@@ -1,0 +1,230 @@
+# AHGD V3 Source Definitions
+# Comprehensive Australian health and geographic data sources
+
+version: 2
+
+sources:
+  # Australian Bureau of Statistics (ABS) - Demographics and Geographic Data
+  - name: abs
+    description: "Australian Bureau of Statistics data including census, geographic boundaries, and SEIFA indices"
+    database: ahgd_v3
+    schema: raw_abs
+    
+    tables:
+      - name: census_sa1_demographic
+        description: "SA1 level demographic data from Australian Census"
+        columns:
+          - name: sa1_code
+            description: "Statistical Area Level 1 code (2021 ASGS)"
+            tests:
+              - not_null
+              - unique
+          - name: total_population
+            description: "Total population count"
+            tests:
+              - not_null
+              - dbt_utils.accepted_range:
+                  min_value: 0
+                  max_value: 10000
+          - name: median_age
+            description: "Median age of residents"
+          - name: median_income
+            description: "Median weekly household income"
+          - name: indigenous_population
+            description: "Aboriginal and Torres Strait Islander population"
+            
+      - name: geographic_boundaries_sa1
+        description: "SA1 geographic boundaries with spatial data"
+        columns:
+          - name: sa1_code
+            description: "Statistical Area Level 1 code"
+            tests:
+              - not_null
+              - unique
+          - name: sa1_name
+            description: "SA1 area name"
+          - name: sa2_code
+            description: "Parent SA2 code"
+          - name: state_code
+            description: "State/territory code"
+          - name: boundary_geometry
+            description: "Geographic boundary as WKT geometry"
+          - name: area_sqkm
+            description: "Area in square kilometres"
+            
+      - name: seifa_indices
+        description: "SEIFA socioeconomic indices by SA1"
+        columns:
+          - name: sa1_code
+            description: "SA1 code"
+            tests:
+              - not_null
+          - name: irsd_score
+            description: "Index of Relative Socio-economic Disadvantage score"
+          - name: irsad_score  
+            description: "Index of Relative Socio-economic Advantage and Disadvantage score"
+          - name: ier_score
+            description: "Index of Education and Occupation score"
+          - name: iec_score
+            description: "Index of Economic Resources score"
+
+  # Australian Institute of Health and Welfare (AIHW) - Health Data
+  - name: aihw
+    description: "Australian Institute of Health and Welfare health indicators and mortality data"
+    database: ahgd_v3
+    schema: raw_aihw
+    
+    tables:
+      - name: health_indicators_sa1
+        description: "Health indicators by SA1 area"
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+          - name: data_year
+            description: "Year of data collection"
+            tests:
+              - not_null
+          - name: diabetes_prevalence
+            description: "Age-standardised diabetes prevalence rate per 100"
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: 0
+                  max_value: 50
+          - name: mental_health_rate
+            description: "Mental health service utilisation rate per 1000"
+          - name: cardiovascular_disease_rate
+            description: "Cardiovascular disease prevalence rate"
+          - name: cancer_incidence_rate
+            description: "Cancer incidence rate per 100,000"
+            
+      - name: mortality_data_sa1
+        description: "Mortality statistics by SA1"
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+          - name: death_year
+            description: "Year of death"
+          - name: age_standardised_mortality_rate
+            description: "Age-standardised mortality rate per 100,000"
+          - name: leading_cause_of_death
+            description: "Leading cause of death category"
+          - name: life_expectancy
+            description: "Life expectancy at birth"
+
+  # Bureau of Meteorology (BOM) - Climate and Environmental Data  
+  - name: bom
+    description: "Bureau of Meteorology climate and environmental health data"
+    database: ahgd_v3
+    schema: raw_bom
+    
+    tables:
+      - name: climate_sa1
+        description: "Climate data aggregated to SA1 level"
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+          - name: data_date
+            description: "Date of climate observation"
+            tests:
+              - not_null
+          - name: temperature_avg_c
+            description: "Average temperature in Celsius"
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: -20
+                  max_value: 60
+          - name: temperature_max_c
+            description: "Maximum temperature in Celsius"
+          - name: temperature_min_c  
+            description: "Minimum temperature in Celsius"
+          - name: rainfall_mm
+            description: "Rainfall in millimetres"
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: 0
+                  max_value: 1000
+          - name: humidity_percent
+            description: "Relative humidity percentage"
+          - name: air_quality_index
+            description: "Air quality index (0-500 scale)"
+            
+      - name: extreme_weather_events
+        description: "Extreme weather events affecting SA1 areas"
+        columns:
+          - name: sa1_code
+            description: "Affected SA1 area"
+          - name: event_date
+            description: "Date of weather event"
+          - name: event_type
+            description: "Type of extreme weather event"
+          - name: severity_level
+            description: "Severity level (1-5 scale)"
+
+  # Department of Health - Medicare and PBS Data
+  - name: medicare
+    description: "Medicare services and PBS prescription data"
+    database: ahgd_v3
+    schema: raw_medicare
+    
+    tables:
+      - name: gp_utilisation_sa1
+        description: "GP service utilisation by SA1"
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+          - name: service_year
+            description: "Year of service"
+          - name: gp_visits_per_capita
+            description: "GP visits per capita per year"
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: 0
+                  max_value: 50
+          - name: specialist_referrals_per_capita
+            description: "Specialist referrals per capita"
+          - name: bulk_billing_rate
+            description: "Bulk billing rate percentage"
+            
+      - name: pbs_prescriptions_sa1
+        description: "PBS prescription data by SA1"
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+          - name: prescription_year
+            description: "Year of prescription"
+          - name: total_prescriptions
+            description: "Total number of prescriptions"
+          - name: average_cost_per_prescription
+            description: "Average cost per prescription"
+          - name: chronic_disease_prescriptions
+            description: "Prescriptions for chronic diseases"
+            
+      - name: immunisation_rates_sa1
+        description: "Childhood immunisation rates by SA1" 
+        columns:
+          - name: sa1_code
+            description: "SA1 area code"
+            tests:
+              - not_null
+          - name: assessment_year
+            description: "Year of immunisation assessment"
+          - name: fully_immunised_rate_1yr
+            description: "Fully immunised rate at 1 year (%)"
+            tests:
+              - dbt_utils.accepted_range:
+                  min_value: 0
+                  max_value: 100
+          - name: fully_immunised_rate_2yr
+            description: "Fully immunised rate at 2 years (%)"
+          - name: fully_immunised_rate_5yr
+            description: "Fully immunised rate at 5 years (%)"

@@ -51,6 +51,16 @@ dependencies = [
     # Data versioning and pipeline management
     "dvc[s3,ssh]>=3.40.0",
     "dvclive>=3.40.0",
+    # Modern data engineering stack
+    "dlt[duckdb,filesystem]>=1.5.0",
+    "dbt-duckdb>=1.8.0",  
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "sqlalchemy>=2.0.0",
+    "jinja2>=3.1.0",
+    # Enhanced data processing
+    "pyarrow>=18.0.0",
+    "fsspec>=2024.10.0",
 ]
 
 [dependency-groups]

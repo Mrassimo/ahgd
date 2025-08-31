@@ -1,0 +1,125 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "sa1_code": "10102100701",
+        "sa1_name": "Sydney - Haymarket - The Rocks (East)",
+        "population": 420,
+        "dwellings": 185,
+        "sa2_code": "101021007",
+        "sa3_code": "10102",
+        "sa4_code": "101",
+        "state_code": "NSW",
+        "remoteness_category": "Major Cities"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [151.2070, -33.8670],
+          [151.2116, -33.8670],
+          [151.2116, -33.8706],
+          [151.2070, -33.8706],
+          [151.2070, -33.8670]
+        ]]
+      }
+    },
+    {
+      "type": "Feature", 
+      "properties": {
+        "sa1_code": "10102100702",
+        "sa1_name": "Sydney - Haymarket - The Rocks (West)",
+        "population": 380,
+        "dwellings": 165,
+        "sa2_code": "101021007",
+        "sa3_code": "10102", 
+        "sa4_code": "101",
+        "state_code": "NSW",
+        "remoteness_category": "Major Cities"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [151.2020, -33.8675],
+          [151.2070, -33.8675],
+          [151.2070, -33.8715],
+          [151.2020, -33.8715],
+          [151.2020, -33.8675]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "sa1_code": "20203200801", 
+        "sa1_name": "Melbourne - Carlton (East)",
+        "population": 465,
+        "dwellings": 205,
+        "sa2_code": "202032008",
+        "sa3_code": "20203",
+        "sa4_code": "202",
+        "state_code": "VIC",
+        "remoteness_category": "Major Cities"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [144.9706, -37.8000],
+          [144.9756, -37.8000],
+          [144.9756, -37.8042],
+          [144.9706, -37.8042],
+          [144.9706, -37.8000]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "sa1_code": "30504500901",
+        "sa1_name": "Brisbane - Fortitude Valley (East)", 
+        "population": 395,
+        "dwellings": 175,
+        "sa2_code": "305045009",
+        "sa3_code": "30504",
+        "sa4_code": "305",
+        "state_code": "QLD",
+        "remoteness_category": "Major Cities"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [153.0323, -27.4576],
+          [153.0373, -27.4576],
+          [153.0373, -27.4620],
+          [153.0323, -27.4620],
+          [153.0323, -27.4576]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "sa1_code": "15301800301",
+        "sa1_name": "Lightning Ridge - Central",
+        "population": 245,
+        "dwellings": 110,
+        "sa2_code": "153018003",
+        "sa3_code": "15301", 
+        "sa4_code": "153",
+        "state_code": "NSW",
+        "remoteness_category": "Very Remote"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [147.9200, -29.3800],
+          [148.5800, -29.3800],
+          [148.5800, -29.4738],
+          [147.9200, -29.4738],
+          [147.9200, -29.3800]
+        ]]
+      }
+    }
+  ]
+}

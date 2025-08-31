@@ -1,0 +1,226 @@
+# AHGD V3 Staging Models Documentation
+# Clean and standardize raw data from all sources
+
+version: 2
+
+models:
+  # ABS Staging Models
+  - name: stg_abs__sa1_demographics
+    description: "Standardized SA1 demographic data from ABS Census"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier (2021 ASGS)"
+        tests:
+          - not_null
+          - unique
+      - name: sa1_name
+        description: "Standardized SA1 area name"
+      - name: sa2_code
+        description: "Parent SA2 code"
+      - name: state_code
+        description: "State/territory code (standardized)"
+      - name: total_population
+        description: "Total population count (validated)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 10000
+      - name: median_age
+        description: "Median age (years)"
+      - name: median_income_weekly
+        description: "Median weekly household income (AUD)"
+      - name: indigenous_population_count
+        description: "Aboriginal and Torres Strait Islander population"
+      - name: population_density_per_sqkm
+        description: "Population density per square kilometre"
+      - name: data_quality_score
+        description: "Data quality score (0-1)"
+      - name: updated_at
+        description: "Record last updated timestamp"
+        
+  - name: stg_abs__sa1_geography
+    description: "Standardized SA1 geographic boundaries and spatial data"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"
+        tests:
+          - not_null
+          - unique
+      - name: sa1_name
+        description: "SA1 area name"
+      - name: sa2_code
+        description: "Parent SA2 code"
+      - name: sa3_code
+        description: "Parent SA3 code"  
+      - name: sa4_code
+        description: "Parent SA4 code"
+      - name: state_code
+        description: "State/territory code"
+      - name: state_name
+        description: "State/territory name"
+      - name: remoteness_category
+        description: "ABS Remoteness classification"
+      - name: boundary_wkt
+        description: "Boundary geometry as Well-Known Text"
+      - name: centroid_longitude
+        description: "Geographic centroid longitude"
+      - name: centroid_latitude
+        description: "Geographic centroid latitude"
+      - name: area_sqkm
+        description: "Area in square kilometres"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1000
+              
+  - name: stg_abs__seifa_indices
+    description: "Standardized SEIFA socioeconomic indices"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"
+        tests:
+          - not_null
+          - unique
+      - name: irsd_score
+        description: "Index of Relative Socio-economic Disadvantage (higher = less disadvantaged)"
+      - name: irsd_decile
+        description: "IRSD decile (1=most disadvantaged, 10=least disadvantaged)"
+      - name: irsad_score
+        description: "Index of Relative Socio-economic Advantage and Disadvantage"
+      - name: ier_score  
+        description: "Index of Education and Occupation"
+      - name: iec_score
+        description: "Index of Economic Resources"
+      - name: overall_disadvantage_rank
+        description: "Combined disadvantage ranking"
+
+  # AIHW Staging Models  
+  - name: stg_aihw__health_indicators
+    description: "Standardized health indicators by SA1"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"
+        tests:
+          - not_null
+      - name: indicator_year
+        description: "Year of health data"
+        tests:
+          - not_null
+      - name: diabetes_prevalence_rate
+        description: "Age-standardised diabetes prevalence per 100 population"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 50
+      - name: mental_health_service_rate
+        description: "Mental health service utilisation per 1000 population"
+      - name: cardiovascular_disease_rate
+        description: "CVD prevalence rate per 100 population"
+      - name: cancer_incidence_rate
+        description: "Cancer incidence per 100,000 population"
+      - name: data_confidence_level
+        description: "Statistical confidence level for indicators"
+      - name: data_suppression_flag
+        description: "Flag for suppressed data (privacy/small numbers)"
+
+  - name: stg_aihw__mortality_data
+    description: "Standardized mortality statistics"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"
+        tests:
+          - not_null
+      - name: mortality_year
+        description: "Year of mortality data"
+      - name: age_standardised_death_rate
+        description: "Age-standardised death rate per 100,000"
+      - name: life_expectancy_at_birth
+        description: "Life expectancy at birth (years)"
+      - name: leading_cause_category
+        description: "Leading cause of death category"
+      - name: premature_mortality_rate
+        description: "Deaths under 75 per 100,000"
+
+  # BOM Staging Models
+  - name: stg_bom__climate_sa1
+    description: "Climate data aggregated and standardized for SA1 areas"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"  
+        tests:
+          - not_null
+      - name: climate_year
+        description: "Year of climate data"
+      - name: climate_month
+        description: "Month of climate data"
+      - name: avg_temperature_c
+        description: "Average temperature (Celsius)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -20
+              max_value: 60
+      - name: max_temperature_c
+        description: "Maximum temperature (Celsius)"
+      - name: min_temperature_c
+        description: "Minimum temperature (Celsius)"
+      - name: total_rainfall_mm
+        description: "Total rainfall (millimetres)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 2000
+      - name: avg_humidity_percent
+        description: "Average relative humidity (%)"
+      - name: heat_wave_days
+        description: "Number of heat wave days in period"
+      - name: extreme_rainfall_events
+        description: "Count of extreme rainfall events"
+
+  # Medicare Staging Models
+  - name: stg_medicare__gp_utilisation
+    description: "GP service utilisation standardized by SA1"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"
+        tests:
+          - not_null
+      - name: service_year
+        description: "Year of Medicare services"
+      - name: gp_visits_per_capita_annual
+        description: "GP visits per person per year"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 50
+      - name: specialist_referrals_per_capita
+        description: "Specialist referrals per person per year"
+      - name: bulk_billing_percentage
+        description: "Bulk billing rate (%)"
+      - name: after_hours_visits_per_capita
+        description: "After-hours GP visits per capita"
+      - name: telehealth_visits_per_capita
+        description: "Telehealth consultations per capita"
+
+  - name: stg_medicare__immunisation_rates
+    description: "Childhood immunisation coverage by SA1"
+    columns:
+      - name: sa1_code
+        description: "SA1 area identifier"
+        tests:
+          - not_null
+      - name: assessment_year
+        description: "Immunisation assessment year"
+      - name: fully_immunised_1yr_rate
+        description: "Full immunisation coverage at 12 months (%)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: fully_immunised_2yr_rate  
+        description: "Full immunisation coverage at 24 months (%)"
+      - name: fully_immunised_5yr_rate
+        description: "Full immunisation coverage at 60 months (%)"
+      - name: hpv_immunisation_rate
+        description: "HPV immunisation coverage (%)"

@@ -1,0 +1,256 @@
+# DBT Project Configuration for Australian Health Data Analytics
+# Transforms raw health data into analytics-ready models with full testing and documentation
+
+name: 'ahgd_analytics'
+version: '2.0.0'
+profile: 'ahgd'
+
+# This setting configures which "profile" dbt uses for this project.
+# Profiles are stored in ~/.dbt/profiles.yml or can be set via environment variables
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"] 
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+docs-paths: ["docs"]
+
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+# Configuring models
+models:
+  ahgd_analytics:
+    # Global model configuration
+    +materialized: table
+    +docs:
+      node_color: "#2E8B57"  # Sea green for health data
+    
+    # Staging models (raw data cleanup)
+    staging:
+      +materialized: view
+      +docs:
+        node_color: "#87CEEB"  # Sky blue for staging
+      
+      # Geographic staging models
+      geographic:
+        +tags: ["geographic", "staging"]
+        +docs:
+          description: "Cleaned and standardised geographic boundary data"
+        
+        # SA1 models (large datasets)
+        sa1:
+          +materialized: incremental
+          +unique_key: "sa1_code"
+          +on_schema_change: "fail"
+          
+        # SA2 models  
+        sa2:
+          +materialized: table
+          +unique_key: "sa2_code"
+      
+      # Socio-economic staging
+      seifa:
+        +tags: ["seifa", "socioeconomic", "staging"]
+        +materialized: table
+        +docs:
+          description: "SEIFA socio-economic index data with validation"
+      
+      # Health data staging
+      health:
+        +tags: ["health", "staging"]
+        +docs:
+          description: "Cleaned health service and outcome data"
+          
+        # Health service utilisation
+        services:
+          +materialized: incremental
+          +unique_key: ["geographic_code", "service_date", "demographic_group"]
+          +on_schema_change: "sync_all_columns"
+          
+        # Mortality and morbidity
+        mortality:
+          +materialized: table
+          +unique_key: ["geographic_code", "cause_of_death", "year", "age_group"]
+          
+        # Chronic disease prevalence
+        chronic_disease:
+          +materialized: table
+          +unique_key: ["geographic_code", "disease_type", "age_group"]
+      
+      # Environmental staging
+      environment:
+        +tags: ["climate", "environment", "staging"]
+        +materialized: table
+        +docs:
+          description: "Climate and environmental health risk data"
+    
+    # Intermediate models (business logic)
+    intermediate:
+      +materialized: table
+      +docs:
+        node_color: "#DDA0DD"  # Plum for intermediate processing
+      
+      # Geographic relationships and hierarchies
+      geographic:
+        +tags: ["geographic", "relationships"]
+        
+      # Health risk calculations
+      health_risks:
+        +tags: ["health", "risk_assessment"]
+        +docs:
+          description: "Calculated health risk indicators and scores"
+        
+      # Population health profiles
+      population_health:
+        +tags: ["population", "health", "demographics"] 
+        +docs:
+          description: "Population health characteristics and outcomes"
+    
+    # Marts (analytics-ready models)
+    marts:
+      +materialized: table
+      +docs:
+        node_color: "#FF6347"  # Tomato for final analytics models
+      
+      # Core health analytics
+      core:
+        +tags: ["analytics", "core"]
+        +docs:
+          description: "Primary health analytics for dashboard and reporting"
+        
+        # Master health record (one record per geographic area)
+        master_health_record:
+          +materialized: table
+          +unique_key: "geographic_code"
+          +post-hook: "CREATE INDEX IF NOT EXISTS idx_mhr_state ON {{ this }} (state_code)"
+          
+        # Health disparity analysis
+        health_disparities:
+          +materialized: table
+          +tags: ["disparity", "equity"]
+          
+        # Service utilisation patterns
+        service_patterns:
+          +materialized: table
+          +tags: ["services", "utilisation"]
+      
+      # Research and advanced analytics
+      research:
+        +tags: ["research", "advanced_analytics"]
+        +materialized: table
+        +docs:
+          description: "Research-focused models for academic and policy analysis"
+        
+        # Correlation analysis
+        health_correlations:
+          +materialized: view  # Computed on-demand
+          +tags: ["correlation", "statistical"]
+          
+        # Temporal trends
+        health_trends:
+          +materialized: table
+          +tags: ["trends", "temporal"]
+          
+        # Geospatial analysis
+        spatial_health_patterns:
+          +materialized: table  
+          +tags: ["spatial", "clustering"]
+
+# Testing configuration
+tests:
+  +severity: warn  # Default severity for failed tests
+  
+  # Test configuration by type
+  ahgd_analytics:
+    staging:
+      +severity: error  # Staging data must pass all tests
+    
+    intermediate:
+      +severity: warn   # Warnings for intermediate models
+      
+    marts:
+      +severity: error  # Final models must pass all tests
+
+# Snapshot configuration  
+snapshots:
+  ahgd_analytics:
+    +target_schema: snapshots
+    +strategy: timestamp
+    +updated_at: updated_at
+
+# Seeds configuration
+seeds:
+  ahgd_analytics:
+    +quote_columns: false
+    +column_types:
+      id: varchar(50)
+      
+    # Reference data seeds
+    reference:
+      +schema: reference
+      geographic_mappings:
+        +column_types:
+          source_code: varchar(20)
+          target_code: varchar(20)
+          allocation_percentage: numeric(5,2)
+
+# Variable configuration
+vars:
+  # Date ranges for data processing
+  start_date: '2019-01-01'
+  end_date: '2023-12-31'
+  
+  # Geographic scope
+  include_territories: true
+  primary_states: ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT']
+  
+  # Data quality thresholds
+  min_population_threshold: 50  # Minimum population for reliable statistics
+  max_missing_data_percentage: 20  # Maximum missing data before exclusion
+  
+  # Health indicators
+  chronic_disease_categories: [
+    'diabetes', 'cardiovascular', 'cancer', 'mental_health', 
+    'respiratory', 'arthritis', 'kidney_disease'
+  ]
+  
+  # Age group definitions
+  age_groups: {
+    'children': '0-17',
+    'adults': '18-64', 
+    'seniors': '65+',
+    'elderly': '75+'
+  }
+
+# Macro configuration
+dispatch:
+  - macro_namespace: dbt_utils
+    search_order: ['ahgd_analytics', 'dbt_utils']
+
+# Query comment configuration
+query-comment:
+  comment: |
+    /* AHGD Analytics DBT Query */
+    /* Model: {{ node.name }} */
+    /* Generated at: {{ run_started_at.strftime('%Y-%m-%d %H:%M:%S UTC') }} */
+  append: true
+
+# Documentation configuration
+docs:
+  generate: true
+  
+# On-run hooks
+on-run-start:
+  - "{{ log('Starting AHGD Analytics DBT run at ' ~ run_started_at.strftime('%Y-%m-%d %H:%M:%S UTC'), info=True) }}"
+  - "SET memory_limit='8GB'"  # DuckDB memory configuration
+  - "SET threads=4"           # DuckDB thread configuration
+
+on-run-end:
+  - "{{ log('Completed AHGD Analytics DBT run at ' ~ run_started_at.strftime('%Y-%m-%d %H:%M:%S UTC'), info=True) }}"
+  - "{{ log('Models built: ' ~ results|length, info=True) }}"

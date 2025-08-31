@@ -1,0 +1,92 @@
+# AHGD V3: Streamlit Analytics Dashboard
+# Interactive data exploration with geographic visualization
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for geospatial and visualization
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libgdal-dev \
+    libproj-dev \
+    libgeos-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install core dependencies
+RUN pip install --no-cache-dir --upgrade pip
+
+# Install Streamlit and core data stack
+RUN pip install --no-cache-dir \
+    'streamlit>=1.29.0' \
+    'polars[all]>=0.20.0' \
+    'duckdb>=0.9.0' \
+    'pyarrow>=15.0.0' \
+    'pydantic>=2.5.0'
+
+# Install visualization and mapping libraries
+RUN pip install --no-cache-dir \
+    'plotly>=5.17.0' \
+    'folium>=0.15.0' \
+    'streamlit-folium>=0.15.0' \
+    'streamlit-plotly-events>=0.0.6' \
+    'altair>=5.2.0' \
+    'matplotlib>=3.8.0' \
+    'seaborn>=0.13.0'
+
+# Install geospatial libraries
+RUN pip install --no-cache-dir \
+    'geopandas>=0.14.0' \
+    'shapely>=2.0.0' \
+    'fiona>=1.9.0' \
+    'contextily>=1.4.0'
+
+# Install additional Streamlit components
+RUN pip install --no-cache-dir \
+    'streamlit-aggrid>=0.3.4' \
+    'streamlit-option-menu>=0.3.6' \
+    'streamlit-elements>=0.1.0' \
+    'extra-streamlit-components>=0.1.60'
+
+# Install caching and performance libraries
+RUN pip install --no-cache-dir \
+    'redis>=5.0.0' \
+    'diskcache>=5.6.3' \
+    'httpx>=0.26.0' \
+    'pandas>=2.1.0'  # For compatibility with some Streamlit components
+
+# Copy the Streamlit application
+COPY streamlit_app /app/streamlit_app
+COPY src /app/src
+COPY configs /app/configs
+
+# Create necessary directories
+RUN mkdir -p /app/cache \
+    && mkdir -p /app/temp \
+    && mkdir -p /app/exports
+
+# Set environment variables
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+ENV STREAMLIT_THEME_BASE=light
+ENV PYTHONPATH=/app/src
+
+# Create Streamlit config directory and config file
+RUN mkdir -p /root/.streamlit
+COPY streamlit_config.toml /root/.streamlit/config.toml
+
+# Health check endpoint
+RUN echo 'import streamlit as st\nimport os\nif __name__ == "__main__":\n    st.write("Health Check OK")\n' > /app/healthz.py
+
+# Expose the Streamlit port
+EXPOSE 8501
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8501/healthz || exit 1
+
+# Start the Streamlit application
+CMD ["streamlit", "run", "/app/streamlit_app/main.py", "--server.port=8501", "--server.address=0.0.0.0"]

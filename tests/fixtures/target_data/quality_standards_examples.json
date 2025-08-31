@@ -1,0 +1,236 @@
+{
+  "description": "Data quality validation examples and standards",
+  "version": "1.0.0",
+  "validation_categories": {
+    "completeness_validation": {
+      "field_level_completeness": {
+        "sa2_code": {
+          "required_completeness": 1.0,
+          "actual_completeness": 1.0,
+          "status": "pass",
+          "exemptions": []
+        },
+        "total_population": {
+          "required_completeness": 0.99,
+          "actual_completeness": 0.995,
+          "status": "pass",
+          "exemptions": ["Very remote areas with confidentialised data"]
+        },
+        "life_expectancy": {
+          "required_completeness": 0.90,
+          "actual_completeness": 0.92,
+          "status": "pass",
+          "exemptions": ["Areas with <1000 population", "Confidentialised areas"]
+        }
+      },
+      "record_level_completeness": {
+        "minimum_completeness_score": 0.90,
+        "average_completeness_score": 0.94,
+        "records_below_threshold": 45,
+        "total_records": 2473,
+        "compliance_rate": 0.982
+      }
+    },
+    
+    "statistical_validation": {
+      "range_validation": {
+        "total_population": {
+          "min_value": 0,
+          "max_value": 50000,
+          "violations_count": 0,
+          "status": "pass"
+        },
+        "life_expectancy": {
+          "min_value": 70.0,
+          "max_value": 90.0,
+          "violations_count": 0,
+          "status": "pass"
+        },
+        "seifa_irsad_score": {
+          "min_value": 500,
+          "max_value": 1200,
+          "violations_count": 0,
+          "status": "pass"
+        }
+      },
+      "distribution_validation": {
+        "total_population": {
+          "expected_distribution": "log-normal",
+          "shapiro_wilk_p_value": 0.023,
+          "anderson_darling_statistic": 1.45,
+          "status": "pass",
+          "note": "Log-transformed data passes normality test"
+        },
+        "life_expectancy": {
+          "expected_distribution": "normal",
+          "shapiro_wilk_p_value": 0.067,
+          "mean": 82.3,
+          "std_dev": 2.1,
+          "status": "pass"
+        }
+      },
+      "outlier_detection": {
+        "total_population": {
+          "outlier_threshold_stddev": 3.0,
+          "outliers_detected": 12,
+          "outlier_percentage": 0.49,
+          "status": "pass",
+          "note": "<5% outliers acceptable"
+        },
+        "life_expectancy": {
+          "outlier_threshold_stddev": 2.5,
+          "outliers_detected": 8,
+          "outlier_percentage": 0.32,
+          "status": "pass"
+        }
+      }
+    },
+    
+    "geographic_validation": {
+      "coordinate_system_validation": {
+        "required_crs": "GDA2020",
+        "validation_results": {
+          "valid_coordinates": 2473,
+          "invalid_coordinates": 0,
+          "compliance_rate": 1.0,
+          "status": "pass"
+        }
+      },
+      "boundary_validation": {
+        "topology_checks": {
+          "self_intersections": 0,
+          "invalid_geometries": 0,
+          "overlapping_boundaries": 0,
+          "status": "pass"
+        },
+        "containment_validation": {
+          "sa2_within_sa3": 2473,
+          "sa3_within_sa4": 358,
+          "sa4_within_state": 107,
+          "violations": 0,
+          "status": "pass"
+        }
+      },
+      "australian_extent_validation": {
+        "coordinates_within_bounds": {
+          "latitude_bounds": [-55.0, -10.0],
+          "longitude_bounds": [110.0, 160.0],
+          "violations": 0,
+          "status": "pass"
+        }
+      }
+    },
+    
+    "business_rule_validation": {
+      "health_indicator_relationships": {
+        "seifa_life_expectancy_correlation": {
+          "expected_correlation_range": [0.3, 0.7],
+          "actual_correlation": 0.52,
+          "status": "pass"
+        },
+        "population_density_gp_ratio": {
+          "expected_correlation_range": [-0.8, -0.2],
+          "actual_correlation": -0.45,
+          "status": "pass"
+        }
+      },
+      "data_consistency_checks": {
+        "sa2_hierarchy_consistency": {
+          "valid_hierarchies": 2473,
+          "invalid_hierarchies": 0,
+          "status": "pass"
+        },
+        "temporal_consistency": {
+          "data_collection_period_alignment": "pass",
+          "version_consistency": "pass",
+          "timestamp_validity": "pass"
+        }
+      }
+    },
+    
+    "australian_standards_compliance": {
+      "aihw_compliance": {
+        "health_indicator_definitions": {
+          "meteor_compliance": "pass",
+          "indicator_count": 15,
+          "compliant_indicators": 15,
+          "compliance_rate": 1.0
+        },
+        "data_quality_framework": {
+          "dqf_compliance": "pass",
+          "quality_dimensions_assessed": 6,
+          "quality_score": 0.94
+        }
+      },
+      "abs_compliance": {
+        "asgs_2021_compliance": {
+          "geographic_classification": "pass",
+          "sa2_code_format": "pass",
+          "boundary_alignment": "pass"
+        },
+        "seifa_2021_compliance": {
+          "methodology_compliance": "pass",
+          "index_calculations": "pass",
+          "decile_assignment": "pass"
+        }
+      }
+    }
+  },
+  
+  "quality_thresholds": {
+    "minimum_completeness": 0.90,
+    "maximum_outlier_percentage": 0.05,
+    "minimum_correlation_strength": 0.20,
+    "geographic_precision_meters": 10.0,
+    "data_freshness_months": 24
+  },
+  
+  "validation_examples": {
+    "passing_record": {
+      "sa2_code": "101011007",
+      "validation_results": {
+        "completeness_score": 0.96,
+        "statistical_validation": "pass",
+        "geographic_validation": "pass",
+        "business_rules": "pass",
+        "standards_compliance": "pass",
+        "overall_quality_score": 0.94
+      }
+    },
+    "failing_record_example": {
+      "sa2_code": "999999999",
+      "validation_results": {
+        "completeness_score": 0.45,
+        "statistical_validation": "fail",
+        "geographic_validation": "fail",
+        "business_rules": "fail",
+        "standards_compliance": "fail",
+        "overall_quality_score": 0.12,
+        "failure_reasons": [
+          "Invalid SA2 code format",
+          "Missing mandatory fields",
+          "Coordinates outside Australian bounds",
+          "Life expectancy value unrealistic"
+        ]
+      }
+    }
+  },
+  
+  "monitoring_alerts": {
+    "quality_degradation_thresholds": {
+      "completeness_drop": 0.05,
+      "outlier_increase": 0.02,
+      "correlation_change": 0.15
+    },
+    "alert_examples": [
+      {
+        "alert_type": "completeness_degradation",
+        "field": "life_expectancy",
+        "previous_completeness": 0.92,
+        "current_completeness": 0.85,
+        "threshold_breach": true,
+        "action_required": "investigate_data_source"
+      }
+    ]
+  }
+}

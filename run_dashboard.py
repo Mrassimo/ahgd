@@ -64,7 +64,7 @@ def check_data_files():
 
 def launch_dashboard():
     """Launch the Streamlit dashboard"""
-    dashboard_script = 'scripts/dashboard/streamlit_dashboard.py'
+    dashboard_script = 'src/dashboard/app.py'
     
     if not Path(dashboard_script).exists():
         print(f"❌ Dashboard script not found: {dashboard_script}")
