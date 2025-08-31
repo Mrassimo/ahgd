@@ -5,33 +5,21 @@ Tests end-to-end SA1 processing functionality including extraction,
 SA1 transformation, validation, and loading with realistic SA1 data flows.
 """
 
-import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
-import duckdb
 import polars as pl
 import pytest
 
-from src.pipelines.core_etl_pipeline import (
-    CoreETLPipeline,
-    PipelineStage,
-    PipelineStatus,
-)
+from src.pipelines.core_etl_pipeline import CoreETLPipeline
+from src.pipelines.core_etl_pipeline import PipelineStage
+from src.pipelines.core_etl_pipeline import PipelineStatus
 from src.transformers.sa1_processor import SA1GeographicTransformer
-from src.utils.interfaces import (
-    ExtractionError,
-    LoadingError,
-    TransformationError,
-    ValidationError,
-)
+from src.utils.interfaces import ExtractionError
 from src.validators.core_validator import CoreValidator
-from tests.fixtures.sa1_data.sa1_test_fixtures import (
-    SA1TestDataGenerator,
-    get_sample_sa1_data,
-)
+from tests.fixtures.sa1_data.sa1_test_fixtures import SA1TestDataGenerator
 
 
 class TestSA1Pipeline:
@@ -56,9 +44,7 @@ class TestSA1Pipeline:
             "max_memory_gb": 1,
             "validation": {"quality_threshold": 80.0},
         }
-        return CoreETLPipeline(
-            name="test_sa1_pipeline", db_path=temp_db_path, config=config
-        )
+        return CoreETLPipeline(name="test_sa1_pipeline", db_path=temp_db_path, config=config)
 
     @pytest.fixture
     def sample_sa1_data(self):
@@ -84,9 +70,7 @@ class TestSA1Pipeline:
         mock_extractor = Mock()
         mock_extractor.extract.return_value = [sample_sa1_data.to_dicts()]
 
-        test_pipeline.extractor_registry.get_extractor = Mock(
-            return_value=mock_extractor
-        )
+        test_pipeline.extractor_registry.get_extractor = Mock(return_value=mock_extractor)
 
         # Create context
         context = test_pipeline._create_context()
@@ -188,9 +172,7 @@ class TestSA1Pipeline:
         # Mock extractor
         mock_extractor = Mock()
         mock_extractor.extract.return_value = [sample_sa1_data.to_dicts()]
-        test_pipeline.extractor_registry.get_extractor = Mock(
-            return_value=mock_extractor
-        )
+        test_pipeline.extractor_registry.get_extractor = Mock(return_value=mock_extractor)
 
         # Configure pipeline
         source_config = {"type": "test"}
@@ -255,9 +237,7 @@ class TestSA1Pipeline:
         # Should have warnings about invalid SA1 codes
         validation_metadata = validation_result.metadata
         assert validation_metadata["error_count"] > 0
-        assert not validation_metadata[
-            "overall_valid"
-        ]  # Should fail due to invalid codes
+        assert not validation_metadata["overall_valid"]  # Should fail due to invalid codes
 
     def test_sa1_hierarchy_validation(self, test_pipeline):
         """Test SA1 geographic hierarchy validation."""
@@ -300,9 +280,7 @@ class TestSA1Pipeline:
         # Test extraction error
         mock_extractor = Mock()
         mock_extractor.extract.side_effect = ExtractionError("Test extraction error")
-        test_pipeline.extractor_registry.get_extractor = Mock(
-            return_value=mock_extractor
-        )
+        test_pipeline.extractor_registry.get_extractor = Mock(return_value=mock_extractor)
 
         context = test_pipeline._create_context()
         context.metadata["source_config"] = {"type": "test"}
@@ -326,9 +304,7 @@ class TestSA1Pipeline:
         # Mock extractor
         mock_extractor = Mock()
         mock_extractor.extract.return_value = [large_dataset.to_dicts()]
-        test_pipeline.extractor_registry.get_extractor = Mock(
-            return_value=mock_extractor
-        )
+        test_pipeline.extractor_registry.get_extractor = Mock(return_value=mock_extractor)
 
         # Execute pipeline with timing
         start_time = datetime.now()
@@ -379,9 +355,7 @@ class TestSA1GeographicProcessing:
             }
         )
 
-    def test_sa1_transformation_from_mixed_inputs(
-        self, sa1_transformer, mixed_geographic_data
-    ):
+    def test_sa1_transformation_from_mixed_inputs(self, sa1_transformer, mixed_geographic_data):
         """Test SA1 transformation from mixed geographic inputs."""
         # Transform data to SA1 framework
         result = sa1_transformer.transform(mixed_geographic_data)

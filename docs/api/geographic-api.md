@@ -1,4 +1,4 @@
-# Geographic API  
+# Geographic API
 ### High-Performance Spatial Data Access
 
 The Geographic API delivers lightning-fast access to Australia's complete SA1 geography (61,845 areas) with sub-50ms response times powered by optimized spatial indexing and Parquet storage.
@@ -71,7 +71,7 @@ curl -H "X-API-Key: your-key" \
 ### Get Area Boundaries
 Get precise boundary geometries in GeoJSON format.
 
-```http  
+```http
 GET /v1/geo/boundaries?sa1_codes={codes}&format={format}
 ```
 
@@ -175,7 +175,7 @@ POST /v1/geo/nearby
       }
     },
     {
-      "sa1_code": "101021001", 
+      "sa1_code": "101021001",
       "area_name": "Sydney - CBD South",
       "distance_km": 0.67,
       "bearing_degrees": 195,
@@ -220,7 +220,7 @@ curl -H "X-API-Key: your-key" \
   },
   "sa2": {
     "code": "10101",
-    "name": "Sydney - Circular Quay - The Rocks", 
+    "name": "Sydney - Circular Quay - The Rocks",
     "area_sqkm": 2.34,
     "population": 4567,
     "sa1_count": 8
@@ -381,7 +381,7 @@ POST /v1/geo/catchment
 ### GeoJSON (Default)
 Standard GeoJSON format with full feature properties.
 
-### Well-Known Text (WKT)  
+### Well-Known Text (WKT)
 ```
 POLYGON((151.2105 -33.8520, 151.2201 -33.8520, 151.2201 -33.8616, 151.2105 -33.8616, 151.2105 -33.8520))
 ```
@@ -424,7 +424,7 @@ Reduced precision for web mapping (up to 80% smaller).
 
 ### Spatial Indexing
 - **R-tree indexing** for O(log n) spatial queries
-- **Grid-based partitioning** for distance searches  
+- **Grid-based partitioning** for distance searches
 - **Proximity caching** for frequently accessed areas
 
 ### Response Optimization
@@ -482,7 +482,7 @@ boundaries = client.get_boundaries([a.sa1_code for a in nearby])
 gdf = gpd.GeoDataFrame.from_features(boundaries["features"])
 ```
 
-### R - Geographic Analysis  
+### R - Geographic Analysis
 ```r
 library(ahgd)
 library(sf)
@@ -491,7 +491,7 @@ client <- ahgd_geo_client("your-api-key")
 
 # Get SA1 boundaries
 boundaries <- get_boundaries(
-  client, 
+  client,
   sa1_codes = c("101011001", "101011002"),
   format = "geojson"
 )
@@ -513,7 +513,7 @@ const geoClient = new GeoAPI('your-api-key');
 // Get area and add to map
 async function addAreaToMap(sa1Code) {
   const boundaries = await geoClient.getBoundaries([sa1Code]);
-  
+
   const geoJsonLayer = L.geoJSON(boundaries, {
     style: {
       color: '#3388ff',
@@ -528,7 +528,7 @@ async function addAreaToMap(sa1Code) {
       `);
     }
   });
-  
+
   map.addLayer(geoJsonLayer);
 }
 ```

@@ -8,7 +8,7 @@ Extracts, validates, and loads climate and environmental health data including:
 """
 
 import logging
-from typing import Iterator, Dict, Any
+
 import dlt
 
 logger = logging.getLogger(__name__)

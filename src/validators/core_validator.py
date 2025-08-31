@@ -11,19 +11,18 @@ import logging
 import re
 import statistics
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
+from typing import Optional
 
 import numpy as np
 import polars as pl
 
-from schemas.sa1_schema import SA1Coordinates, validate_sa1_hierarchy
+from schemas.sa1_schema import SA1Coordinates
 
-from ..utils.interfaces import (
-    DataBatch,
-    ValidationError,
-    ValidationResult,
-    ValidationSeverity,
-)
+from ..utils.interfaces import DataBatch
+from ..utils.interfaces import ValidationError
+from ..utils.interfaces import ValidationResult
+from ..utils.interfaces import ValidationSeverity
 from ..utils.logging import get_logger
 from .base import BaseValidator
 
@@ -40,9 +39,7 @@ class CoreValidator(BaseValidator):
     - British English error messages
     """
 
-    def __init__(
-        self, config: Dict[str, Any] = None, logger: Optional[logging.Logger] = None
-    ):
+    def __init__(self, config: dict[str, Any] = None, logger: Optional[logging.Logger] = None):
         """
         Initialise core validator.
 
@@ -80,11 +77,9 @@ class CoreValidator(BaseValidator):
             "8": "ACT",
         }
 
-        self.logger.info(
-            "Core SA1 validator initialised", quality_threshold=self.quality_threshold
-        )
+        self.logger.info("Core SA1 validator initialised", quality_threshold=self.quality_threshold)
 
-    def validate_sa1_data(self, data: pl.DataFrame) -> Dict[str, Any]:
+    def validate_sa1_data(self, data: pl.DataFrame) -> dict[str, Any]:
         """
         Validate SA1-focused dataset comprehensively.
 
@@ -152,7 +147,7 @@ class CoreValidator(BaseValidator):
             results["validation_duration_seconds"] = validation_duration
 
             self.logger.info(
-                f"SA1 validation completed",
+                "SA1 validation completed",
                 quality_score=results["quality_score"],
                 error_count=results["error_count"],
                 duration=validation_duration,
@@ -161,19 +156,17 @@ class CoreValidator(BaseValidator):
             return results
 
         except Exception as e:
-            self.logger.error(f"SA1 validation failed: {str(e)}")
+            self.logger.error(f"SA1 validation failed: {e!s}")
             results.update(
                 {
                     "overall_valid": False,
                     "validation_error": str(e),
-                    "error_count": results[
-                        "total_records"
-                    ],  # All records considered invalid
+                    "error_count": results["total_records"],  # All records considered invalid
                 }
             )
             return results
 
-    def _validate_sa1_codes(self, data: pl.DataFrame) -> Dict[str, Any]:
+    def _validate_sa1_codes(self, data: pl.DataFrame) -> dict[str, Any]:
         """Validate SA1 code format and structure."""
         results = {
             "valid_codes": 0,
@@ -193,9 +186,7 @@ class CoreValidator(BaseValidator):
         for i, code in enumerate(sa1_codes):
             if not code or not isinstance(code, str):
                 results["invalid_codes"] += 1
-                results["invalid_records"].append(
-                    f"Record {i}: Empty or invalid SA1 code"
-                )
+                results["invalid_records"].append(f"Record {i}: Empty or invalid SA1 code")
                 continue
 
             # Validate format (11 digits)
@@ -223,13 +214,11 @@ class CoreValidator(BaseValidator):
         if results["invalid_codes"] > 0:
             error_rate = (results["invalid_codes"] / len(data)) * 100
             if error_rate > 10:
-                results["warnings"].append(
-                    f"High SA1 code error rate: {error_rate:.1f}%"
-                )
+                results["warnings"].append(f"High SA1 code error rate: {error_rate:.1f}%")
 
         return results
 
-    def _validate_geographic_hierarchy(self, data: pl.DataFrame) -> Dict[str, Any]:
+    def _validate_geographic_hierarchy(self, data: pl.DataFrame) -> dict[str, Any]:
         """Validate SA1->SA2->SA3->SA4 geographic hierarchy consistency."""
         results = {
             "consistent_hierarchies": 0,
@@ -258,29 +247,21 @@ class CoreValidator(BaseValidator):
             # Validate SA1 contains SA2 (first 9 digits)
             if sa1_code and sa2_code:
                 if not sa1_code.startswith(sa2_code):
-                    hierarchy_errors.append(
-                        f"SA1 '{sa1_code}' not contained in SA2 '{sa2_code}'"
-                    )
+                    hierarchy_errors.append(f"SA1 '{sa1_code}' not contained in SA2 '{sa2_code}'")
 
             # Validate SA2 contains SA3 (first 5 digits)
             if sa2_code and sa3_code:
                 if not sa2_code.startswith(sa3_code):
-                    hierarchy_errors.append(
-                        f"SA2 '{sa2_code}' not contained in SA3 '{sa3_code}'"
-                    )
+                    hierarchy_errors.append(f"SA2 '{sa2_code}' not contained in SA3 '{sa3_code}'")
 
             # Validate SA3 contains SA4 (first 3 digits)
             if sa3_code and sa4_code:
                 if not sa3_code.startswith(sa4_code):
-                    hierarchy_errors.append(
-                        f"SA3 '{sa3_code}' not contained in SA4 '{sa4_code}'"
-                    )
+                    hierarchy_errors.append(f"SA3 '{sa3_code}' not contained in SA4 '{sa4_code}'")
 
             if hierarchy_errors:
                 results["inconsistent_hierarchies"] += 1
-                results["hierarchy_errors"].append(
-                    f"Record {i}: {'; '.join(hierarchy_errors)}"
-                )
+                results["hierarchy_errors"].append(f"Record {i}: {'; '.join(hierarchy_errors)}")
             else:
                 results["consistent_hierarchies"] += 1
 
@@ -288,7 +269,7 @@ class CoreValidator(BaseValidator):
 
         return results
 
-    def _validate_data_quality(self, data: pl.DataFrame) -> Dict[str, Any]:
+    def _validate_data_quality(self, data: pl.DataFrame) -> dict[str, Any]:
         """Validate general data quality metrics."""
         results = {
             "completeness_score": 0.0,
@@ -309,9 +290,7 @@ class CoreValidator(BaseValidator):
             if null_count > 0:
                 null_rate = (null_count / len(data)) * 100
                 if null_rate > 20:  # More than 20% null
-                    results["warnings"].append(
-                        f"High null rate in '{column}': {null_rate:.1f}%"
-                    )
+                    results["warnings"].append(f"High null rate in '{column}': {null_rate:.1f}%")
 
         # Completeness score
         results["completeness_score"] = ((total_cells - null_cells) / total_cells) * 100
@@ -352,7 +331,7 @@ class CoreValidator(BaseValidator):
 
         return results
 
-    def _validate_statistical_consistency(self, data: pl.DataFrame) -> Dict[str, Any]:
+    def _validate_statistical_consistency(self, data: pl.DataFrame) -> dict[str, Any]:
         """Validate statistical consistency and detect outliers."""
         results = {
             "outliers_detected": 0,
@@ -363,9 +342,7 @@ class CoreValidator(BaseValidator):
 
         # Check population and dwelling statistics if available
         if "population" in data.columns:
-            pop_stats = self._detect_outliers(
-                data.get_column("population").to_list(), "population"
-            )
+            pop_stats = self._detect_outliers(data.get_column("population").to_list(), "population")
             results["outliers_detected"] += pop_stats["outlier_count"]
             results["statistical_warnings"].extend(pop_stats["warnings"])
 
@@ -397,7 +374,7 @@ class CoreValidator(BaseValidator):
 
         return results
 
-    def _detect_outliers(self, values: List[float], field_name: str) -> Dict[str, Any]:
+    def _detect_outliers(self, values: list[float], field_name: str) -> dict[str, Any]:
         """Detect statistical outliers using z-score method."""
         results = {"outlier_count": 0, "warnings": []}
 
@@ -439,21 +416,17 @@ class CoreValidator(BaseValidator):
                     )
 
         except Exception as e:
-            results["warnings"].append(
-                f"Statistical analysis failed for {field_name}: {str(e)}"
-            )
+            results["warnings"].append(f"Statistical analysis failed for {field_name}: {e!s}")
 
         return results
 
-    def _calculate_overall_quality_score(self, results: Dict[str, Any]) -> float:
+    def _calculate_overall_quality_score(self, results: dict[str, Any]) -> float:
         """Calculate overall data quality score."""
         scores = []
 
         # SA1 code validity score
         sa1_details = results["validation_details"].get("sa1_codes", {})
-        total_sa1 = sa1_details.get("valid_codes", 0) + sa1_details.get(
-            "invalid_codes", 0
-        )
+        total_sa1 = sa1_details.get("valid_codes", 0) + sa1_details.get("invalid_codes", 0)
         if total_sa1 > 0:
             sa1_score = (sa1_details.get("valid_codes", 0) / total_sa1) * 100
             scores.append(sa1_score * 0.3)  # 30% weight
@@ -485,7 +458,7 @@ class CoreValidator(BaseValidator):
 
         return sum(scores) if scores else 0.0
 
-    def _generate_recommendations(self, results: Dict[str, Any]) -> List[str]:
+    def _generate_recommendations(self, results: dict[str, Any]) -> list[str]:
         """Generate actionable recommendations based on validation results."""
         recommendations = []
 
@@ -506,14 +479,10 @@ class CoreValidator(BaseValidator):
         # Data quality recommendations
         quality_details = results["validation_details"].get("data_quality", {})
         if quality_details.get("completeness_score", 100) < 90:
-            recommendations.append(
-                "Improve data completeness by addressing missing values"
-            )
+            recommendations.append("Improve data completeness by addressing missing values")
 
         if quality_details.get("uniqueness_score", 100) < 95:
-            recommendations.append(
-                "Remove duplicate SA1 records or investigate data source issues"
-            )
+            recommendations.append("Remove duplicate SA1 records or investigate data source issues")
 
         # Statistical recommendations
         statistical_details = results["validation_details"].get("statistics", {})
@@ -522,13 +491,11 @@ class CoreValidator(BaseValidator):
 
         # Overall quality recommendations
         if results["quality_score"] < 85:
-            recommendations.append(
-                "Overall data quality requires improvement before processing"
-            )
+            recommendations.append("Overall data quality requires improvement before processing")
 
         return recommendations
 
-    def validate_single_sa1(self, sa1_data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_single_sa1(self, sa1_data: dict[str, Any]) -> dict[str, Any]:
         """
         Validate a single SA1 record.
 
@@ -553,14 +520,14 @@ class CoreValidator(BaseValidator):
         except Exception as e:
             return {
                 "valid": False,
-                "errors": [f"SA1 validation failed: {str(e)}"],
+                "errors": [f"SA1 validation failed: {e!s}"],
                 "sa1_code": sa1_data.get("sa1_code", "UNKNOWN"),
                 "hierarchy_valid": False,
             }
 
     # Implement abstract methods from BaseValidator
 
-    def validate(self, data: DataBatch) -> List[ValidationResult]:
+    def validate(self, data: DataBatch) -> list[ValidationResult]:
         """
         Validate a batch of data records (required by BaseValidator).
 
@@ -579,9 +546,7 @@ class CoreValidator(BaseValidator):
                 validation = self.validate_single_sa1(sa1_record)
 
                 result = ValidationResult(
-                    record_id=(
-                        record.record_id if hasattr(record, "record_id") else str(i)
-                    ),
+                    record_id=(record.record_id if hasattr(record, "record_id") else str(i)),
                     is_valid=validation["valid"],
                     errors=[
                         ValidationError(
@@ -604,7 +569,7 @@ class CoreValidator(BaseValidator):
                     errors=[
                         ValidationError(
                             field_name="validation_exception",
-                            error_message=f"Validation failed: {str(e)}",
+                            error_message=f"Validation failed: {e!s}",
                             severity=ValidationSeverity.ERROR,
                         )
                     ],
@@ -615,7 +580,7 @@ class CoreValidator(BaseValidator):
 
         return results
 
-    def get_validation_rules(self) -> List[str]:
+    def get_validation_rules(self) -> list[str]:
         """
         Get the list of validation rules supported by this validator.
 

@@ -76,10 +76,10 @@ echo ""
 # Cleanup previous deployment if requested
 if [[ "${1:-}" == "--clean" ]] || [[ "${1:-}" == "-c" ]]; then
     echo -e "${YELLOW}🧹 Cleaning previous deployment...${NC}"
-    
+
     $COMPOSE_CMD -f $COMPOSE_FILE down -v --remove-orphans 2>/dev/null || true
     docker volume rm $DB_VOLUME 2>/dev/null || true
-    
+
     echo -e "${GREEN}✅ Cleanup complete${NC}"
     echo ""
 fi
@@ -108,9 +108,9 @@ check_service_health() {
     local service_name=$1
     local health_url=$2
     local timeout=${3:-60}
-    
+
     echo -n "   Checking $service_name... "
-    
+
     for i in $(seq 1 $timeout); do
         if curl -f -s "$health_url" >/dev/null 2>&1; then
             echo -e "${GREEN}✅ Healthy${NC}"
@@ -121,7 +121,7 @@ check_service_health() {
             echo -n "."
         fi
     done
-    
+
     echo -e "${RED}❌ Timeout${NC}"
     return 1
 }
@@ -132,7 +132,7 @@ sleep 10  # Initial startup delay
 # Check service health
 HEALTH_CHECKS=(
     "Airflow:http://localhost:8080/health:60"
-    "Streamlit:http://localhost:8501:60" 
+    "Streamlit:http://localhost:8501:60"
     "FastAPI:http://localhost:8000/health:30"
     "Documentation:http://localhost:8002:30"
 )
@@ -141,7 +141,7 @@ FAILED_SERVICES=()
 
 for check in "${HEALTH_CHECKS[@]}"; do
     IFS=':' read -r service_name health_url timeout <<< "$check"
-    
+
     if ! check_service_health "$service_name" "$health_url" "$timeout"; then
         FAILED_SERVICES+=("$service_name")
     fi
@@ -169,11 +169,11 @@ if [[ ${#FAILED_SERVICES[@]} -eq 0 ]]; then
     echo -e "${BLUE}💡 Quick Start:${NC}"
     echo -e "   1. Visit the Health Dashboard at http://localhost:8501"
     echo -e "   2. Select your geographic area of interest"
-    echo -e "   3. Choose health indicators to explore" 
+    echo -e "   3. Choose health indicators to explore"
     echo -e "   4. Interactive maps and analytics await!"
     echo ""
     echo -e "${YELLOW}📖 For detailed usage, visit: http://localhost:8002${NC}"
-    
+
 else
     echo -e "${RED}⚠️  Deployment completed with issues${NC}"
     echo -e "   Failed services: ${FAILED_SERVICES[*]}"

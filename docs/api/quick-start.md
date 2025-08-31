@@ -43,7 +43,7 @@ curl -H "X-API-Key: your-key" \
 
 # Returns comprehensive health profile including:
 # - Diabetes prevalence: 4.2%
-# - Life expectancy: 83.2 years  
+# - Life expectancy: 83.2 years
 # - Healthcare utilization rates
 # - Risk assessment scores
 ```
@@ -64,7 +64,7 @@ client = HealthAPI(api_key="your-key")
 profile = client.get_health_profile("101011001")
 
 print(f"Area: {profile.area_name}")
-print(f"Diabetes rate: {profile.diabetes_prevalence}%") 
+print(f"Diabetes rate: {profile.diabetes_prevalence}%")
 print(f"Life expectancy: {profile.life_expectancy} years")
 ```
 
@@ -104,7 +104,7 @@ async function getDashboardData() {
   const profiles = await Promise.all(
     areas.map(code => client.getHealthProfile(code))
   );
-  
+
   console.log('Health Data Retrieved:', profiles.length);
   return profiles;
 }
@@ -135,7 +135,7 @@ for area in high_diabetes_areas:
 # Health comparison across major cities
 capital_areas = {
     "Sydney CBD": "101011001",
-    "Melbourne CBD": "201031245", 
+    "Melbourne CBD": "201031245",
     "Brisbane CBD": "301051289",
     "Perth CBD": "501071234"
 }
@@ -183,7 +183,7 @@ analytics = AnalyticsAPI(api_key="your-key")
 risk_assessment = analytics.risk_assessment({
     "areas": ["101011001", "101011002"],
     "risk_factors": [
-        "chronic_disease_prevalence", 
+        "chronic_disease_prevalence",
         "healthcare_access",
         "socioeconomic_disadvantage"
     ]
@@ -201,7 +201,7 @@ for area_risk in risk_assessment.results:
 correlations = analytics.correlations({
     "indicators": [
         "diabetes_prevalence",
-        "life_expectancy", 
+        "life_expectancy",
         "seifa_disadvantage_rank"
     ],
     "geographic_scope": {"state": ["NSW", "VIC"]}
@@ -248,7 +248,7 @@ def get_color(diabetes_rate):
 for feature in boundaries['features']:
     area_code = feature['properties']['sa1_code']
     health_profile = health_data[area_code]
-    
+
     folium.GeoJson(
         feature,
         style_function=lambda x, rate=health_profile.diabetes_prevalence: {
@@ -341,7 +341,7 @@ print(f"Found {len(underserved)} underserved areas needing healthcare facilities
 market_analysis = analytics.clustering({
     "features": [
         "population_density",
-        "healthcare_access_score", 
+        "healthcare_access_score",
         "chronic_disease_prevalence"
     ],
     "num_clusters": 5,
@@ -360,7 +360,7 @@ for cluster in market_analysis.clusters.values():
 
 ### Explore More Endpoints
 - **[Health API](health-api.md)**: Comprehensive health indicators
-- **[Geographic API](geographic-api.md)**: Spatial data and boundaries  
+- **[Geographic API](geographic-api.md)**: Spatial data and boundaries
 - **[Analytics API](analytics-api.md)**: Advanced statistical analysis
 - **[System API](system-api.md)**: Monitoring and performance
 
@@ -411,20 +411,20 @@ def get_all_areas_with_high_diabetes():
     all_areas = []
     offset = 0
     limit = 100
-    
+
     while True:
         batch = client.search_areas({
             "filters": {"diabetes_rate": {"min": 8.0}},
             "limit": limit,
             "offset": offset
         })
-        
+
         if not batch.results:
             break
-            
+
         all_areas.extend(batch.results)
         offset += limit
-        
+
     return all_areas
 ```
 

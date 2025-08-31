@@ -94,7 +94,7 @@ POST /v1/health/search
   "offset": 0,
   "include_fields": [
     "basic_info",
-    "health_indicators", 
+    "health_indicators",
     "socioeconomic"
   ]
 }
@@ -138,7 +138,7 @@ POST /v1/health/compare
 {
   "areas": [
     "101011001",
-    "201031245", 
+    "201031245",
     "301051289"
   ],
   "indicators": [
@@ -164,7 +164,7 @@ POST /v1/health/compare
       "mental_health_services_rate": 45.7
     },
     "201031245": {
-      "area_name": "Melbourne - Docklands", 
+      "area_name": "Melbourne - Docklands",
       "diabetes_prevalence": 7.8,
       "life_expectancy": 81.4,
       "mental_health_services_rate": 38.2
@@ -212,7 +212,7 @@ curl -H "X-API-Key: your-key" \
 ```json
 {
   "sa1_code": "101011001",
-  "time_period": "2019-2023", 
+  "time_period": "2019-2023",
   "trends": {
     "diabetes_rate": {
       "2019": 3.8,
@@ -266,7 +266,7 @@ curl -H "X-API-Key: your-key" \
 | `premature_mortality_rate` | per 100,000 | 50-300 | AIHW |
 | `infant_mortality_rate` | per 1,000 births | 2-8 | ABS |
 
-### Healthcare Utilization  
+### Healthcare Utilization
 | Indicator | Unit | Range | Source |
 |-----------|------|-------|--------|
 | `gp_services_per_1000` | services | 100-800 | MBS |
@@ -308,7 +308,7 @@ curl -H "X-API-Key: your-key" \
   },
   "bounding_box": {
     "north": -33.8,
-    "south": -34.0, 
+    "south": -34.0,
     "east": 151.3,
     "west": 151.1
   }

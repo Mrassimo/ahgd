@@ -31,7 +31,7 @@
         "compliance_rate": 0.982
       }
     },
-    
+
     "statistical_validation": {
       "range_validation": {
         "total_population": {
@@ -85,7 +85,7 @@
         }
       }
     },
-    
+
     "geographic_validation": {
       "coordinate_system_validation": {
         "required_crs": "GDA2020",
@@ -120,7 +120,7 @@
         }
       }
     },
-    
+
     "business_rule_validation": {
       "health_indicator_relationships": {
         "seifa_life_expectancy_correlation": {
@@ -147,7 +147,7 @@
         }
       }
     },
-    
+
     "australian_standards_compliance": {
       "aihw_compliance": {
         "health_indicator_definitions": {
@@ -176,7 +176,7 @@
       }
     }
   },
-  
+
   "quality_thresholds": {
     "minimum_completeness": 0.90,
     "maximum_outlier_percentage": 0.05,
@@ -184,7 +184,7 @@
     "geographic_precision_meters": 10.0,
     "data_freshness_months": 24
   },
-  
+
   "validation_examples": {
     "passing_record": {
       "sa2_code": "101011007",
@@ -215,7 +215,7 @@
       }
     }
   },
-  
+
   "monitoring_alerts": {
     "quality_degradation_thresholds": {
       "completeness_drop": 0.05,

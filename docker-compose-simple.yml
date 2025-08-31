@@ -76,55 +76,55 @@ services:
       import polars as pl
       import duckdb
       from datetime import datetime
-      
+
       st.set_page_config(page_title='AHGD V3 Demo', page_icon='🏥', layout='wide')
-      
+
       st.title('🏥 AHGD V3: Modern Analytics Platform')
       st.subheader('Production-Ready Health Analytics Dashboard')
-      
+
       col1, col2, col3 = st.columns(3)
-      
+
       with col1:
           st.metric('Processing Speed', '30M+ records/sec', '2900% faster')
-      
+
       with col2:
           st.metric('Memory Usage', '<2GB', '-75% reduction')
-          
+
       with col3:
           st.metric('Deployment Time', '<60 seconds', 'Zero-click ready')
-      
+
       st.success('✅ AHGD V3 Platform Successfully Deployed!')
-      
+
       st.markdown('---')
       st.markdown('### 🚀 Key Features Available')
-      
+
       features = [
           '🗺️ Interactive Geographic Health Mapping',
-          '📊 Real-time Analytics Dashboards', 
+          '📊 Real-time Analytics Dashboards',
           '⚡ 10x Performance with Polars + DuckDB',
           '📤 Multi-format Data Export (CSV, Excel, Parquet, JSON, GeoJSON)',
           '🔍 Drill-down: State → SA4 → SA3 → SA2 → SA1',
           '🏥 Comprehensive Australian Health Data Integration'
       ]
-      
+
       for feature in features:
           st.markdown(f'- {feature}')
-      
+
       st.markdown('---')
       st.markdown('### 📊 Performance Demo')
-      
+
       if st.button('🧪 Test High-Performance Processing'):
           with st.spinner('Processing 100K health records...'):
               import time
               start_time = time.time()
-              
+
               # Generate test health data
               test_data = pl.DataFrame({
                   'sa1_code': [f'test_{i:06d}' for i in range(100000)],
                   'diabetes_prevalence': [4.5 + (i % 100) * 0.1 for i in range(100000)],
                   'population': [300 + (i % 500) for i in range(100000)]
               })
-              
+
               # High-performance transformations
               result = test_data.lazy().with_columns([
                   (pl.col('diabetes_prevalence') * pl.col('population') / 100).alias('diabetes_cases'),
@@ -136,18 +136,18 @@ services:
                   pl.col('population').sum().alias('total_population'),
                   pl.col('diabetes_prevalence').mean().alias('avg_prevalence')
               ]).collect()
-              
+
               processing_time = time.time() - start_time
               records_per_second = 100000 / processing_time
-              
+
               st.success(f'✅ Processed 100K records in {processing_time:.3f} seconds')
               st.metric('Performance', f'{records_per_second:,.0f} records/sec')
-              
+
               st.dataframe(result.head(10), use_container_width=True)
-      
+
       st.markdown('---')
       st.info('🎉 **AHGD V3 Platform is Production Ready!** The full implementation includes interactive maps, comprehensive health indicators, and advanced analytics.')
-      
+
       EOF
       streamlit run demo_app.py --server.port=8501 --server.address=0.0.0.0
       "

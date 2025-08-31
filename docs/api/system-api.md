@@ -30,7 +30,7 @@ GET /v1/system/health
       "last_check": "2024-08-31T10:29:55Z"
     },
     "database": {
-      "status": "healthy", 
+      "status": "healthy",
       "connection_pool": {
         "active": 8,
         "idle": 12,
@@ -262,7 +262,7 @@ GET /v1/system/alerts?severity={level}&status={status}
       ]
     },
     {
-      "id": "alert_cache_hit_rate_low", 
+      "id": "alert_cache_hit_rate_low",
       "severity": "low",
       "status": "active",
       "title": "Cache hit rate below threshold",
@@ -351,7 +351,7 @@ GET /v1/system/data-refresh
   },
   "last_refresh": {
     "health_indicators": "2024-08-30T02:00:00Z",
-    "geographic_boundaries": "2024-08-01T00:00:00Z", 
+    "geographic_boundaries": "2024-08-01T00:00:00Z",
     "demographic_data": "2024-07-01T00:00:00Z"
   },
   "next_scheduled": {
@@ -381,7 +381,7 @@ POST /v1/system/cache/clear
       "ttl_hours": 1
     },
     "data_cache": {
-      "size_mb": 2048, 
+      "size_mb": 2048,
       "entries": 5673,
       "hit_rate": 0.92,
       "eviction_policy": "LFU",
@@ -458,7 +458,7 @@ GET /v1/system/usage?window={period}&breakdown={dimension}
   },
   "usage_trends": {
     "requests": "increasing",
-    "response_times": "stable", 
+    "response_times": "stable",
     "error_rates": "decreasing"
   }
 }
@@ -590,7 +590,7 @@ POST /v1/system/profile
         "percentage": 62.0
       },
       {
-        "stage": "result_serialization", 
+        "stage": "result_serialization",
         "time_ms": 77,
         "percentage": 32.9
       }
@@ -630,10 +630,10 @@ while True:
     metrics = client.get_performance()
     if metrics['error_rate'] > 0.01:
         print("⚠️  High error rate detected!")
-    
+
     if metrics['p95_response_time_ms'] > 1000:
         print("⚠️  High response times detected!")
-    
+
     time.sleep(60)
 ```
 
@@ -650,10 +650,10 @@ async function updateDashboard() {
     systemClient.getPerformance('1h'),
     systemClient.getAlerts('active')
   ]);
-  
+
   // Update dashboard elements
   document.getElementById('status').textContent = health.status;
-  document.getElementById('response-time').textContent = 
+  document.getElementById('response-time').textContent =
     `${performance.average_response_time_ms}ms`;
   document.getElementById('alert-count').textContent = alerts.active_alerts;
 }

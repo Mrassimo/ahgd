@@ -21,13 +21,13 @@ system:
   max_workers: 8
   worker_timeout: 7200  # 2 hours
   graceful_shutdown_timeout: 60
-  
+
   memory:
     limit_gb: 16  # Production server capacity
     warning_threshold: 0.75
     cleanup_interval: 180  # 3 minutes
     gc_threshold: 2048  # MB
-  
+
   temp:
     cleanup_on_startup: true
     max_age_hours: 2  # Aggressive cleanup
@@ -44,19 +44,19 @@ data_processing:
     continue_on_error: false  # Fail fast in production
     max_retries: 5
     retry_delay: 300  # 5 minutes
-  
+
   processing:
     chunk_size: 50000  # Larger chunks for efficiency
     batch_size: 5000
     memory_limit_per_worker: 4096  # MB
     max_file_size_gb: 50
     compression: "gzip"
-  
+
   cache:
     ttl: 7200  # 2 hours
     max_size_gb: 20
     compression: true
-    
+
   validation:
     strict_mode: true  # Strict validation in production
     null_threshold: 0.05  # 5% nulls allowed
@@ -71,19 +71,19 @@ database:
   # Production database (PostgreSQL)
   url: "${secret:database_url}"
   echo: false  # No SQL logging in production
-  
+
   connection:
     pool_size: 20
     max_overflow: 40
     pool_timeout: 30
     pool_recycle: 3600
     pool_pre_ping: true
-    
+
   query:
     timeout: 600  # 10 minutes
     fetch_size: 5000
     batch_size: 2000
-    
+
   backup:
     enabled: true
     interval: "hourly"
@@ -105,7 +105,7 @@ api:
     keep_alive: 5
     max_requests: 10000
     max_requests_jitter: 100
-    
+
   security:
     cors:
       enabled: true
@@ -113,31 +113,31 @@ api:
         - "https://ahgd.example.com"
         - "https://api.ahgd.example.com"
       credentials: true
-      
+
     rate_limiting:
       enabled: true
       per_minute: 1000  # Higher limit for production
       burst: 2000
-      
+
     authentication:
       enabled: true
       type: "jwt"
       secret_key: "${secret:jwt_secret_key}"
       token_expiry_hours: 8  # Shorter expiry
-      
+
     https:
       enabled: true
       cert_file: "${secret:ssl_cert_path}"
       key_file: "${secret:ssl_key_path}"
-      
+
   request:
     max_size: "100MB"  # Larger files in production
     timeout: 300  # 5 minutes
-    
+
   response:
     compression: true
     cache_control: "public, max-age=3600"
-    
+
   docs:
     enabled: false  # Disable docs in production
 
@@ -154,7 +154,7 @@ external_services:
     retry_attempts: 5
     retry_delay: 30
     api_key: "${secret:abs_api_key}"
-    
+
   aihw:
     mock: false
     base_url: "https://www.aihw.gov.au/reports-data"
@@ -163,7 +163,7 @@ external_services:
     retry_attempts: 5
     retry_delay: 60
     api_key: "${secret:aihw_api_key}"
-    
+
   bom:
     mock: false
     base_url: "http://www.bom.gov.au/catalogue/data-feeds"
@@ -171,7 +171,7 @@ external_services:
     rate_limit: 0.2
     retry_attempts: 3
     retry_delay: 60
-    
+
   osm:
     mock: false
     base_url: "https://overpass-api.de/api/interpreter"
@@ -189,57 +189,57 @@ monitoring:
     enabled: true
     interval: 60  # Every minute
     timeout: 30
-    
+
     checks:
       database:
         enabled: true
         timeout: 15
-        
+
       file_system:
         enabled: true
-        
+
       external_services:
         enabled: true
         urls:
           - "https://api.data.abs.gov.au/health"
           - "https://www.aihw.gov.au/health"
-          
+
       memory:
         enabled: true
         threshold: 80
-        
+
       disk:
         enabled: true
         threshold: 75
-        
+
       load:
         enabled: true
         threshold: 8.0
-        
+
   metrics:
     enabled: true
     collection_interval: 30
     retention_hours: 2160  # 90 days
-    
+
     system:
       enabled: true
       detailed: true
-      
+
     application:
       enabled: true
       detailed: true
       business_metrics: true
-      
+
   alerts:
     enabled: true
-    
+
     thresholds:
       cpu_usage: 70
       memory_usage: 75
       disk_usage: 80
       error_rate: 5
       response_time: 2000
-      
+
     notifications:
       email:
         enabled: true
@@ -252,13 +252,13 @@ monitoring:
         to:
           - "ops-team@example.com"
           - "dev-team@example.com"
-          
+
       webhook:
         enabled: true
         url: "${secret:alert_webhook_url}"
         headers:
           Authorization: "Bearer ${secret:alert_webhook_token}"
-          
+
       slack:
         enabled: true
         webhook_url: "${secret:slack_webhook_url}"
@@ -270,20 +270,20 @@ monitoring:
 
 logging:
   use_dedicated_config: true
-  
+
   fallback:
     level: "INFO"
-    
+
     console:
       enabled: false  # No console logging in production
-      
+
     file:
       enabled: true
       level: "INFO"
       path: "/var/log/ahgd/ahgd.log"
       max_size: "100MB"
       backup_count: 10
-      
+
     syslog:
       enabled: true
       host: "${secret:syslog_host}"
@@ -299,21 +299,21 @@ security:
     enabled: true
     algorithm: "AES-256-GCM"
     key_rotation_days: 30  # Monthly rotation
-    
+
   sensitive_data:
     mask_in_logs: true
     encryption_at_rest: true
-    
+
   audit:
     enabled: true
     log_file: "/var/log/ahgd/audit.log"
     retention_years: 7
-    
+
   network:
     firewall_enabled: true
     allowed_ips: []  # Configured by ops
     blocked_ips: []
-    
+
   compliance:
     gdpr: true
     hipaa: false
@@ -329,19 +329,19 @@ performance:
     query_caching: true
     index_optimization: true
     vacuum_schedule: "daily"
-    
+
   application:
     lazy_loading: true
     response_caching: true
     compression: true
     minification: true
     cdn_enabled: true
-    
+
   resources:
     cpu_affinity: true
     memory_mapping: true
     io_optimization: true
-    
+
   caching:
     redis:
       enabled: true
@@ -349,10 +349,10 @@ performance:
       port: 6379
       password: "${secret:redis_password}"
       db: 0
-      
+
   profiling:
     enabled: false  # Disable profiling in production
-    
+
 # =============================================================================
 # INTEGRATIONS
 # =============================================================================
@@ -364,7 +364,7 @@ integrations:
     host: "${secret:redis_host}"
     port: 6379
     password: "${secret:redis_password}"
-    
+
   search_engine:
     enabled: true
     type: "elasticsearch"
@@ -372,7 +372,7 @@ integrations:
     port: 9200
     username: "${secret:elasticsearch_username}"
     password: "${secret:elasticsearch_password}"
-    
+
   cloud_storage:
     enabled: true
     provider: "aws"
@@ -380,20 +380,20 @@ integrations:
     region: "${secret:aws_region}"
     access_key: "${secret:aws_access_key}"
     secret_key: "${secret:aws_secret_key}"
-    
+
   observability:
     tracing:
       enabled: true
       provider: "opentelemetry"
       endpoint: "${secret:otel_endpoint}"
       sample_rate: 0.1  # 10% sampling
-      
+
     metrics:
       enabled: true
       provider: "prometheus"
       host: "${secret:prometheus_host}"
       port: 9090
-      
+
     logging:
       enabled: true
       provider: "elasticsearch"
@@ -409,7 +409,7 @@ deployment:
     image: "ahgd:latest"
     registry: "${secret:container_registry}"
     pull_policy: "Always"
-    
+
   # Kubernetes settings
   kubernetes:
     namespace: "ahgd-prod"
@@ -421,13 +421,13 @@ deployment:
       limits:
         cpu: "4000m"
         memory: "8Gi"
-        
+
   # Health checks
   health:
     liveness_probe: "/health/live"
     readiness_probe: "/health/ready"
     startup_probe: "/health/startup"
-    
+
   # Scaling
   autoscaling:
     enabled: true
@@ -449,7 +449,7 @@ backup:
     compression: true
     encryption: true
     destination: "${secret:backup_destination}"
-    
+
   # File backups
   files:
     enabled: true
@@ -459,7 +459,7 @@ backup:
       - "/config"
     schedule: "0 2 * * *"  # Daily at 2 AM
     retention_days: 30
-    
+
   # Disaster recovery
   disaster_recovery:
     enabled: true
@@ -477,19 +477,19 @@ compliance:
     classification: "confidential"
     anonymization: true
     pseudonymization: true
-    
+
   privacy:
     gdpr_compliance: true
     right_to_erasure: true
     data_portability: true
     consent_management: true
-    
+
   audit:
     trail_enabled: true
     retention_years: 7
     tamper_protection: true
     real_time_monitoring: true
-    
+
   security:
     vulnerability_scanning: true
     penetration_testing: true
@@ -508,12 +508,12 @@ features:
   machine_learning: true
   real_time_processing: true
   advanced_analytics: true
-  
+
   # Integrations
   cloud_storage: true
   message_queue: true
   search_engine: true
-  
+
   # Disable experimental features
   experimental: false
   beta_features: false

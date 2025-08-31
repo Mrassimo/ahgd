@@ -23,7 +23,7 @@ cd ahgd
 
 **That's it!** 🎉 Your analytics platform is now running at:
 - 🏥 **Health Dashboard**: http://localhost:8501
-- ⚡ **API Endpoint**: http://localhost:8000  
+- ⚡ **API Endpoint**: http://localhost:8000
 - 🔧 **Airflow**: http://localhost:8080
 - 📚 **Documentation**: http://localhost:8002
 
@@ -52,40 +52,40 @@ graph TB
         API[FastAPI Backend]
         DOC[Documentation]
     end
-    
+
     subgraph "🧠 Business Logic"
         DBT[dbt Core Models]
         POL[Polars Transformations]
         VAL[Pydantic Validators]
     end
-    
+
     subgraph "💾 Data Layer"
         DUCK[(DuckDB OLAP)]
         REDIS[(Redis Cache)]
         FILES[(Parquet Files)]
     end
-    
+
     subgraph "🔧 Orchestration"
         AF[Airflow Scheduler]
         TASK[Pipeline Tasks]
         MON[Monitoring]
     end
-    
+
     subgraph "🐳 Infrastructure"
         DOCKER[Docker Compose]
         VOL[Persistent Volumes]
         NET[Service Network]
     end
-    
+
     ST --> API
     API --> DBT
     DBT --> DUCK
     DUCK --> FILES
-    
+
     AF --> TASK
     TASK --> POL
     POL --> DUCK
-    
+
     DOCKER --> AF
     DOCKER --> ST
     DOCKER --> DUCK
@@ -113,7 +113,7 @@ AHGD V3: ███░░░░░░░░░░░░░ 1.8 GB (78% reduction)
 ### **Query Response Times**
 
 - **Interactive Dashboard**: < 2 seconds
-- **Complex Analytics**: < 5 seconds  
+- **Complex Analytics**: < 5 seconds
 - **Data Export (100K records)**: < 3 seconds
 - **Geographic Mapping**: < 1 second
 
@@ -151,7 +151,7 @@ AHGD V3: ███░░░░░░░░░░░░░ 1.8 GB (78% reduction)
 - **[dbt Core](https://getdbt.com)** - SQL-centric data transformations
 - **[Pydantic V2](https://docs.pydantic.dev)** - Type safety and validation
 
-### **Analytics & Visualization**  
+### **Analytics & Visualization**
 - **[Streamlit](https://streamlit.io)** - Interactive dashboards
 - **[FastAPI](https://fastapi.tiangolo.com)** - High-performance API
 - **[Plotly](https://plotly.com)** - Interactive visualizations
@@ -171,7 +171,7 @@ AHGD V3: ███░░░░░░░░░░░░░ 1.8 GB (78% reduction)
 ![Health Dashboard](docs/screenshots/health_dashboard.png)
 *Real-time health analytics with geographic drill-down capabilities*
 
-### **Choropleth Health Mapping**  
+### **Choropleth Health Mapping**
 ![Interactive Map](docs/screenshots/choropleth_map.png)
 *Interactive mapping of health indicators across Australian SA2 areas*
 
@@ -216,7 +216,7 @@ Once deployed, access these endpoints:
 
 ### **4. First Analysis**
 1. **Select Geographic Area**: Choose state/region of interest
-2. **Pick Health Indicator**: Diabetes, mental health, or GP utilisation  
+2. **Pick Health Indicator**: Diabetes, mental health, or GP utilisation
 3. **Explore Interactive Map**: Click areas for detailed statistics
 4. **Export Results**: Download data in your preferred format
 
@@ -293,7 +293,7 @@ python validate_v3_implementation.py
 
 ### **Validation Levels**
 1. **Level 1: Syntax & Style** - Code quality and import validation
-2. **Level 2: Core Functionality** - Data processing pipeline tests  
+2. **Level 2: Core Functionality** - Data processing pipeline tests
 3. **Level 3: Integration** - Service communication and data flow
 4. **Level 4: Deployment** - Performance benchmarks and production readiness
 
@@ -333,7 +333,7 @@ class CustomHealthExtractor(PolarsBaseExtractor):
 
 ### **For Data Analysts**
 - 🚀 **10x faster analysis** - No more waiting for queries
-- 🎯 **Interactive exploration** - Point-and-click health analytics  
+- 🎯 **Interactive exploration** - Point-and-click health analytics
 - 📊 **Rich visualizations** - Professional charts and maps
 - 📤 **Flexible exports** - Get data in any format you need
 
@@ -370,7 +370,7 @@ We welcome contributions! Here's how to get started:
 ### **Development Guidelines**
 - ✅ Follow existing code style (automated formatting)
 - ✅ Add tests for new functionality
-- ✅ Update documentation for user-facing changes  
+- ✅ Update documentation for user-facing changes
 - ✅ Ensure all validation levels pass
 
 ---
@@ -404,7 +404,7 @@ Data sources retain their original licensing terms:
 
 ### **Getting Help**
 - 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Mrassimo/ahgd/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/Mrassimo/ahgd/discussions)  
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/Mrassimo/ahgd/discussions)
 - 📧 **Email**: ahgd-support@example.com
 - 📚 **Documentation**: http://localhost:8002 (when running)
 
@@ -425,7 +425,7 @@ Data sources retain their original licensing terms:
 
 ### **Future Releases**
 - 🤖 **Machine Learning Models** - Predictive health analytics
-- 🔗 **External Integrations** - Connect your own data sources  
+- 🔗 **External Integrations** - Connect your own data sources
 - ☁️ **Cloud Deployment** - One-click cloud scaling
 - 🏥 **Hospital Integration** - EMR and clinical data connectivity
 
@@ -437,7 +437,7 @@ Data sources retain their original licensing terms:
 
 **AHGD V3** represents the future of health data analytics - where complex geographic and temporal health patterns become as easy to explore as browsing the web. Built by data engineers and health researchers, for everyone who needs to understand Australia's health landscape.
 
-**Ready to revolutionise your health data analysis?** 
+**Ready to revolutionise your health data analysis?**
 
 ```bash
 ./start_ahgd_v3.sh

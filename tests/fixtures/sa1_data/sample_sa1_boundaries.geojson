@@ -26,14 +26,14 @@
       }
     },
     {
-      "type": "Feature", 
+      "type": "Feature",
       "properties": {
         "sa1_code": "10102100702",
         "sa1_name": "Sydney - Haymarket - The Rocks (West)",
         "population": 380,
         "dwellings": 165,
         "sa2_code": "101021007",
-        "sa3_code": "10102", 
+        "sa3_code": "10102",
         "sa4_code": "101",
         "state_code": "NSW",
         "remoteness_category": "Major Cities"
@@ -52,7 +52,7 @@
     {
       "type": "Feature",
       "properties": {
-        "sa1_code": "20203200801", 
+        "sa1_code": "20203200801",
         "sa1_name": "Melbourne - Carlton (East)",
         "population": 465,
         "dwellings": 205,
@@ -77,7 +77,7 @@
       "type": "Feature",
       "properties": {
         "sa1_code": "30504500901",
-        "sa1_name": "Brisbane - Fortitude Valley (East)", 
+        "sa1_name": "Brisbane - Fortitude Valley (East)",
         "population": 395,
         "dwellings": 175,
         "sa2_code": "305045009",
@@ -105,7 +105,7 @@
         "population": 245,
         "dwellings": 110,
         "sa2_code": "153018003",
-        "sa3_code": "15301", 
+        "sa3_code": "15301",
         "sa4_code": "153",
         "state_code": "NSW",
         "remoteness_category": "Very Remote"

@@ -20,7 +20,7 @@ user_agent = "AHGD-Analytics/1.0 (Research Project)"
 
 [sources.aihw_data]
 # Australian Institute of Health and Welfare
-name = "aihw_data"  
+name = "aihw_data"
 base_url = "https://data.gov.au"
 request_delay = 0.5
 
@@ -87,7 +87,7 @@ max_parallel_load_jobs = 4
 batch_size = 5000
 max_parallel_load_jobs = 2
 
-[load.sa2_boundaries]  
+[load.sa2_boundaries]
 batch_size = 1000
 max_parallel_load_jobs = 1
 
@@ -119,7 +119,7 @@ max_runtime_minutes = 480  # 8 hours
 
 [pipeline.seifa_sa1]
 description = "SEIFA data at SA1 level"
-priority = "high"  
+priority = "high"
 schedule = "0 3 * * 0"  # After SA1 boundaries
 
 [pipeline.health_services]

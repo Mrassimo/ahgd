@@ -8,34 +8,16 @@ SA1s can be aggregated up to SA2, SA3, SA4 levels as needed.
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from dataclasses import field
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
+from typing import Optional
 
-import geopandas as gpd
-import numpy as np
-import pandas as pd
 import polars as pl
-from shapely.geometry import Point
 
-from schemas.sa1_schema import SA1Coordinates
-
-from ..utils.interfaces import (
-    AuditTrail,
-    DataBatch,
-    DataRecord,
-    GeographicValidationError,
-    ProcessingMetadata,
-    ProcessingStatus,
-    ProgressCallback,
-    TransformationError,
-    ValidationError,
-    ValidationResult,
-    ValidationSeverity,
-)
-from ..validators import GeographicValidator, ValidationOrchestrator
-from .base import BaseTransformer, MissingValueStrategy
+from ..utils.interfaces import TransformationError
+from .base import BaseTransformer
 
 
 @dataclass
@@ -63,7 +45,7 @@ class SA1ValidationResult:
 
     is_valid: bool
     sa1_code: str
-    hierarchy_codes: Dict[str, str] = field(default_factory=dict)
+    hierarchy_codes: dict[str, str] = field(default_factory=dict)
     error_message: Optional[str] = None
     confidence: float = 1.0
     validation_method: str = "lookup"
@@ -77,7 +59,7 @@ class SA1ProcessingEngine:
     for mapping from various sources to SA1s and aggregating to higher levels.
     """
 
-    def __init__(self, config: Dict[str, Any], logger: Optional[logging.Logger] = None):
+    def __init__(self, config: dict[str, Any], logger: Optional[logging.Logger] = None):
         """
         Initialise the SA1 processing engine.
 
@@ -89,23 +71,21 @@ class SA1ProcessingEngine:
         self.logger = logger or logging.getLogger(__name__)
 
         # SA1 lookup and hierarchy tables
-        self._sa1_hierarchy: Dict[str, Dict[str, str]] = (
-            {}
-        )  # SA1 -> {SA2, SA3, SA4, STATE}
-        self._valid_sa1_codes: Set[str] = set()
+        self._sa1_hierarchy: dict[str, dict[str, str]] = {}  # SA1 -> {SA2, SA3, SA4, STATE}
+        self._valid_sa1_codes: set[str] = set()
 
         # Mapping lookup tables for various sources to SA1
-        self._postcode_mappings: Dict[str, List[SA1Mapping]] = {}
-        self._mesh_block_mappings: Dict[str, str] = {}  # Mesh Block to SA1 is 1:1
-        self._address_mappings: Dict[str, str] = {}  # Address to SA1 lookup
+        self._postcode_mappings: dict[str, list[SA1Mapping]] = {}
+        self._mesh_block_mappings: dict[str, str] = {}  # Mesh Block to SA1 is 1:1
+        self._address_mappings: dict[str, str] = {}  # Address to SA1 lookup
 
         # Reverse mappings (SA2->SA1, SA3->SA1, SA4->SA1)
-        self._sa2_to_sa1s: Dict[str, List[str]] = {}
-        self._sa3_to_sa1s: Dict[str, List[str]] = {}
-        self._sa4_to_sa1s: Dict[str, List[str]] = {}
+        self._sa2_to_sa1s: dict[str, list[str]] = {}
+        self._sa3_to_sa1s: dict[str, list[str]] = {}
+        self._sa4_to_sa1s: dict[str, list[str]] = {}
 
         # Cache for performance
-        self._mapping_cache: Dict[str, List[SA1Mapping]] = {}
+        self._mapping_cache: dict[str, list[SA1Mapping]] = {}
         self._cache_hits = 0
         self._cache_misses = 0
 
@@ -121,9 +101,7 @@ class SA1ProcessingEngine:
         Returns:
             pl.DataFrame: Processed data with SA1 codes and hierarchy
         """
-        self.logger.info(
-            f"Processing {len(input_data)} records for SA1 standardisation"
-        )
+        self.logger.info(f"Processing {len(input_data)} records for SA1 standardisation")
 
         # Detect geographic code columns
         geographic_columns = self._detect_geographic_columns(input_data)
@@ -136,7 +114,7 @@ class SA1ProcessingEngine:
                 processed_row = self._process_record_to_sa1(row, geographic_columns)
                 processed_records.append(processed_row)
             except Exception as e:
-                self.logger.error(f"Failed to process record: {row}, error: {str(e)}")
+                self.logger.error(f"Failed to process record: {row}, error: {e!s}")
                 # Add error record with original data
                 error_row = dict(row)
                 error_row.update(
@@ -193,7 +171,7 @@ class SA1ProcessingEngine:
         )
 
     def aggregate_sa1_to_sa2(
-        self, sa1_data: pl.DataFrame, value_columns: List[str]
+        self, sa1_data: pl.DataFrame, value_columns: list[str]
     ) -> pl.DataFrame:
         """
         Aggregate SA1 data to SA2 level.
@@ -221,12 +199,10 @@ class SA1ProcessingEngine:
             ]
         )
 
-        self.logger.info(
-            f"Aggregated {len(sa1_data)} SA1 records to {len(aggregated)} SA2 records"
-        )
+        self.logger.info(f"Aggregated {len(sa1_data)} SA1 records to {len(aggregated)} SA2 records")
         return aggregated
 
-    def get_sa1_neighbours(self, sa1_code: str, distance_km: float = 5.0) -> List[str]:
+    def get_sa1_neighbours(self, sa1_code: str, distance_km: float = 5.0) -> list[str]:
         """
         Find neighbouring SA1s within specified distance.
 
@@ -245,9 +221,7 @@ class SA1ProcessingEngine:
         sa2_code = hierarchy.get("sa2_code", "")
 
         if sa2_code and sa2_code in self._sa2_to_sa1s:
-            same_sa2_sa1s = [
-                code for code in self._sa2_to_sa1s[sa2_code] if code != sa1_code
-            ]
+            same_sa2_sa1s = [code for code in self._sa2_to_sa1s[sa2_code] if code != sa1_code]
             neighbours.extend(same_sa2_sa1s[:10])  # Limit for performance
 
         return neighbours
@@ -273,9 +247,7 @@ class SA1ProcessingEngine:
             standardised_data = self._add_geographic_hierarchy(standardised_data)
 
             # Validate results
-            validation_summary = self._validate_standardisation_results(
-                standardised_data
-            )
+            validation_summary = self._validate_standardisation_results(standardised_data)
 
             processing_time = time.time() - start_time
             self.logger.info(
@@ -286,10 +258,10 @@ class SA1ProcessingEngine:
             return standardised_data
 
         except Exception as e:
-            self.logger.error(f"Geographic standardisation failed: {str(e)}")
-            raise TransformationError(f"SA1 standardisation failed: {str(e)}") from e
+            self.logger.error(f"Geographic standardisation failed: {e!s}")
+            raise TransformationError(f"SA1 standardisation failed: {e!s}") from e
 
-    def validate_sa1_codes(self, sa1_codes: List[str]) -> Dict[str, bool]:
+    def validate_sa1_codes(self, sa1_codes: list[str]) -> dict[str, bool]:
         """
         Validate multiple SA1 codes efficiently.
 
@@ -306,7 +278,7 @@ class SA1ProcessingEngine:
 
         return results
 
-    def get_cache_statistics(self) -> Dict[str, Any]:
+    def get_cache_statistics(self) -> dict[str, Any]:
         """Get cache performance statistics."""
         total_requests = self._cache_hits + self._cache_misses
         hit_rate = self._cache_hits / total_requests if total_requests > 0 else 0
@@ -318,7 +290,7 @@ class SA1ProcessingEngine:
             "cache_size": len(self._mapping_cache),
         }
 
-    def _detect_geographic_columns(self, data: pl.DataFrame) -> Dict[str, str]:
+    def _detect_geographic_columns(self, data: pl.DataFrame) -> dict[str, str]:
         """Detect which columns contain geographic codes."""
         geographic_columns = {}
 
@@ -338,8 +310,8 @@ class SA1ProcessingEngine:
         return geographic_columns
 
     def _process_record_to_sa1(
-        self, record: Dict[str, Any], geographic_columns: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, record: dict[str, Any], geographic_columns: dict[str, str]
+    ) -> dict[str, Any]:
         """Process a single record to extract SA1 information."""
         processed_record = dict(record)
         sa1_code = None
@@ -387,7 +359,7 @@ class SA1ProcessingEngine:
                         break
 
             except Exception as e:
-                self.logger.warning(f"Failed to process {code_type} {value}: {str(e)}")
+                self.logger.warning(f"Failed to process {code_type} {value}: {e!s}")
                 continue
 
         # Add SA1 and processing information
@@ -397,7 +369,7 @@ class SA1ProcessingEngine:
 
         return processed_record
 
-    def _extract_hierarchy_from_sa1(self, sa1_code: str) -> Dict[str, str]:
+    def _extract_hierarchy_from_sa1(self, sa1_code: str) -> dict[str, str]:
         """Extract geographic hierarchy codes from SA1 code structure."""
         if not sa1_code or len(sa1_code) != 11:
             return {}
@@ -452,7 +424,7 @@ class SA1ProcessingEngine:
 
         return pl.DataFrame(hierarchy_data)
 
-    def _validate_standardisation_results(self, data: pl.DataFrame) -> Dict[str, Any]:
+    def _validate_standardisation_results(self, data: pl.DataFrame) -> dict[str, Any]:
         """Validate standardisation results."""
         total_records = len(data)
 
@@ -476,7 +448,7 @@ class SA1ProcessingEngine:
             "failed_mappings": total_records - success_count,
         }
 
-    def _map_postcode_to_sa1(self, postcode: str) -> List[SA1Mapping]:
+    def _map_postcode_to_sa1(self, postcode: str) -> list[SA1Mapping]:
         """Map postcode to SA1(s) - placeholder implementation."""
         # In production, this would use ABS correspondence files
         mappings = self._postcode_mappings.get(postcode, [])
@@ -534,11 +506,9 @@ class SA1GeographicTransformer(BaseTransformer):
     as the primary geographic unit, with supporting hierarchy information.
     """
 
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config: dict[str, Any] = None):
         """Initialise SA1 geographic transformer."""
-        super().__init__(
-            transformer_id="sa1_geographic_transformer", config=config or {}
-        )
+        super().__init__(transformer_id="sa1_geographic_transformer", config=config or {})
         self.sa1_engine = SA1ProcessingEngine(self.config, self.logger)
 
     def transform(self, data: pl.DataFrame) -> pl.DataFrame:
@@ -553,7 +523,7 @@ class SA1GeographicTransformer(BaseTransformer):
         """
         return self.sa1_engine.standardise_geographic_data(data)
 
-    def get_transformation_metadata(self) -> Dict[str, Any]:
+    def get_transformation_metadata(self) -> dict[str, Any]:
         """Get metadata about the transformation process."""
         cache_stats = self.sa1_engine.get_cache_statistics()
         return {

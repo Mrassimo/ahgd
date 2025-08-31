@@ -38,7 +38,7 @@ models:
         description: "Data quality score (0-1)"
       - name: updated_at
         description: "Record last updated timestamp"
-        
+
   - name: stg_abs__sa1_geography
     description: "Standardized SA1 geographic boundaries and spatial data"
     columns:
@@ -52,7 +52,7 @@ models:
       - name: sa2_code
         description: "Parent SA2 code"
       - name: sa3_code
-        description: "Parent SA3 code"  
+        description: "Parent SA3 code"
       - name: sa4_code
         description: "Parent SA4 code"
       - name: state_code
@@ -74,7 +74,7 @@ models:
           - dbt_utils.accepted_range:
               min_value: 0
               max_value: 1000
-              
+
   - name: stg_abs__seifa_indices
     description: "Standardized SEIFA socioeconomic indices"
     columns:
@@ -89,14 +89,14 @@ models:
         description: "IRSD decile (1=most disadvantaged, 10=least disadvantaged)"
       - name: irsad_score
         description: "Index of Relative Socio-economic Advantage and Disadvantage"
-      - name: ier_score  
+      - name: ier_score
         description: "Index of Education and Occupation"
       - name: iec_score
         description: "Index of Economic Resources"
       - name: overall_disadvantage_rank
         description: "Combined disadvantage ranking"
 
-  # AIHW Staging Models  
+  # AIHW Staging Models
   - name: stg_aihw__health_indicators
     description: "Standardized health indicators by SA1"
     columns:
@@ -148,7 +148,7 @@ models:
     description: "Climate data aggregated and standardized for SA1 areas"
     columns:
       - name: sa1_code
-        description: "SA1 area identifier"  
+        description: "SA1 area identifier"
         tests:
           - not_null
       - name: climate_year
@@ -218,7 +218,7 @@ models:
           - dbt_utils.accepted_range:
               min_value: 0
               max_value: 100
-      - name: fully_immunised_2yr_rate  
+      - name: fully_immunised_2yr_rate
         description: "Full immunisation coverage at 24 months (%)"
       - name: fully_immunised_5yr_rate
         description: "Full immunisation coverage at 60 months (%)"

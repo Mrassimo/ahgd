@@ -14,7 +14,7 @@
 **MASSIVE PERFORMANCE UPGRADE**: Complete rewrite using modern data stack for unprecedented speed and scale:
 
 - **🔥 10-100x Faster**: Polars-based processing replaces pandas
-- **🎯 25x More Detailed**: SA1-level analysis (61,845 areas vs 2,300 SA2 areas)  
+- **🎯 25x More Detailed**: SA1-level analysis (61,845 areas vs 2,300 SA2 areas)
 - **💾 Parquet-First**: Column-oriented storage for lightning-fast analytics
 - **🔧 Modern Stack**: DLT + DBT + Pydantic + DuckDB + Streamlit
 - **🌏 National Coverage**: All states and territories, not just NSW
@@ -40,7 +40,7 @@
 ### ⚡ Performance Architecture
 - **Polars Engine**: 10-100x faster than pandas for data processing
 - **Parquet Storage**: 50-90% smaller files, column-oriented analytics
-- **DuckDB Analytics**: In-memory OLAP for complex aggregations  
+- **DuckDB Analytics**: In-memory OLAP for complex aggregations
 - **Lazy Evaluation**: Process datasets larger than RAM
 - **Parallel Processing**: Multi-core utilization for maximum throughput
 
@@ -52,32 +52,32 @@
 graph TB
     subgraph "Data Sources"
         ABS[ABS Census & Geography]
-        AIHW[AIHW Health Indicators] 
+        AIHW[AIHW Health Indicators]
         PHIDU[PHIDU Population Health]
     end
-    
+
     subgraph "Extraction Layer"
         PE[Polars Extractors<br/>10-100x faster]
     end
-    
-    subgraph "Processing Pipeline"  
+
+    subgraph "Processing Pipeline"
         DLT[DLT<br/>Data Load Tool]
         DBT[DBT<br/>Data Build Tool]
         PY[Pydantic<br/>Validation]
     end
-    
+
     subgraph "Storage Layer"
         PAR[Parquet Files<br/>Column-oriented]
         DUCK[DuckDB<br/>Analytics Engine]
     end
-    
+
     subgraph "Analysis Layer"
         ST[Streamlit<br/>Interactive Dashboards]
         API[FastAPI<br/>REST Endpoints]
     end
-    
+
     ABS --> PE
-    AIHW --> PE  
+    AIHW --> PE
     PHIDU --> PE
     PE --> DLT
     DLT --> DBT
@@ -121,7 +121,7 @@ python -m venv venv
 source venv/bin/activate  # or `venv\\Scripts\\activate` on Windows
 pip install -r requirements.txt
 
-# Run high-performance data pipeline  
+# Run high-performance data pipeline
 python -m pipelines.dlt.health_polars
 
 # Start dashboard
@@ -157,7 +157,7 @@ python real_ahgd_dashboard.py
 | Metric | V2 (pandas) | V3 (Polars) | Improvement |
 |--------|-------------|-------------|-------------|
 | Memory Usage | 2.8 GB | 0.7 GB | **75% reduction** |
-| Storage Size | 1.2 GB | 0.3 GB | **75% smaller** |  
+| Storage Size | 1.2 GB | 0.3 GB | **75% smaller** |
 | Query Response | 3.2s | 0.1s | **32x faster** |
 | Concurrent Users | 5 | 50+ | **10x capacity** |
 
@@ -167,7 +167,7 @@ python real_ahgd_dashboard.py
 
 ### 🏥 Public Health Analysis
 - **Disease Surveillance**: Track chronic disease prevalence across neighborhoods
-- **Healthcare Planning**: Identify underserved areas for new medical facilities  
+- **Healthcare Planning**: Identify underserved areas for new medical facilities
 - **Risk Assessment**: Map health vulnerabilities by socioeconomic factors
 - **Resource Allocation**: Optimize health service distribution
 
@@ -177,7 +177,7 @@ python real_ahgd_dashboard.py
 - **Budget Optimization**: Evidence-based health spending allocation
 - **Performance Monitoring**: Track health system effectiveness
 
-### 🔬 Research & Academia  
+### 🔬 Research & Academia
 - **Population Health Studies**: Neighborhood-level health research
 - **Geographic Health Modeling**: Spatial analysis of health outcomes
 - **Social Determinants**: Quantify relationships between place and health
@@ -197,20 +197,20 @@ python real_ahgd_dashboard.py
 AHGD/
 ├── 🚀 pipelines/
 │   └── dlt/
-│       ├── health_polars.py      # High-performance Polars pipeline  
+│       ├── health_polars.py      # High-performance Polars pipeline
 │       └── health.py             # Legacy pandas pipeline
 ├── 🔧 src/
 │   ├── extractors/               # Polars-based data extractors
 │   │   ├── polars_base.py       # Base extractor (10x faster)
 │   │   ├── polars_aihw_extractor.py
-│   │   └── polars_abs_extractor.py  
+│   │   └── polars_abs_extractor.py
 │   ├── storage/                 # Parquet-first storage system
 │   │   └── parquet_manager.py   # Optimized storage management
 │   ├── api/                     # FastAPI REST endpoints
 │   └── models/                  # Pydantic data models
 ├── 📊 models/                   # DBT data models
 │   ├── staging/                 # Raw data standardization
-│   ├── intermediate/            # Business logic transformations  
+│   ├── intermediate/            # Business logic transformations
 │   └── marts/                   # Analytics-ready datasets
 ├── 🌐 streamlit_app/           # Interactive dashboards
 ├── 📦 data/
@@ -228,7 +228,7 @@ AHGD/
 ### Geographic Scope
 - **🌏 Coverage**: All Australian states and territories
 - **📍 Areas**: 61,845 SA1 areas (complete national coverage)
-- **🏘️ Population**: ~400-800 residents per SA1 area  
+- **🏘️ Population**: ~400-800 residents per SA1 area
 - **🗺️ Boundaries**: Official 2021 Census boundaries with GDA2020 coordinates
 
 ### Health Data Sources
@@ -243,7 +243,7 @@ AHGD/
 
 ### Data Quality Metrics
 - **Completeness**: 94.2% average across all datasets
-- **Accuracy**: 98.7% validated against source systems  
+- **Accuracy**: 98.7% validated against source systems
 - **Currency**: Most recent available (2021-2023)
 - **Consistency**: Standardized to SA1 geographic framework
 
@@ -253,12 +253,12 @@ AHGD/
 
 ### High-Performance Processing
 - **Lazy Evaluation**: Process datasets larger than available RAM
-- **Parallel Processing**: Automatic multi-core utilization  
+- **Parallel Processing**: Automatic multi-core utilization
 - **Streaming**: Handle massive datasets without memory issues
 - **Caching**: Intelligent Parquet caching for 3x faster reruns
 - **Compression**: 50-90% storage reduction with optimized formats
 
-### Analytics Capabilities  
+### Analytics Capabilities
 - **Geographic Analysis**: Spatial joins, proximity analysis, clustering
 - **Time Series**: Trend analysis, seasonal decomposition, forecasting
 - **Statistical Modeling**: Correlation analysis, regression, clustering
@@ -269,7 +269,7 @@ AHGD/
 - **REST API**: FastAPI endpoints for programmatic access
 - **Authentication**: Secure access controls and API keys
 - **Monitoring**: Performance metrics and health checks
-- **Scaling**: Horizontal scaling support with containerization  
+- **Scaling**: Horizontal scaling support with containerization
 - **Documentation**: Comprehensive API documentation with OpenAPI
 
 ---
@@ -297,7 +297,7 @@ kubectl apply -f k8s/ahgd-service.yaml
 # Production environment variables
 AHGD_ENV=production
 AHGD_MAX_WORKERS=8
-AHGD_MEMORY_LIMIT_GB=16  
+AHGD_MEMORY_LIMIT_GB=16
 DUCKDB_PATH=/data/ahgd_production.db
 PARQUET_STORE_PATH=/data/parquet_store
 API_SECRET_KEY=your-secret-key
@@ -312,7 +312,7 @@ API_SECRET_KEY=your-secret-key
 # Get SA1 health profile
 GET /api/v1/health/sa1/{sa1_code}
 
-# Search areas by health indicators  
+# Search areas by health indicators
 POST /api/v1/health/search
 {
   "diabetes_rate": {"min": 5.0, "max": 15.0},
@@ -330,11 +330,11 @@ POST /api/v1/analytics/report
 ```
 
 ### Performance Monitoring
-```bash  
+```bash
 # System performance metrics
 GET /api/v1/system/performance
 
-# Data quality metrics  
+# Data quality metrics
 GET /api/v1/data/quality
 
 # Processing pipeline status
@@ -358,7 +358,7 @@ pytest tests/performance/ -v
 # Integration tests with real data
 pytest tests/integration/ -v
 
-# API endpoint tests  
+# API endpoint tests
 pytest tests/api/ -v
 ```
 
@@ -382,11 +382,11 @@ python -m src.validators.geographic_validator
 
 ### User Guides
 - 📖 [**Getting Started Guide**](docs/guides/getting-started.md)
-- 🎯 [**SA1 Analysis Tutorial**](docs/guides/sa1-analysis.md)  
+- 🎯 [**SA1 Analysis Tutorial**](docs/guides/sa1-analysis.md)
 - 🏥 [**Health Analytics Cookbook**](docs/guides/health-analytics.md)
 - 🚀 [**Performance Optimization**](docs/guides/performance.md)
 
-### Technical Documentation  
+### Technical Documentation
 - 🔧 [**API Reference**](docs/api/README.md)
 - 🏗️ [**Architecture Guide**](docs/technical/architecture.md)
 - 📊 [**Data Dictionary**](docs/data-dictionary/data_dictionary.md)
@@ -423,7 +423,7 @@ python -m uvicorn src.api.main:app --reload
 ### Areas for Contribution
 - 🔧 **Performance**: Further Polars optimizations
 - 📊 **Visualizations**: Advanced dashboard components
-- 🏥 **Health Models**: New analytical models and indicators  
+- 🏥 **Health Models**: New analytical models and indicators
 - 🌏 **Geographic**: Enhanced spatial analysis capabilities
 - 📚 **Documentation**: User guides and tutorials
 
@@ -439,13 +439,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Data Sources
 - **Australian Bureau of Statistics (ABS)**: Census, geographic, and SEIFA data
-- **Australian Institute of Health and Welfare (AIHW)**: Health indicators and mortality statistics  
+- **Australian Institute of Health and Welfare (AIHW)**: Health indicators and mortality statistics
 - **Public Health Information Development Unit (PHIDU)**: Population health indicators
 - **Department of Health**: Medicare Benefits Schedule (MBS) and Pharmaceutical Benefits Scheme (PBS)
 
 ### Technology Stack
 - **Polars Team**: For revolutionary DataFrame performance
-- **DLT Hub**: For modern data pipeline architecture  
+- **DLT Hub**: For modern data pipeline architecture
 - **DBT Labs**: For analytics engineering excellence
 - **Pydantic Team**: For high-performance data validation
 - **DuckDB Team**: For in-memory analytical processing

@@ -2,12 +2,14 @@
 Data quality metrics endpoints.
 """
 
-from fastapi import APIRouter, status
 from datetime import datetime
 
-from ..models.common import APIResponse, QualityScore
+from fastapi import APIRouter
+
+from ..models.common import QualityScore
 
 router = APIRouter()
+
 
 @router.get("/metrics", response_model=QualityScore)
 async def get_quality_metrics() -> QualityScore:
@@ -20,5 +22,5 @@ async def get_quality_metrics() -> QualityScore:
         validity=90.0,
         timeliness=75.0,
         record_count=1000,
-        calculated_at=datetime.now()
+        calculated_at=datetime.now(),
     )

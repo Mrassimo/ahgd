@@ -7,22 +7,16 @@ following ABS 2021 standards and the SA1 schema validation rules.
 
 import random
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Optional
 
-import pandas as pd
 import polars as pl
 
-from schemas.base_schema import (
-    DataQualityLevel,
-    DataSource,
-    GeographicBoundary,
-    SchemaVersion,
-)
-from schemas.sa1_schema import (
-    SA1BoundaryRelationship,
-    SA1Coordinates,
-    SA1GeometryValidation,
-)
+from schemas.base_schema import DataQualityLevel
+from schemas.base_schema import DataSource
+from schemas.base_schema import GeographicBoundary
+from schemas.base_schema import SchemaVersion
+from schemas.sa1_schema import SA1Coordinates
 
 
 class SA1TestDataGenerator:
@@ -102,9 +96,7 @@ class SA1TestDataGenerator:
 
         return sa1_code
 
-    def generate_sa1_name(
-        self, state_code: str, remoteness: str = "Major Cities"
-    ) -> str:
+    def generate_sa1_name(self, state_code: str, remoteness: str = "Major Cities") -> str:
         """Generate realistic SA1 name based on state and remoteness."""
 
         # Major city examples by state
@@ -132,9 +124,7 @@ class SA1TestDataGenerator:
 
         return f"{city} - {suburb}"
 
-    def generate_coordinates(
-        self, state_code: str, remoteness: str
-    ) -> tuple[float, float]:
+    def generate_coordinates(self, state_code: str, remoteness: str) -> tuple[float, float]:
         """Generate realistic coordinates based on state and remoteness."""
 
         # Approximate coordinate bounds by state (centroid regions)
@@ -180,9 +170,7 @@ class SA1TestDataGenerator:
             state_digit = self.random.choice(list(self.STATE_MAPPINGS.keys()))
             state_code = self.STATE_MAPPINGS[state_digit]["code"]
         else:
-            state_digit = next(
-                k for k, v in self.STATE_MAPPINGS.items() if v["code"] == state_code
-            )
+            state_digit = next(k for k, v in self.STATE_MAPPINGS.items() if v["code"] == state_code)
 
         # Select random remoteness if not provided
         if not remoteness:
@@ -259,7 +247,7 @@ class SA1TestDataGenerator:
             data_quality=DataQualityLevel.HIGH,
         )
 
-    def generate_test_dataset(self, count: int = 20, **kwargs) -> List[SA1Coordinates]:
+    def generate_test_dataset(self, count: int = 20, **kwargs) -> list[SA1Coordinates]:
         """Generate a dataset of SA1 coordinates for testing."""
         return [self.generate_sa1_coordinates(**kwargs) for _ in range(count)]
 
@@ -288,7 +276,7 @@ class SA1TestDataGenerator:
         return pl.DataFrame(records)
 
 
-def get_sample_sa1_data() -> Dict[str, Any]:
+def get_sample_sa1_data() -> dict[str, Any]:
     """Get sample SA1 data for basic validation tests."""
     return {
         "sa1_code": "10102100701",
@@ -320,13 +308,13 @@ def get_sample_sa1_data() -> Dict[str, Any]:
     }
 
 
-def validate_test_data(sa1_data: Dict[str, Any]) -> List[str]:
+def validate_test_data(sa1_data: dict[str, Any]) -> list[str]:
     """Validate SA1 test data and return any errors."""
     try:
         sa1 = SA1Coordinates(**sa1_data)
         return sa1.validate_data_integrity()
     except Exception as e:
-        return [f"Validation error: {str(e)}"]
+        return [f"Validation error: {e!s}"]
 
 
 # Pre-defined test cases for common scenarios

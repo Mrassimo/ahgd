@@ -72,50 +72,50 @@ SELECT
     -- SA1 identifiers
     b.sa1_code,
     b.sa1_name,
-    
+
     -- SA2 identifiers
     b.sa2_code,
-    
+
     -- Higher level geography
     b.sa3_code,
     b.sa4_code,
     b.state_code,
     b.state_name,
-    
+
     -- SA1 metrics
     b.sa1_area_sqkm,
     COALESCE(s.sa1_population, 0) AS sa1_population,
     b.sa1_centroid_lon,
     b.sa1_centroid_lat,
-    
+
     -- SA1 SEIFA data
     s.irsd_score AS sa1_irsd_score,
     s.irsd_decile_australia AS sa1_irsd_decile,
     s.disadvantage_category AS sa1_disadvantage_category,
     s.composite_advantage_score AS sa1_advantage_score,
-    
+
     -- SA2 aggregate metrics
     a.sa1_count AS sa2_sa1_count,
     a.total_area_sqkm AS sa2_total_area_sqkm,
     p.total_population AS sa2_total_population,
-    
+
     -- Allocation percentages for aggregation
     -- Area-based allocation
     CAST(b.sa1_area_sqkm / NULLIF(a.total_area_sqkm, 0) * 100 AS DECIMAL(5,2)) AS area_allocation_pct,
-    
+
     -- Population-based allocation (preferred for health metrics)
     CAST(s.sa1_population / NULLIF(p.total_population, 0) * 100 AS DECIMAL(5,2)) AS population_allocation_pct,
-    
+
     -- SA2 weighted scores (for validation)
     p.weighted_irsd_score AS sa2_weighted_irsd_score,
     p.predominant_disadvantage AS sa2_predominant_disadvantage,
     p.weighted_advantage_score AS sa2_weighted_advantage_score,
-    
+
     -- Relationship metadata
     'exact' AS relationship_type,  -- SA1s fully contained in SA2s
     b.sa1_quality_score,
     a.avg_quality_score AS sa2_avg_quality_score,
-    
+
     -- Processing metadata
     CURRENT_TIMESTAMP AS created_at,
     '{{ var("pipeline_version", "1.0.0") }}' AS pipeline_version

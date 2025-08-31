@@ -1,0 +1,52 @@
+{
+  "name": "AHGD V3: Real Data Processing Environment",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true,
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.typeCheckingMode": "basic",
+        "files.watcherExclude": {
+          "**/real_data/**": true,
+          "**/data/**": true,
+          "**/cache/**": true,
+          "**/*.parquet": true,
+          "**/*.db": true
+        }
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance", 
+        "ms-toolsai.jupyter",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+
+  "containerEnv": {
+    "PYTHONPATH": "/workspaces/AHGD/src",
+    "AHGD_ENV": "cloud_processing",
+    "POLARS_MAX_THREADS": "4"
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  
+  "mounts": [
+    "source=ahgd-data-volume,target=/tmp/ahgd_data,type=volume"
+  ],
+
+  "remoteUser": "vscode"
+}

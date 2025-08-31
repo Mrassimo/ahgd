@@ -84,7 +84,7 @@ POST /v1/analytics/clustering
 {
   "features": [
     "diabetes_prevalence",
-    "cardiovascular_disease_rate", 
+    "cardiovascular_disease_rate",
     "mental_health_conditions",
     "life_expectancy",
     "seifa_disadvantage_rank"
@@ -318,7 +318,7 @@ POST /v1/analytics/reports
   },
   "sections": [
     "executive_summary",
-    "demographic_profile", 
+    "demographic_profile",
     "health_indicators",
     "risk_assessment",
     "comparative_analysis",
@@ -408,7 +408,7 @@ POST /v1/analytics/reports
 | Model Type | Use Case | Performance | Training Data |
 |------------|----------|-------------|---------------|
 | **Gradient Boosting** | Disease prediction | R²=0.87 | 5+ years health data |
-| **Random Forest** | Risk classification | AUC=0.92 | Multi-indicator analysis |  
+| **Random Forest** | Risk classification | AUC=0.92 | Multi-indicator analysis |
 | **Neural Network** | Complex patterns | R²=0.84 | Deep feature learning |
 | **Linear Regression** | Trend analysis | R²=0.76 | Simple relationships |
 | **K-Means** | Area clustering | Silhouette=0.67 | Unsupervised grouping |
@@ -472,7 +472,7 @@ POST /v1/analytics/regression
   "dependent_variable": "life_expectancy",
   "independent_variables": [
     "seifa_irsad",
-    "healthcare_access_score", 
+    "healthcare_access_score",
     "air_quality_index",
     "population_density"
   ],
@@ -537,7 +537,7 @@ POST /v1/analytics/spatial-autocorr
 {
   "cache_levels": {
     "raw_data": "24 hours",
-    "aggregated_results": "6 hours", 
+    "aggregated_results": "6 hours",
     "model_predictions": "2 hours",
     "correlation_matrices": "1 hour"
   },
@@ -571,7 +571,7 @@ risk_scores = client.risk_assessment({
 
 # Predictive modeling
 predictions = client.predict({
-    "target": "diabetes_prevalence", 
+    "target": "diabetes_prevalence",
     "prediction_horizon": "2025",
     "areas": ["101011001"]
 })

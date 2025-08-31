@@ -9,7 +9,7 @@ sources:
     description: "Australian Bureau of Statistics data including census, geographic boundaries, and SEIFA indices"
     database: ahgd_v3
     schema: raw_abs
-    
+
     tables:
       - name: census_sa1_demographic
         description: "SA1 level demographic data from Australian Census"
@@ -32,7 +32,7 @@ sources:
             description: "Median weekly household income"
           - name: indigenous_population
             description: "Aboriginal and Torres Strait Islander population"
-            
+
       - name: geographic_boundaries_sa1
         description: "SA1 geographic boundaries with spatial data"
         columns:
@@ -51,7 +51,7 @@ sources:
             description: "Geographic boundary as WKT geometry"
           - name: area_sqkm
             description: "Area in square kilometres"
-            
+
       - name: seifa_indices
         description: "SEIFA socioeconomic indices by SA1"
         columns:
@@ -61,7 +61,7 @@ sources:
               - not_null
           - name: irsd_score
             description: "Index of Relative Socio-economic Disadvantage score"
-          - name: irsad_score  
+          - name: irsad_score
             description: "Index of Relative Socio-economic Advantage and Disadvantage score"
           - name: ier_score
             description: "Index of Education and Occupation score"
@@ -73,7 +73,7 @@ sources:
     description: "Australian Institute of Health and Welfare health indicators and mortality data"
     database: ahgd_v3
     schema: raw_aihw
-    
+
     tables:
       - name: health_indicators_sa1
         description: "Health indicators by SA1 area"
@@ -98,7 +98,7 @@ sources:
             description: "Cardiovascular disease prevalence rate"
           - name: cancer_incidence_rate
             description: "Cancer incidence rate per 100,000"
-            
+
       - name: mortality_data_sa1
         description: "Mortality statistics by SA1"
         columns:
@@ -115,12 +115,12 @@ sources:
           - name: life_expectancy
             description: "Life expectancy at birth"
 
-  # Bureau of Meteorology (BOM) - Climate and Environmental Data  
+  # Bureau of Meteorology (BOM) - Climate and Environmental Data
   - name: bom
     description: "Bureau of Meteorology climate and environmental health data"
     database: ahgd_v3
     schema: raw_bom
-    
+
     tables:
       - name: climate_sa1
         description: "Climate data aggregated to SA1 level"
@@ -141,7 +141,7 @@ sources:
                   max_value: 60
           - name: temperature_max_c
             description: "Maximum temperature in Celsius"
-          - name: temperature_min_c  
+          - name: temperature_min_c
             description: "Minimum temperature in Celsius"
           - name: rainfall_mm
             description: "Rainfall in millimetres"
@@ -153,7 +153,7 @@ sources:
             description: "Relative humidity percentage"
           - name: air_quality_index
             description: "Air quality index (0-500 scale)"
-            
+
       - name: extreme_weather_events
         description: "Extreme weather events affecting SA1 areas"
         columns:
@@ -171,7 +171,7 @@ sources:
     description: "Medicare services and PBS prescription data"
     database: ahgd_v3
     schema: raw_medicare
-    
+
     tables:
       - name: gp_utilisation_sa1
         description: "GP service utilisation by SA1"
@@ -192,7 +192,7 @@ sources:
             description: "Specialist referrals per capita"
           - name: bulk_billing_rate
             description: "Bulk billing rate percentage"
-            
+
       - name: pbs_prescriptions_sa1
         description: "PBS prescription data by SA1"
         columns:
@@ -208,9 +208,9 @@ sources:
             description: "Average cost per prescription"
           - name: chronic_disease_prescriptions
             description: "Prescriptions for chronic diseases"
-            
+
       - name: immunisation_rates_sa1
-        description: "Childhood immunisation rates by SA1" 
+        description: "Childhood immunisation rates by SA1"
         columns:
           - name: sa1_code
             description: "SA1 area code"

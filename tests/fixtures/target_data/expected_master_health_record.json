@@ -11,7 +11,7 @@
     "sa4_name": "Sydney - City and Inner South",
     "state_code": "1",
     "state_name": "New South Wales",
-    
+
     "geometry": {
       "type": "Polygon",
       "coordinates": [
@@ -27,12 +27,12 @@
     "centroid_lat": -33.8670,
     "centroid_lon": 151.2120,
     "area_sqkm": 0.85,
-    
+
     "total_population": 3245,
     "population_density": 3817.65,
     "median_age": 32.5,
     "indigenous_population_pct": 1.2,
-    
+
     "seifa_irsad_score": 1089,
     "seifa_irsad_decile": 10,
     "seifa_ieo_score": 1125,
@@ -41,20 +41,20 @@
     "seifa_ier_decile": 9,
     "seifa_iod_score": 1067,
     "seifa_iod_decile": 8,
-    
+
     "gp_services_per_1000": 1.85,
     "specialist_services_per_1000": 0.92,
     "hospital_beds_per_1000": 2.1,
     "mental_health_services_count": 3,
-    
+
     "life_expectancy": 84.2,
     "infant_mortality_rate": 2.8,
     "preventable_hospitalisations_rate": 1850.5,
     "chronic_disease_prevalence_pct": 18.7,
-    
+
     "pbs_dispensing_rate_per_1000": 425.8,
     "high_cost_medicine_access_score": 0.89,
-    
+
     "data_version": "2024.1.0",
     "last_updated": "2024-06-21T10:30:00Z",
     "completeness_score": 0.96,
@@ -70,12 +70,12 @@
       "pbs_prescribing_data",
       "abs_geographic_boundaries"
     ],
-    
+
     "health_inequality_index": 0.23,
     "healthcare_access_index": 0.87,
     "overall_health_score": 78.5
   },
-  
+
   "validation_rules": {
     "required_fields": [
       "sa2_code", "sa2_name", "sa3_code", "sa4_code", "state_code",
@@ -124,7 +124,7 @@
       }
     }
   },
-  
+
   "quality_standards": {
     "minimum_completeness": 0.90,
     "required_source_datasets": 3,
@@ -139,7 +139,7 @@
       "population_data_required": true
     }
   },
-  
+
   "australian_standards_compliance": {
     "aihw_compliance": {
       "health_indicator_definitions": "AIHW METeOR 2023",

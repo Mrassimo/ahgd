@@ -10,7 +10,7 @@ Welcome to the comprehensive API documentation for the Australian Health Geograp
 ### Base URL
 ```
 Production: https://api.ahgd.dev/v1
-Development: http://localhost:8000/v1  
+Development: http://localhost:8000/v1
 ```
 
 ### Authentication
@@ -42,7 +42,7 @@ High-performance health analytics with SA1-level granularity.
 
 **[📖 Health API Documentation →](health-api.md)**
 
-### 🗺️ Geographic API  
+### 🗺️ Geographic API
 Lightning-fast geographic data with 61,845 SA1 areas.
 
 | Endpoint | Method | Description | Performance |
@@ -90,7 +90,7 @@ System monitoring and performance metrics.
   "population": 623,
   "health_indicators": {
     "diabetes_prevalence": 4.2,
-    "cardiovascular_risk": "LOW", 
+    "cardiovascular_risk": "LOW",
     "mental_health_services_rate": 45.7,
     "life_expectancy": 83.2
   },
@@ -160,14 +160,14 @@ System monitoring and performance metrics.
 
 ### High Availability
 - **99.9% uptime** SLA
-- **Auto-scaling** based on demand  
+- **Auto-scaling** based on demand
 - **Load balancing** across regions
 - **Circuit breakers** for fault tolerance
 
 ### Rate Limiting
 ```
 Free Tier:     1,000 requests/hour
-Professional:  10,000 requests/hour  
+Professional:  10,000 requests/hour
 Enterprise:    Unlimited
 ```
 
@@ -210,7 +210,7 @@ curl -H "Authorization: Bearer your_access_token" \
 
 ### Government Data Sources
 - **ABS Census 2021**: Demographics at SA1 level
-- **AIHW Health Data**: Mortality and morbidity statistics  
+- **AIHW Health Data**: Mortality and morbidity statistics
 - **PHIDU Health Atlas**: Population health indicators
 - **MBS/PBS Data**: Healthcare utilization (modeled to SA1)
 
@@ -252,7 +252,7 @@ profile = client.get_sa1_health_profile("101011001")
 print(f"Diabetes rate: {profile.diabetes_prevalence}%")
 ```
 
-#### R Package  
+#### R Package
 ```r
 # Install from GitHub
 devtools::install_github("massimoraso/ahgd-r-sdk")
@@ -276,7 +276,7 @@ console.log(`Life expectancy: ${profile.life_expectancy}`);
 ### Code Examples
 **[📚 Complete Code Examples →](code-examples.md)**
 - Python data analysis workflows
-- R statistical modeling examples  
+- R statistical modeling examples
 - JavaScript dashboard integration
 - Jupyter notebook tutorials
 
@@ -410,7 +410,7 @@ session.mount("https://", adapter)
 
 ### Changelog & Updates
 - **[📝 API Changelog](changelog.md)**
-- **[🔔 Breaking Changes](breaking-changes.md)**  
+- **[🔔 Breaking Changes](breaking-changes.md)**
 - **[🆕 What's New](whats-new.md)**
 - **[🗺️ Roadmap](roadmap.md)**
 
@@ -421,7 +421,7 @@ session.mount("https://", adapter)
 ### Response Times (95th percentile)
 ```
 GET /health/sa1/{code}           <100ms
-POST /health/search              <200ms  
+POST /health/search              <200ms
 GET /geo/boundaries              <150ms
 POST /analytics/correlations     <400ms
 ```

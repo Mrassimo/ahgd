@@ -6,30 +6,26 @@ and geographic data with SA1 as the core geographic unit. It replaces the comple
 master ETL pipeline with a simplified, maintainable approach.
 """
 
-import asyncio
-import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+from typing import Optional
 
 import duckdb
 import polars as pl
 
 from ..extractors import ExtractorRegistry
-from ..loaders.base import BaseLoader
 from ..transformers.sa1_processor import SA1GeographicTransformer
-from ..utils.config import get_config
-from ..utils.interfaces import (
-    AHGDException,
-    ExtractionError,
-    LoadingError,
-    TransformationError,
-)
-from ..utils.logging import get_logger, monitor_performance
+from ..utils.interfaces import ExtractionError
+from ..utils.interfaces import LoadingError
+from ..utils.interfaces import TransformationError
+from ..utils.logging import get_logger
+from ..utils.logging import monitor_performance
 from ..validators.core_validator import CoreValidator
-from .base_pipeline import BasePipeline, PipelineContext
+from .base_pipeline import BasePipeline
+from .base_pipeline import PipelineContext
 
 logger = get_logger(__name__)
 
@@ -63,7 +59,7 @@ class StageResult:
     records_processed: int = 0
     output_table: Optional[str] = None
     error: Optional[Exception] = None
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
 
     @property
     def duration(self) -> Optional[float]:
@@ -86,7 +82,7 @@ class CoreETLPipeline(BasePipeline):
         self,
         name: str = "core_etl_pipeline",
         db_path: str = "ahgd_sa1.db",
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[dict[str, Any]] = None,
         **kwargs,
     ):
         """
@@ -111,16 +107,14 @@ class CoreETLPipeline(BasePipeline):
 
         # Pipeline components
         self.extractor_registry = ExtractorRegistry()
-        self.sa1_transformer = SA1GeographicTransformer(
-            self.config.get("transformer", {})
-        )
+        self.sa1_transformer = SA1GeographicTransformer(self.config.get("transformer", {}))
         self.validator = CoreValidator(self.config.get("validator", {}), self.logger)
 
         # DuckDB connection
         self.con = duckdb.connect(database=self.db_path, read_only=False)
 
         # Pipeline state
-        self.stage_results: Dict[PipelineStage, StageResult] = {}
+        self.stage_results: dict[PipelineStage, StageResult] = {}
         self.current_table: Optional[str] = None
 
         # Configuration
@@ -134,16 +128,16 @@ class CoreETLPipeline(BasePipeline):
             batch_size=self.batch_size,
         )
 
-    def define_stages(self) -> List[str]:
+    def define_stages(self) -> list[str]:
         """Define pipeline stages in execution order."""
         return [stage.value for stage in PipelineStage]
 
     @monitor_performance("core_etl_execution")
     def run_complete_etl(
         self,
-        source_config: Optional[Dict[str, Any]] = None,
-        target_config: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        source_config: Optional[dict[str, Any]] = None,
+        target_config: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """
         Execute the complete ETL pipeline from extraction to loading.
 
@@ -183,7 +177,7 @@ class CoreETLPipeline(BasePipeline):
             return results
 
         except Exception as e:
-            logger.error(f"ETL pipeline execution failed: {str(e)}")
+            logger.error(f"ETL pipeline execution failed: {e!s}")
             self._mark_pipeline_failed(e)
             raise
         finally:
@@ -193,9 +187,7 @@ class CoreETLPipeline(BasePipeline):
     def _execute_extraction_stage(self, context: PipelineContext) -> None:
         """Execute data extraction stage."""
         stage = PipelineStage.EXTRACT
-        result = StageResult(
-            stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now()
-        )
+        result = StageResult(stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now())
 
         try:
             logger.info("Executing extraction stage")
@@ -248,8 +240,8 @@ class CoreETLPipeline(BasePipeline):
             result.status = PipelineStatus.FAILED
             result.error = e
             result.end_time = datetime.now()
-            logger.error(f"Extraction stage failed: {str(e)}")
-            raise ExtractionError(f"Extraction failed: {str(e)}") from e
+            logger.error(f"Extraction stage failed: {e!s}")
+            raise ExtractionError(f"Extraction failed: {e!s}") from e
 
         finally:
             self.stage_results[stage] = result
@@ -258,9 +250,7 @@ class CoreETLPipeline(BasePipeline):
     def _execute_transformation_stage(self, context: PipelineContext) -> None:
         """Execute SA1 geographic transformation stage."""
         stage = PipelineStage.TRANSFORM
-        result = StageResult(
-            stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now()
-        )
+        result = StageResult(stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now())
 
         try:
             logger.info("Executing SA1 transformation stage")
@@ -293,8 +283,8 @@ class CoreETLPipeline(BasePipeline):
             result.status = PipelineStatus.FAILED
             result.error = e
             result.end_time = datetime.now()
-            logger.error(f"Transformation stage failed: {str(e)}")
-            raise TransformationError(f"SA1 transformation failed: {str(e)}") from e
+            logger.error(f"Transformation stage failed: {e!s}")
+            raise TransformationError(f"SA1 transformation failed: {e!s}") from e
 
         finally:
             self.stage_results[stage] = result
@@ -303,9 +293,7 @@ class CoreETLPipeline(BasePipeline):
     def _execute_validation_stage(self, context: PipelineContext) -> None:
         """Execute data validation stage."""
         stage = PipelineStage.VALIDATE
-        result = StageResult(
-            stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now()
-        )
+        result = StageResult(stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now())
 
         try:
             logger.info("Executing validation stage")
@@ -327,9 +315,7 @@ class CoreETLPipeline(BasePipeline):
                 # Depending on configuration, either fail or continue with warnings
                 validation_mode = self.config.get("validation_mode", "warn")
                 if validation_mode == "strict" and error_count > 0:
-                    raise Exception(
-                        f"Strict validation failed with {error_count} errors"
-                    )
+                    raise Exception(f"Strict validation failed with {error_count} errors")
 
             result.records_processed = len(data)
             result.metadata = validation_results
@@ -346,7 +332,7 @@ class CoreETLPipeline(BasePipeline):
             result.status = PipelineStatus.FAILED
             result.error = e
             result.end_time = datetime.now()
-            logger.error(f"Validation stage failed: {str(e)}")
+            logger.error(f"Validation stage failed: {e!s}")
             # Don't raise - validation failures can be warnings
 
         finally:
@@ -356,9 +342,7 @@ class CoreETLPipeline(BasePipeline):
     def _execute_loading_stage(self, context: PipelineContext) -> None:
         """Execute data loading stage."""
         stage = PipelineStage.LOAD
-        result = StageResult(
-            stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now()
-        )
+        result = StageResult(stage=stage, status=PipelineStatus.RUNNING, start_time=datetime.now())
 
         try:
             logger.info("Executing loading stage")
@@ -371,9 +355,7 @@ class CoreETLPipeline(BasePipeline):
 
             # Get target configuration
             target_config = context.metadata.get("target_config", {})
-            output_path = target_config.get(
-                "output_path", "output/sa1_processed_data.parquet"
-            )
+            output_path = target_config.get("output_path", "output/sa1_processed_data.parquet")
             output_format = target_config.get("format", "parquet")
 
             # Load data to target
@@ -398,15 +380,13 @@ class CoreETLPipeline(BasePipeline):
             result.status = PipelineStatus.FAILED
             result.error = e
             result.end_time = datetime.now()
-            logger.error(f"Loading stage failed: {str(e)}")
-            raise LoadingError(f"Data loading failed: {str(e)}") from e
+            logger.error(f"Loading stage failed: {e!s}")
+            raise LoadingError(f"Data loading failed: {e!s}") from e
 
         finally:
             self.stage_results[stage] = result
 
-    def _load_data_to_target(
-        self, data: pl.DataFrame, output_path: str, format: str
-    ) -> None:
+    def _load_data_to_target(self, data: pl.DataFrame, output_path: str, format: str) -> None:
         """Load data to target destination."""
         output_file = Path(output_path)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -420,11 +400,9 @@ class CoreETLPipeline(BasePipeline):
         else:
             raise LoadingError(f"Unsupported output format: {format}")
 
-    def _generate_pipeline_results(self, context: PipelineContext) -> Dict[str, Any]:
+    def _generate_pipeline_results(self, context: PipelineContext) -> dict[str, Any]:
         """Generate comprehensive pipeline execution results."""
-        total_duration = sum(
-            result.duration or 0 for result in self.stage_results.values()
-        )
+        total_duration = sum(result.duration or 0 for result in self.stage_results.values())
 
         total_records = 0
         final_table = None
@@ -457,23 +435,17 @@ class CoreETLPipeline(BasePipeline):
             "execution_summary": self._generate_execution_summary(),
         }
 
-    def _generate_execution_summary(self) -> Dict[str, Any]:
+    def _generate_execution_summary(self) -> dict[str, Any]:
         """Generate execution summary statistics."""
         completed_stages = sum(
-            1
-            for result in self.stage_results.values()
-            if result.status == PipelineStatus.COMPLETED
+            1 for result in self.stage_results.values() if result.status == PipelineStatus.COMPLETED
         )
         failed_stages = sum(
-            1
-            for result in self.stage_results.values()
-            if result.status == PipelineStatus.FAILED
+            1 for result in self.stage_results.values() if result.status == PipelineStatus.FAILED
         )
 
         total_stages = len(self.stage_results)
-        success_rate = (
-            (completed_stages / total_stages * 100) if total_stages > 0 else 0
-        )
+        success_rate = (completed_stages / total_stages * 100) if total_stages > 0 else 0
 
         return {
             "total_stages": total_stages,
@@ -481,9 +453,7 @@ class CoreETLPipeline(BasePipeline):
             "failed_stages": failed_stages,
             "success_rate": success_rate,
             "pipeline_efficiency": (
-                "high"
-                if success_rate >= 100
-                else "medium" if success_rate >= 75 else "low"
+                "high" if success_rate >= 100 else "medium" if success_rate >= 75 else "low"
             ),
         }
 
@@ -505,9 +475,9 @@ class CoreETLPipeline(BasePipeline):
             if self.con:
                 self.con.close()
         except Exception as e:
-            logger.warning(f"Error during cleanup: {str(e)}")
+            logger.warning(f"Error during cleanup: {e!s}")
 
-    def get_pipeline_status(self) -> Dict[str, Any]:
+    def get_pipeline_status(self) -> dict[str, Any]:
         """Get current pipeline status and progress."""
         return {
             "pipeline_name": self.name,
@@ -543,10 +513,10 @@ class CoreETLPipeline(BasePipeline):
 
 
 def run_sa1_etl_pipeline(
-    source_config: Optional[Dict[str, Any]] = None,
-    target_config: Optional[Dict[str, Any]] = None,
-    pipeline_config: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    source_config: Optional[dict[str, Any]] = None,
+    target_config: Optional[dict[str, Any]] = None,
+    pipeline_config: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
     """
     Convenience function to run the complete SA1 ETL pipeline.
 

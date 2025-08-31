@@ -5,24 +5,24 @@ This module provides FastAPI dependency injection for authentication, database c
 services, and other shared resources following the existing AHGD patterns.
 """
 
-import asyncio
 from functools import lru_cache
-from typing import Optional, Dict, Any, AsyncGenerator, Annotated
-from contextlib import asynccontextmanager
+from typing import Annotated
+from typing import Any
+from typing import Optional
 
-from fastapi import Depends, HTTPException, Request, status, Header
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import httpx
+from fastapi import Depends
+from fastapi import Header
+from fastapi import Request
+from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
 
-from ..utils.config import get_config, get_config_manager
+from ..utils.config import get_config
 from ..utils.logging import get_logger
-from ..utils.interfaces import AHGDException
-from .exceptions import (
-    AuthenticationException, AuthorisationException, 
-    ServiceUnavailableException, raise_service_unavailable
-)
+from .exceptions import AuthenticationException
+from .exceptions import AuthorisationException
+from .exceptions import ServiceUnavailableException
 from .models.common import SystemHealth
-
 
 logger = get_logger(__name__)
 
@@ -31,8 +31,8 @@ security = HTTPBearer(auto_error=False)
 
 
 # Configuration Dependencies
-@lru_cache()
-def get_api_config() -> Dict[str, Any]:
+@lru_cache
+def get_api_config() -> dict[str, Any]:
     """Get API configuration."""
     return {
         "rate_limiting": get_config("api.rate_limiting", True),
@@ -46,7 +46,7 @@ def get_api_config() -> Dict[str, Any]:
     }
 
 
-def get_database_config() -> Dict[str, Any]:
+def get_database_config() -> dict[str, Any]:
     """Get database configuration."""
     return {
         "url": get_config("database.url"),
@@ -59,11 +59,11 @@ def get_database_config() -> Dict[str, Any]:
 # Database Dependencies
 class DatabaseManager:
     """Database connection manager."""
-    
+
     def __init__(self):
         self._pool = None
         self._config = get_database_config()
-    
+
     async def initialize(self):
         """Initialize database pool."""
         if self._pool is None:
@@ -71,21 +71,21 @@ class DatabaseManager:
             # Here we would initialize the actual database pool
             # For now, it's a placeholder
             self._pool = "initialized"
-    
+
     async def close(self):
         """Close database connections."""
         if self._pool:
             logger.info("Closing database connection pool")
             self._pool = None
-    
+
     async def get_connection(self):
         """Get database connection."""
         if not self._pool:
             await self.initialize()
-        
+
         # Return connection - placeholder for now
         return self._pool
-    
+
     async def health_check(self) -> bool:
         """Check database health."""
         try:
@@ -112,11 +112,11 @@ async def get_database() -> Any:
 # Cache Dependencies
 class CacheManager:
     """Redis cache manager."""
-    
+
     def __init__(self):
         self._client = None
         self._config = get_config("cache", {})
-    
+
     async def initialize(self):
         """Initialize cache client."""
         if self._client is None and self._config.get("redis_url"):
@@ -124,19 +124,19 @@ class CacheManager:
             # Here we would initialize the actual Redis client
             # For now, it's a placeholder
             self._client = "initialized"
-    
+
     async def close(self):
         """Close cache client."""
         if self._client:
             logger.info("Closing cache client")
             self._client = None
-    
+
     async def get_client(self):
         """Get cache client."""
         if not self._client:
             await self.initialize()
         return self._client
-    
+
     async def get(self, key: str) -> Optional[str]:
         """Get value from cache."""
         try:
@@ -148,7 +148,7 @@ class CacheManager:
         except Exception as e:
             logger.warning(f"Cache get failed for key {key}: {e}")
             return None
-    
+
     async def set(self, key: str, value: str, expire_seconds: int = 3600) -> bool:
         """Set value in cache."""
         try:
@@ -174,28 +174,28 @@ async def get_cache() -> CacheManager:
 # Authentication Dependencies
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    config: Dict[str, Any] = Depends(get_api_config)
-) -> Optional[Dict[str, Any]]:
+    config: dict[str, Any] = Depends(get_api_config),
+) -> Optional[dict[str, Any]]:
     """
     Get current authenticated user.
-    
+
     Returns None if authentication is disabled.
     Raises AuthenticationException if auth is enabled but token is invalid.
     """
-    
+
     # If authentication is disabled, return anonymous user
     if not config.get("enable_auth", False):
         return {
             "user_id": "anonymous",
             "username": "anonymous",
             "roles": ["read"],
-            "is_authenticated": False
+            "is_authenticated": False,
         }
-    
+
     # If auth is enabled but no credentials provided
     if not credentials:
         raise AuthenticationException("Authentication token required")
-    
+
     # Validate token
     try:
         user_data = await validate_auth_token(credentials.credentials, config)
@@ -205,9 +205,9 @@ async def get_current_user(
         raise AuthenticationException("Invalid authentication token")
 
 
-async def validate_auth_token(token: str, config: Dict[str, Any]) -> Dict[str, Any]:
+async def validate_auth_token(token: str, config: dict[str, Any]) -> dict[str, Any]:
     """Validate authentication token with auth service."""
-    
+
     auth_service_url = config.get("auth_service_url")
     if not auth_service_url:
         # Fallback to simple token validation for development
@@ -216,101 +216,98 @@ async def validate_auth_token(token: str, config: Dict[str, Any]) -> Dict[str, A
                 "user_id": "dev-user",
                 "username": "developer",
                 "roles": ["admin"],
-                "is_authenticated": True
+                "is_authenticated": True,
             }
         else:
             raise ValueError("Invalid token")
-    
+
     # Call external auth service
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
                 f"{auth_service_url}/validate",
                 headers={"Authorization": f"Bearer {token}"},
-                timeout=5.0
+                timeout=5.0,
             )
-            
+
             if response.status_code == 200:
                 return response.json()
             else:
                 raise ValueError(f"Auth service returned {response.status_code}")
-                
+
         except httpx.TimeoutException:
             raise ServiceUnavailableException("auth_service", "Authentication service timeout")
         except Exception as e:
             raise ValueError(f"Auth service error: {e}")
 
 
-def require_authenticated_user(
-    user: Dict[str, Any] = Depends(get_current_user)
-) -> Dict[str, Any]:
+def require_authenticated_user(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
     """Require an authenticated user."""
-    
+
     if not user or not user.get("is_authenticated", False):
         raise AuthenticationException("Authentication required")
-    
+
     return user
 
 
 def require_admin_user(
-    user: Dict[str, Any] = Depends(require_authenticated_user)
-) -> Dict[str, Any]:
+    user: dict[str, Any] = Depends(require_authenticated_user),
+) -> dict[str, Any]:
     """Require an admin user."""
-    
+
     user_roles = user.get("roles", [])
     if "admin" not in user_roles:
         raise AuthorisationException("Admin privileges required")
-    
+
     return user
 
 
 def require_write_permission(
-    user: Dict[str, Any] = Depends(require_authenticated_user)
-) -> Dict[str, Any]:
+    user: dict[str, Any] = Depends(require_authenticated_user),
+) -> dict[str, Any]:
     """Require write permission."""
-    
+
     user_roles = user.get("roles", [])
     if not any(role in ["admin", "write", "editor"] for role in user_roles):
         raise AuthorisationException("Write permission required")
-    
+
     return user
 
 
 # Request Context Dependencies
 def get_request_id(request: Request) -> str:
     """Get or generate request ID."""
-    
+
     request_id = getattr(request.state, "request_id", None)
     if not request_id:
         import uuid
+
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
-    
+
     return request_id
 
 
 def get_client_ip(request: Request) -> str:
     """Get client IP address."""
-    
+
     # Check for forwarded headers first
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
-    
+
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         return real_ip
-    
+
     # Fallback to direct connection
     if hasattr(request.client, "host"):
         return request.client.host
-    
+
     return "unknown"
 
 
-def get_user_agent(
-    user_agent: Annotated[Optional[str], Header()] = None
-) -> str:
+def get_user_agent(user_agent: Annotated[Optional[str], Header()] = None) -> str:
     """Get user agent string."""
     return user_agent or "unknown"
 
@@ -318,34 +315,38 @@ def get_user_agent(
 # Service Health Dependencies
 class HealthChecker:
     """System health checker."""
-    
+
     def __init__(self):
         self._last_check = None
         self._cached_health = None
         self._check_interval = 60  # seconds
-    
+
     async def get_system_health(self) -> SystemHealth:
         """Get current system health status."""
-        
+
         import time
+
         current_time = time.time()
-        
+
         # Use cached result if recent
-        if (self._cached_health and self._last_check and 
-            current_time - self._last_check < self._check_interval):
+        if (
+            self._cached_health
+            and self._last_check
+            and current_time - self._last_check < self._check_interval
+        ):
             return self._cached_health
-        
+
         # Perform health checks
         try:
             # Check database
             db_healthy = await _db_manager.health_check()
-            
+
             # Check cache
             cache_healthy = await self._check_cache_health()
-            
+
             # Check external services
             services_healthy = await self._check_external_services()
-            
+
             # Determine overall status
             if db_healthy and cache_healthy and services_healthy:
                 status = "healthy"
@@ -353,19 +354,19 @@ class HealthChecker:
                 status = "degraded"
             else:
                 status = "unhealthy"
-            
+
             health = SystemHealth(
                 status=status,
                 active_pipelines=0,  # Placeholder
                 pending_validations=0,  # Placeholder
             )
-            
+
             # Cache result
             self._cached_health = health
             self._last_check = current_time
-            
+
             return health
-            
+
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return SystemHealth(
@@ -373,7 +374,7 @@ class HealthChecker:
                 active_pipelines=0,
                 pending_validations=0,
             )
-    
+
     async def _check_cache_health(self) -> bool:
         """Check cache health."""
         try:
@@ -384,30 +385,32 @@ class HealthChecker:
             return result is not None
         except Exception:
             return False
-    
+
     async def _check_external_services(self) -> bool:
         """Check external services health."""
         try:
             config = get_api_config()
             external_services = config.get("external_services", {})
-            
+
             if not external_services:
                 return True
-            
+
             # Check each service
             async with httpx.AsyncClient(timeout=5.0) as client:
                 for service_name, service_url in external_services.items():
                     try:
                         response = await client.get(f"{service_url}/health")
                         if response.status_code != 200:
-                            logger.warning(f"Service {service_name} unhealthy: {response.status_code}")
+                            logger.warning(
+                                f"Service {service_name} unhealthy: {response.status_code}"
+                            )
                             return False
                     except Exception as e:
                         logger.warning(f"Service {service_name} unreachable: {e}")
                         return False
-            
+
             return True
-            
+
         except Exception:
             return True  # Don't fail if external service checks fail
 
@@ -424,45 +427,47 @@ async def get_system_health() -> SystemHealth:
 # Rate Limiting Dependencies
 class RateLimiter:
     """Simple in-memory rate limiter."""
-    
+
     def __init__(self):
         self._requests = {}
         self._config = get_api_config()
-    
+
     async def check_rate_limit(self, client_ip: str, user_id: str) -> bool:
         """Check if request is within rate limits."""
-        
+
         if not self._config.get("rate_limiting", True):
             return True
-        
+
         import time
+
         current_time = time.time()
         window_start = current_time - 60  # 1 minute window
-        
+
         # Clean old entries
         keys_to_remove = [
-            key for key, requests in self._requests.items()
+            key
+            for key, requests in self._requests.items()
             if all(req_time < window_start for req_time in requests)
         ]
         for key in keys_to_remove:
             del self._requests[key]
-        
+
         # Check current requests
         key = f"{client_ip}:{user_id}"
         requests = self._requests.get(key, [])
-        
+
         # Remove old requests from current key
         requests = [req_time for req_time in requests if req_time >= window_start]
-        
+
         # Check limit
         max_requests = self._config.get("max_requests_per_minute", 100)
         if len(requests) >= max_requests:
             return False
-        
+
         # Add current request
         requests.append(current_time)
         self._requests[key] = requests
-        
+
         return True
 
 
@@ -471,18 +476,18 @@ _rate_limiter = RateLimiter()
 
 
 async def check_rate_limit(
-    client_ip: str = Depends(get_client_ip),
-    user: Dict[str, Any] = Depends(get_current_user)
+    client_ip: str = Depends(get_client_ip), user: dict[str, Any] = Depends(get_current_user)
 ) -> bool:
     """Rate limiting dependency."""
-    
+
     user_id = user.get("user_id", "anonymous")
     allowed = await _rate_limiter.check_rate_limit(client_ip, user_id)
-    
+
     if not allowed:
         from .exceptions import raise_rate_limit_error
+
         raise_rate_limit_error(60)  # Suggest retry after 1 minute
-    
+
     return True
 
 
@@ -509,7 +514,7 @@ async def get_pipeline_service():
 async def initialize_dependencies():
     """Initialize all dependency managers."""
     logger.info("Initializing API dependencies")
-    
+
     try:
         await _db_manager.initialize()
         await _cache_manager.initialize()
@@ -522,7 +527,7 @@ async def initialize_dependencies():
 async def cleanup_dependencies():
     """Clean up all dependency managers."""
     logger.info("Cleaning up API dependencies")
-    
+
     try:
         await _db_manager.close()
         await _cache_manager.close()
@@ -534,7 +539,7 @@ async def cleanup_dependencies():
 # Export commonly used dependencies
 __all__ = [
     "get_api_config",
-    "get_database_config", 
+    "get_database_config",
     "get_database",
     "get_cache",
     "get_current_user",
@@ -550,5 +555,5 @@ __all__ = [
     "get_validation_service",
     "get_pipeline_service",
     "initialize_dependencies",
-    "cleanup_dependencies"
+    "cleanup_dependencies",
 ]
