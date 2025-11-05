@@ -467,20 +467,7 @@ class BaseTransformer(ABC):
             return bool(value)
         else:
             return value
-    
-    def _standardise_column_name(self, column_name: str) -> str:
-        """
-        Standardise a column name.
-        
-        Args:
-            column_name: Original column name
-            
-        Returns:
-            str: Standardised column name
-        """
-        # Convert to lowercase, replace spaces with underscores
-        return column_name.lower().replace(' ', '_').replace('-', '_')
-    
+
     def _standardise_value(self, value: Any) -> Any:
         """
         Standardise a value format.
