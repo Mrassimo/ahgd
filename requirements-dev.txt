@@ -1,115 +1,121 @@
 # AHGD - Development Dependencies
 # Development-only packages - Pinned Versions
-# Generated: 2025-06-20
+# Generated: 2025-11-05 (Updated by Claude Code Review)
 
 # Include production requirements
 -r requirements.txt
 
 # Testing Framework
-pytest
-pytest-cov
-pytest-mock
-pytest-asyncio
-pytest-xdist
-pytest-benchmark
-pytest-sugar
-pytest-html
-pytest-json-report
+pytest>=7.0.0,<8.4.0
+pytest-cov>=4.0.0,<6.1.0
+pytest-mock>=3.10.0,<3.15.0
+pytest-asyncio>=0.21.0,<0.24.0
+pytest-xdist>=3.0.0,<3.7.0
+pytest-benchmark>=4.0.0,<4.1.0
+pytest-sugar>=0.9.0,<1.1.0
+pytest-html>=3.1.0,<4.2.0
+pytest-json-report>=1.5.0,<1.6.0
 
 # Code Quality & Formatting
-black
-isort
-flake8
-bandit
-safety
-pre-commit
+black>=22.0.0,<24.9.0
+isort>=5.10.0,<5.14.0
+flake8>=4.0.0,<7.2.0
+bandit>=1.7.0,<1.8.0
+safety>=2.0.0,<3.3.0
+pre-commit>=2.15.0,<4.1.0
 
 # Type Checking
-mypy
-types-requests
-types-PyYAML
-types-python-dateutil
+mypy>=0.900,<1.14.0
+types-requests>=2.28.0,<2.32.0
+types-PyYAML>=6.0.0,<6.1.0
+types-python-dateutil>=2.8.0,<2.10.0
 
 # Code Analysis & Linting
-pylint
-pycodestyle
-pyflakes
-pydocstyle
-mccabe
+pylint>=2.12.0,<3.4.0
+pycodestyle>=2.8.0,<2.13.0
+pyflakes>=2.4.0,<3.3.0
+pydocstyle>=6.1.0,<6.4.0
+mccabe>=0.6.0,<0.8.0
 
 # Documentation
-sphinx
-sphinx-rtd-theme
-sphinx-autoapi
-myst-parser
-sphinxcontrib-mermaid
+sphinx>=4.0.0,<8.2.0
+sphinx-rtd-theme>=1.0.0,<3.1.0
+sphinx-autoapi>=1.8.0,<3.4.0
+myst-parser>=0.18.0,<4.1.0
+sphinxcontrib-mermaid>=0.7.0,<0.10.0
 
 # Development Tools (Security Fixes: CVE-2025-47194, CVE-2025-30167)
-ipython
-jupyter
-notebook
-jupyterlab
-ipykernel
-jupyter-server
-jupyter-core
+ipython>=8.0.0,<8.29.0
+jupyter>=1.0.0,<1.1.0
+notebook>=6.5.0,<7.3.0
+jupyterlab>=3.5.0,<4.3.0
+ipykernel>=6.15.0,<6.30.0
+jupyter-server>=1.18.0,<2.15.0
+jupyter-core>=4.11.0,<5.8.0
 
 # Data Visualization (Development)
-matplotlib
-seaborn
-plotly
-altair
-bokeh
+matplotlib>=3.5.0,<3.10.0
+seaborn>=0.11.0,<0.14.0
+plotly>=5.0.0,<5.24.0
+altair>=4.2.0,<5.5.0
+bokeh>=2.4.0,<3.6.0
 
 # Profiling & Performance
+memory-profiler>=0.60.0,<0.62.0
+psutil>=5.9.0,<6.1.0
 
 # Development Utilities
-watchdog
-python-dotenv[cli]
-invoke
-fabric
+watchdog>=2.1.0,<5.1.0
+python-dotenv[cli]>=0.19.0,<1.1.0
+invoke>=1.7.0,<2.3.0
+fabric>=2.7.0,<3.3.0
 
 # Database Development Tools
-alembic
-sqlalchemy-utils
+alembic>=1.8.0,<1.14.0
+sqlalchemy-utils>=0.38.0,<0.42.0
 
 # Mock & Test Data Generation
-faker
-factory-boy
-responses
-freezegun
+faker>=15.0.0,<31.1.0
+factory-boy>=3.2.0,<3.4.0
+responses>=0.22.0,<0.26.0
+freezegun>=1.2.0,<1.6.0
 
 # Environment & Dependency Management
-pip-tools
-pipdeptree
-pipenv
+pip-tools>=6.8.0,<7.5.0
+pipdeptree>=2.3.0,<2.24.0
+pipenv>=2022.1.0,<2024.2.0
 
 # Debugging
-debugpy
-pdb-attach
-pudb
+debugpy>=1.6.0,<1.9.0
+pdb-attach>=3.0.0,<3.1.0
+pudb>=2022.1.0,<2024.2.0
 
 # Code Coverage
-coverage
-coveralls
+coverage>=6.4.0,<7.7.0
+coveralls>=3.3.0,<4.1.0
 
 # Build Tools
-build
-wheel
-setuptools
-twine
+build>=0.8.0,<1.3.0
+wheel>=0.37.0,<0.45.0
+setuptools>=65.0.0,<75.0.0
+twine>=4.0.0,<5.2.0
 
 # Orchestration
+apache-airflow>=2.7.0,<2.10.0
+apache-airflow-providers-docker>=3.5.0,<3.14.0
 
 # API Development & Testing
-httpx
-fastapi
-uvicorn
-starlette
+httpx>=0.23.0,<0.28.0
+fastapi>=0.95.0,<0.115.0
+uvicorn>=0.20.0,<0.32.0
+starlette>=0.26.0,<0.39.0
 
 # Browser Automation & Testing (Security Fix: CVE-2025-47241)
+# Commented out - not currently in use
+# selenium>=4.10.0,<4.26.0
 
 # Security Fix: CVE-2025-47287 - Tornado DoS vulnerability
-tornado
+tornado>=6.2.0,<6.5.0
 
 # Additional Development Security Fixes
 # Note: See requirements.txt for additional security fixes applied
