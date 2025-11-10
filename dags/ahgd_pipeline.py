@@ -238,11 +238,11 @@ def export_data_from_duckdb(**context):
 
 # Define the DAG
 with DAG(
-    dag_id='ahgd_etl_v2',
+    dag_id='ahgd_etl',
     start_date=datetime(2023, 1, 1),
     schedule_interval=None,
     catchup=False,
-    tags=['ahgd', 'etl', 'v2'],
+    tags=['ahgd', 'etl'],
 ) as dag:
     # Task 1: Extract raw data using Python extractors
     extract_data = BashOperator(
