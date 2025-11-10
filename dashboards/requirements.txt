@@ -1,0 +1,23 @@
+# AHGD Dashboard Requirements
+
+# Core dashboard framework
+streamlit>=1.32.0
+
+# Data processing
+duckdb>=0.10.0
+polars>=0.20.0
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualizations
+plotly>=5.18.0
+folium>=0.15.0
+pydeck>=0.8.0
+streamlit-folium>=0.15.0
+
+# Geospatial
+geopandas>=0.14.0
+shapely>=2.0.0
+
+# Styling and utilities
+pyarrow>=14.0.0
