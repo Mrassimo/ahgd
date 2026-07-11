@@ -101,8 +101,8 @@ setuptools>=65.0.0,<75.0.0
 twine>=4.0.0,<5.2.0
 
 # Orchestration
-apache-airflow>=2.7.0,<2.10.0
-apache-airflow-providers-docker>=3.5.0,<3.14.0
+apache-airflow>=2.11.1,<3.0.0
+apache-airflow-providers-docker>=3.9.0,<4.0.0
 
 # API Development & Testing
 httpx>=0.23.0,<0.28.0
